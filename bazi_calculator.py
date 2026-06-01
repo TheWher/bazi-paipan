@@ -18,22 +18,104 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional
 
-# 优先使用 sxtwl（C++ 高精度），不可用时回退到纯 Python 模块
+# 优先使用 sxtwl（C++ 高精度），不可用时回退到内嵌纯 Python 方案
 try:
     import sxtwl
     _USE_SXTWL = True
 except ImportError:
     sxtwl = None
     _USE_SXTWL = False
+    from datetime import date as _fd, timedelta as _ft
     try:
-        from lunar_fallback import fromSolar as _fromSolar_fallback
-        _HAS_FALLBACK = True
+        import ephem as _ep
+        _HAS_EPHEM = True
     except ImportError:
-        _HAS_FALLBACK = False
-        raise ImportError(
-            "Neither sxtwl nor lunar_fallback is available. "
-            "Install one of: pip install sxtwl  OR  pip install zhdate"
-        )
+        _ep = None
+        _HAS_EPHEM = False
+    try:
+        from zhdate import ZhDate
+    except ImportError:
+        ZhDate = None
+
+    _EC = [(i * 15 + 270) % 360 for i in range(24)]
+    _RD = _fd(2000, 1, 1)
+    _RG, _RZ = 4, 6
+
+    class _GZ:
+        __slots__ = ('tg', 'dz')
+        def __init__(s, tg, dz): s.tg = tg; s.dz = dz
+
+    class _Day:
+        def __init__(s, y, m, d):
+            s.year, s.month, s.day = y, m, d
+            s._dt = _fd(y, m, d)
+            o = (y - 4) % 60; yg = o % 10
+            s._ygz = _GZ(yg, o % 12)
+            b = {0: 2, 5: 2, 1: 4, 6: 4, 2: 6, 7: 6, 3: 8, 8: 8, 4: 0, 9: 0}
+            s._mgz = _GZ((b[yg] + (m - 1)) % 10, (m + 1) % 12)
+            dl = (s._dt - _RD).days
+            s._dgz = _GZ((_RG + dl) % 10, (_RZ + dl) % 12)
+            s._ly = s._lm = s._ld = 0; s._lp = False
+            if ZhDate:
+                try:
+                    from datetime import datetime as _dtt
+                    l = ZhDate.from_datetime(_dtt(y, m, d))
+                    s._ly, s._lm, s._ld = l.lunar_year, l.lunar_month, l.lunar_day
+                    s._lp = (l.leap_month is not None and l.lunar_month == l.leap_month)
+                except Exception:
+                    pass
+
+        def getYearGZ(s): return s._ygz
+        def getMonthGZ(s): return s._mgz
+        def getDayGZ(s): return s._dgz
+        def getLunarYear(s): return s._ly
+        def getLunarMonth(s): return s._lm
+        def getLunarDay(s): return s._ld
+        def isLunarLeap(s): return s._lp
+
+        def _st_jd(s, idx):
+            if not _HAS_EPHEM:
+                return 0.0
+            t = _EC[idx]; d = _ep.Date(f'{s.year}/1/1') + idx * 15.218
+            for _ in range(25):
+                sun = _ep.Sun(d); lon = float(sun.hlon) * 57.29578
+                df = (t - lon + 180) % 360 - 180
+                if abs(df) < 1e-5: break
+                d = _ep.Date(d + df * 0.4)
+            return float(d) + 2415020.0
+
+        def _jd(s): return 2451545.0 + (s._dt - _fd(2000, 1, 1)).days
+
+        def hasJieQi(s):
+            if not _HAS_EPHEM: return False
+            for y in (s.year - 1, s.year, s.year + 1):
+                for i in range(24):
+                    jd = s._st_jd(y, i)
+                    if jd and _fd(2000,1,1) + _ft(days=jd - 2451545.0) == s._dt:
+                        return True
+            return False
+
+        def getJieQiJD(s):
+            if not _HAS_EPHEM: return s._jd()
+            j0 = s._jd(); best = None; bd = float('inf')
+            for y in (s.year - 1, s.year, s.year + 1):
+                for i in range(24):
+                    j = s._st_jd(y, i)
+                    if j:
+                        df = j - j0
+                        if 0 < df < bd: bd = df; best = j
+            return best or j0
+
+        def after(s, days):
+            nd = s._dt + _ft(days=days)
+            return _Day(nd.year, nd.month, nd.day)
+
+        def before(s, days):
+            nd = s._dt - _ft(days=days)
+            return _Day(nd.year, nd.month, nd.day)
+
+    def _fromSolar_fallback(y, m, d):
+        return _Day(y, m, d)
 
 # ============================================================
 # 常量表
