@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: bazi-paipan
+    env: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py --no-debug --port $PORT --host 0.0.0.0
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ANTHROPIC_BASE_URL
+        value: https://api.deepseek.com/anthropic
+      - key: ANTHROPIC_MODEL
+        value: deepseek-v4-pro[1m]
+      # ANTHROPIC_AUTH_TOKEN 请在 Render Dashboard → Environment 中手动添加
