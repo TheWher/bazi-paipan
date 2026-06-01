@@ -5,16 +5,95 @@
 from fpdf import FPDF
 from bazi_calculator import paipan, DI_ZHI, CANG_GAN
 import os
+import sys
+
+# ============================================================
+# 跨平台字体查找
+# ============================================================
+
+def _find_cjk_font(font_names: list[str]) -> str | None:
+    """在常见系统路径中搜索 CJK 字体，返回第一个找到的路径"""
+    search_roots = [
+        # Windows
+        r'C:\Windows\Fonts',
+        r'C:\WinNT\Fonts',
+        # macOS
+        '/System/Library/Fonts',
+        '/Library/Fonts',
+        os.path.expanduser('~/Library/Fonts'),
+        # Linux
+        '/usr/share/fonts',
+        '/usr/local/share/fonts',
+        # 项目本地
+        os.path.join(os.path.dirname(__file__), 'fonts'),
+    ]
+
+    names_lower = [n.lower() for n in font_names]
+
+    for root in search_roots:
+        if not os.path.isdir(root):
+            continue
+        for dirpath, _, filenames in os.walk(root):
+            for fn in filenames:
+                fn_lower = fn.lower()
+                if fn_lower in names_lower:
+                    return os.path.join(dirpath, fn)
+                # 也匹配基础名（不含后缀）的前缀
+                for ref in font_names:
+                    base = ref.rsplit('.', 1)[0].lower()
+                    if fn_lower.startswith(base):
+                        return os.path.join(dirpath, fn)
+
+    return None
+
+
+def _setup_fonts(pdf: FPDF):
+    """配置 PDF 中文字体，自动适配平台"""
+    font_map = {
+        'Song': ['simsun.ttc', 'simsun.ttf', 'NotoSansCJKsc-Regular.otf', 'NotoSansSC-Regular.otf',
+                 'wqy-zenhei.ttc', 'wqy-microhei.ttc', 'DroidSansFallback.ttf'],
+        'Hei':  ['simhei.ttf', 'NotoSansCJKsc-Bold.otf', 'NotoSansSC-Bold.otf',
+                 'wqy-zenhei.ttc', 'wqy-microhei.ttc', 'DroidSansFallback.ttf'],
+        'Kai':  ['simkai.ttf', 'NotoSerifCJKsc-Regular.otf', 'NotoSerifSC-Regular.otf',
+                 'wqy-zenhei.ttc', 'DroidSansFallback.ttf'],
+        'Fang': ['simfang.ttf', 'NotoSerifCJKsc-Regular.otf', 'NotoSerifSC-Regular.otf',
+                 'wqy-zenhei.ttc', 'DroidSansFallback.ttf'],
+    }
+
+    for family, names in font_map.items():
+        font_path = _find_cjk_font(names)
+        if font_path:
+            try:
+                pdf.add_font(family, '', font_path, uni=True)
+                continue
+            except Exception:
+                pass
+        # 回退：尝试用已注册的字体
+        for fb_name in names:
+            if os.path.basename(font_path or '') == fb_name:
+                continue
+            fb_path = _find_cjk_font([fb_name])
+            if fb_path:
+                try:
+                    pdf.add_font(family, '', fb_path, uni=True)
+                    break
+                except Exception:
+                    pass
+
+    # 如果连一个中文字体都没有，报明确错误
+    if 'Song' not in pdf.fonts:
+        raise RuntimeError(
+            "未找到中文字体文件。请将 simsun.ttc 或 NotoSansCJKsc-Regular.otf "
+            "放入项目 fonts/ 目录，或安装中文字体包。\n"
+            "Ubuntu/Debian: sudo apt install fonts-noto-cjk\n"
+            "PythonAnywhere: 将字体上传到 ~/bazi-paipan/fonts/ 目录"
+        )
 
 
 class BaziPDF(FPDF):
     def __init__(self):
         super().__init__('P', 'mm', 'A4')
-        font_dir = r'C:\Windows\Fonts'
-        self.add_font('Song', '', os.path.join(font_dir, 'simsun.ttc'), uni=True)
-        self.add_font('Hei', '', os.path.join(font_dir, 'simhei.ttf'), uni=True)
-        self.add_font('Kai', '', os.path.join(font_dir, 'simkai.ttf'), uni=True)
-        self.add_font('Fang', '', os.path.join(font_dir, 'simfang.ttf'), uni=True)
+        _setup_fonts(self)
         self.set_auto_page_break(True, 20)
 
     def header(self):
