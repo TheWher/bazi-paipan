@@ -1,4 +1,4 @@
 flask>=3.0
 fpdf2>=2.7
 requests>=2.28
-zhdate>=1.0
+zhdate>=0.1
