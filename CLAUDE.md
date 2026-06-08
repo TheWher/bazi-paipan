@@ -2,79 +2,324 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 项目用途
+## 项目概述
 
-个人工作空间，核心功能：八字命理分析 + PDF 报告生成。
+八字排盘 Web 应用 — 符号计算（排盘引擎）+ LLM 推理（DeepSeek API）的混合 AI 架构。
+部署地址：`https://thewher.pythonanywhere.com`（PythonAnywhere 免费账户）。
 
-## 项目结构
-
-```
-Archive/                               # 已生成的 PDF 报告存档
-.claude/
-  agents/traditional-bazi-master.md    # 八字命理 Agent 定义（自包含，~930行）
-  agent-memory/traditional-bazi-master/ # Agent 持久记忆
-  settings.local.json                  # 本地权限白名单
-bazi_calculator.py                     # 精确排盘计算引擎
-generate_bazi_pdf.py                   # PDF 报告生成脚本
-```
-
-## 排盘架构
-
-`bazi_calculator.py` 是独立排盘引擎，**不依赖 LLM 估算任何数值**：
-
-- **底层天文计算**：使用 `sxtwl`（寿星天文历）做公历→农历转换、年月日柱干支、节气精确 JD
-- **自实现部分**：五鼠遁（时柱天干）、十二长生（8干×12支=96项）、起运计算（JD差值÷3）、大运排列、空亡、十神、胎元/命宫/身宫
-- **数据表**：纳音（60条目）、藏干（12地支）、节气名称
-
-**sxtwl 的已知问题**：`getHourGZ()` 在寅时（shi≥2）之后 dz 返回值错位（时区 bug），因此时柱天干改用自实现的五鼠遁。
-
-## 常用命令
+## 启动与测试
 
 ```bash
-# 测试排盘计算
-python bazi_calculator.py
-
-# 生成 PDF 报告（2005-08-19 命例）
-python generate_bazi_pdf.py
-
-# 安装依赖
-pip install sxtwl fpdf2
+pip install -r requirements.txt    # flask, fpdf2, requests, zhdate
+python app.py                      # → http://localhost:5000
+python bazi_calculator.py          # 独立测试排盘引擎
+python -c "from bazi_calculator import paipan; print(paipan(2005,8,19,1,35,'男',113.75,'东莞').summary())"
 ```
 
-## 核心 API
+首次运行时确保 `config.local.py` 存在（包含 API Key），否则 LLM 分析功能不可用。
+
+## 架构：符号计算 + LLM 推理 双层设计
+
+```
+用户输入 → Flask API → 符号计算层 (bazi_calculator.py)
+                            │
+                            ├─ sxtwl (C++ 高精度，优先)
+                            └─ 纯 Python 回退 (Meeus 天文算法，零依赖)
+                            │
+                      输出 BaziPlate 对象
+                            │
+              ┌─────────────┼─────────────┐
+              ▼             ▼             ▼
+         plate_to_dict()  chart_svg.py  generate_bazi_pdf.py
+         (JSON 序列化)    (SVG 图表)    (PDF 报告)
+              │
+              ▼
+         analysis_service.py
+         (LLM 推理层)
+              │
+              ├─ config.local.py              API Key（不提交 Git）
+              ├─ _load_system_prompt()        加载 Agent 定义 (~73KB)
+              ├─ _build_user_message()        构造结构化分析请求
+              ├─ _analysis_cache              服务端结果缓存（同命盘秒返）
+              └─ DeepSeek API                 Anthropic 兼容端点
+
+辅助模块：
+  city_coords.py  — 内置 250+ 中国城市经纬度库，search_city() 模糊匹配
+  chart_svg.py    — 纯 Python SVG 生成（五行环图/十二长生轮盘/大运时间轴/大运环图）
+```
+
+**关键分工**：符号层做确定性计算（四柱/大运/十神，不允许误差），LLM 层做模糊推理（格局判定/旺衰评估/人生建议，需要经验判断）。两层通过 `plate_to_dict()` 输出的结构化 JSON 耦合。
+
+## API Key 配置（三层回退）
+
+`analysis_service.py` 按以下优先级查找 API Key：
+
+| 优先级 | 来源 | 适用场景 |
+|--------|------|----------|
+| 1 | 环境变量 `ANTHROPIC_AUTH_TOKEN` | Render 等云平台 |
+| 2 | `~/.claude/settings.json` 的 `env` 块 | 本地开发 |
+| 3 | 项目根目录 `config.local.py` | PythonAnywhere（无环境变量 UI） |
+
+`config.local.py` 被 `.gitignore` 忽略，**不会提交到 Git**。部署到 PythonAnywhere 时需手动上传此文件。格式：
+
+```python
+API_CONFIG = {
+    "base_url": "https://api.deepseek.com/anthropic",
+    "model": "deepseek-v4-pro[1m]",
+    "api_key": "sk-...",
+}
+```
+
+## 密码保护
+
+深度分析（`/api/analyze` 和 `/api/analyze/continue`）支持可选的密码保护。
+
+- 在 `config.local.py` 中设置 `WEB_PASSWORD = "你的密码"` 即可启用
+- 留空则不设防，所有人可用
+- 前端首次分析时弹出密码框，密码存入 `sessionStorage`（关浏览器即失效）
+- 密码错误返回 403 + `need_password: true`，前端自动清除缓存让用户重试
+
+```python
+# config.local.py
+WEB_PASSWORD = "mypass123"  # 改成你的密码
+```
+
+## 限流
+
+| 端点 | 限制 | 说明 |
+|------|------|------|
+| `/api/analyze` | 3 次/时/IP | 深度分析，token 消耗大（~24K 输出）；**缓存命中不消耗配额** |
+| `/api/analyze/continue` | 5 次/时/IP | 多轮对话续接 |
+| 其他 | 无限制 | 排盘、地理编码、图表等纯计算无限制 |
+
+限流基于内存 `defaultdict`，进程重启后清零。
+
+## 分析结果缓存与断线恢复
+
+深度分析耗时 4-6 分钟，期间切标签页或关页面会导致 HTTP 请求中断。为解决此问题，实现了三层防护：
+
+### 服务端缓存（`app.py`）
+
+```python
+_analysis_cache = {}        # {sha256(四柱|性别|起运)[:16]: {result, ts}}
+_ANALYSIS_CACHE_MAX = 50    # 最多缓存 50 条
+_ANALYSIS_CACHE_TTL = 3600  # 1 小时过期
+```
+
+- `_make_cache_key(plate_dict)` — 从命盘四柱+性别+起运生成 SHA256 键
+- `_cache_get(key)` — 读缓存，自动淘汰过期条目
+- `_cache_set(key, result)` — 写缓存，超上限淘汰最旧条目
+
+流程：密码校验 → 排盘（如传出生参数）→ **查缓存（命中则秒返，不消耗限流）** → 限流检查 → 调 LLM → 写缓存 → 返回。
+
+### 客户端恢复（`templates/index.html`）
+
+| 机制 | 触发条件 | 行为 |
+|------|----------|------|
+| localStorage pending | 分析开始时自动保存 | `bazi_analysis_pending` 存 plate + retries + requestId |
+| 页面加载恢复 | 打开页面时检测到 pending | 自动渲染命盘 → 弹出密码框 → 重试分析（命中缓存秒返） |
+| 标签页可见性检测 | `visibilitychange` hidden→visible 且已超 8 分钟 | 主动 abort → 自动重试 |
+| 指数退避重试 | fetch AbortError / NetworkError | 5s → 15s → 30s，最多 3 次 |
+| AbortController 超时 | 8 分钟无响应 | 主动取消，触发自动重试 |
+
+关键变量：
+- `_analysisAbortController` — 用于超时取消的 AbortController
+- `_analysisStartTime` — 分析开始时间戳（visibility 检测用）
+- `savePendingAnalysis()` / `loadPendingAnalysis()` / `clearPendingAnalysis()` — pending 状态管理
+- `doAnalyze(isRetry)` — 重写，支持自动/手动重试
+
+### 重试流程
+
+```
+用户点击"深度分析"
+  → savePendingAnalysis()               localStorage 存待处理状态
+  → fetch('/api/analyze', signal)        带 AbortController
+  │
+  ├─ 成功 → clearPendingAnalysis() → 渲染结果
+  │
+  ├─ AbortError（超时/切标签页）→ 不清除 pending → retries++ → 自动重试
+  ├─ NetworkError（网络断开）→ 不清除 pending → retries++ → 自动重试
+  └─ 其他错误 → clearPendingAnalysis() → 显示错误
+
+关闭页面重新打开
+  → loadPendingAnalysis() 检测到未过期 pending
+  → 渲染命盘 → 自动调用 doAnalyze(true) → 命中缓存秒返
+```
+
+**注意**：密码不存 localStorage，重试时需要重新输入。`sessionStorage` 中的密码仅在当前标签页有效。
+
+## 反馈日志收集
+
+每次深度分析（含多轮续接）自动保存到 `feedback_logs/`（被 `.gitignore` 忽略）。
+
+```
+feedback_logs/
+├── 20260603_143025_乙_7752.json   # 首次分析
+├── 20260603_144512_乙_3198.json   # 续接对话
+└── ...
+```
+
+每份 JSON 结构：
+
+```json
+{
+  "timestamp": "2026-06-03T14:30:25",
+  "ip_masked": "192.***",
+  "turn_type": "initial" | "continue",
+  "plate_summary": {
+    "birth": "2005-08-19 01:35",
+    "gender": "男",
+    "ri_zhu": "乙",
+    "sizhu": "乙酉 甲申 乙亥 丁丑",
+    "qiyun_age": 3.66
+  },
+  "conversation": [
+    {"role": "system", "content": "..."},
+    {"role": "user", "content": "请根据以下八字..."},
+    {"role": "assistant", "content": "## 命盘综述\n..."}
+  ]
+}
+```
+
+**用途**：积累验盘对话后，可分析 Agent 常犯错误模式、提取验证案例补充 few-shot、打磨推理链。
+
+## 密码防爆破
+
+`check_password()` 函数中集成：同一 IP 输错 5 次 → 锁定 3 分钟。正确输入后自动清零。规则：`PW_MAX_TRIES=5`, `PW_LOCKOUT_MINUTES=3`。
+
+## 核心数据流
 
 ```python
 from bazi_calculator import paipan
+plate = paipan(year, month, day, hour, minute=0, gender='男', longitude=113.75, location='')
+# → BaziPlate 对象，调用 plate.compute() 后包含:
+#   plate.sizhu / plate.qiyun / plate.dayun / plate.shishen
+#   plate.nayin / plate.kongwang / plate.canggan / plate.changsheng
+#   plate.taiyuan / plate.minggong / plate.shengong
 
-plate = paipan(2005, 8, 19, 1, 35, '男', 113.75, '广东省东莞市')
-# plate.sizhu   → 四柱干支/十神/纳音
-# plate.qiyun   → 起运年龄/方向/交运年份
-# plate.dayun   → 大运列表 (8步)
-# plate.kongwang → 空亡
-# plate.changsheng → 十二长生
-# plate.taiyuan/minggong/shengong → 胎元/命宫/身宫
+from app import plate_to_dict
+data = plate_to_dict(plate)  # → JSON-serializable dict，包含神煞/空亡标记
 ```
 
-## 排盘计算验证方法
+## API 路由一览
 
-新增或修改计算逻辑后，运行以下验证：
+| 路由 | 方法 | 用途 | 关键参数 |
+|------|------|------|----------|
+| `/` | GET | 首页 | — |
+| `/api/paipan` | POST | 排盘 | `year/month/day/hour/minute/gender/longitude`，可选 `is_lunar: true`、`solar_correction`（分钟） |
+| `/api/geocode?q=` | GET | 地名→经纬度 | 内置 250+ 城市优先，Nominatim 回退 |
+| `/api/cities?q=` | GET | 城市模糊搜索 | 前端自动补全用 |
+| `/api/network-info` | GET | 本机局域网 IP | — |
+| `/api/qrcode?url=` | GET | 生成访问二维码 | 重定向到 qrserver.com |
+| `/api/analyze` | POST | **LLM 深度分析** | `{plate: plate_dict}` 或直接传出生参数；限流 3次/时/IP |
+| `/api/analyze/continue` | POST | **多轮对话续接** | `{messages: [...], reply: "..."}` ；限流 5次/时/IP |
+| `/api/chart/wuxing` | POST | 五行环图 SVG | `{wuxing: {木:N, 火:N, ...}}` |
+| `/api/chart/changsheng` | POST | 十二长生轮盘 SVG | `{pillars: ..., ri_zhu: ...}` |
+| `/api/chart/dayun` | POST | 大运时间轴 SVG | `{dayun: [...], ri_gan: ...}` |
+| `/api/chart/dayun-ring` | POST | 大运环形 SVG | `{dayun: [...], ri_gan: ...}` |
+| `/api/pdf` | POST | PDF 报告（线上已弃用） | 同排盘参数 |
+| `/report` | GET | 打印报告页 | 从 localStorage 读取数据渲染 |
 
-1. **96项十二长生**：分别验证 8 干在 12 支的长生位（阳干顺行，阴干逆行）
-2. **五鼠遁**：验证 5 组（甲己/乙庚/丙辛/丁壬/戊癸）在 12 时辰的时干
-3. **大运方向**：验证 4 种组合（阳年男顺/阳年女逆/阴年男逆/阴年女顺）
-4. **起运**：用 JD 差值÷3，验证到小数点后 2 位
-5. **空亡**：验证全部 6 旬
+## LLM 分析管道
 
-## Agent 使用
+### 单次分析（`/api/analyze`）
 
-八字分析调用 `traditional-bazi-master` agent（`.claude/agents/traditional-bazi-master.md`），包含完整的 7 级分析方法、32 条核心概念、验盘路径、事业/姻缘专项框架。
+```
+analysis_service.py
+  │
+  ├─ API Key 优先级: 环境变量 → ~/.claude/settings.json → config.local.py
+  ├─ _load_system_prompt(): 读取 .claude/agents/traditional-bazi-master.md
+  │    去除 YAML frontmatter，保留完整 Agent 定义（31 个核心概念 + 7 级推理链）
+  ├─ _build_user_message(): 将 plate_dict 转为 Markdown 表格格式的分析请求
+  │    （用 Markdown 而非 JSON，因为 LLM 对 Markdown 表格理解更好）
+  └─ POST https://api.deepseek.com/anthropic/v1/messages
+       model: deepseek-v4-pro[1m], max_tokens: 24576, temperature: 0
+```
 
-继续已有分析用 SendMessage 续接，不新建 agent。
+返回的 `messages` 数组（system + user + assistant）保存在前端，供多轮对话使用。
 
-## 交互风格
+### 多轮对话（`/api/analyze/continue`）
 
-- 用中文交流
-- 不主动保存 memory 除非用户明确要求
-- 命理讨论中用户重视术语严格定义，涉及经典定义时需区分日常口语和传统严格定义，不可混用
-- 断语需标明经典出处，无出处结论默认为"待验证"
-- 断语必须说明五行/十神/格局依据
+用户对 Agent 的分析结果进行追问时，将之前的完整 `messages` 数组 + 用户的新 `reply` 发给 `/api/analyze/continue`。服务端提取 system 消息、拼接 user/assistant 历史，追加新 user 消息后调用 API。max_tokens 降至 8192。
+
+**Agent 定义文件**：`.claude/agents/traditional-bazi-master.md`（~800 行），定义了 7 级递进推理链（格局→旺衰→调候→十神→刑冲合害→神煞→大运流年）和 31 个核心概念的严格定义。
+
+## PDF 生成（3 个函数，均在 generate_bazi_pdf.py）
+
+| 函数 | 用途 | 线上可用？ |
+|------|------|-----------|
+| `build_generic_pdf(plate)` | 纯数据报告（四柱/大运/神煞，无断语） | PythonAnywhere 上 fpdf2 + simhei.ttf 不兼容 |
+| `build_analysis_pdf(plate, analysis_text)` | 数据 + Agent 分析文本 | 同上 |
+| `build_pdf()` | 硬编码 2005-08-19 东莞男命的完整分析报告 | 仅本地 |
+
+**线上替代方案**：浏览器打印 `templates/report.html`（从 localStorage 读 `bazi_plate` + `bazi_analysis` 渲染）。
+
+## 图表（chart_svg.py — 纯 Python，零外部依赖）
+
+四个函数均返回完整 SVG 字符串，通过 `/api/chart/*` 路由以 `image/svg+xml` MIME 返回：
+- `wuxing_pie(data, size)` — 环形分区图，按五行占比画弧段
+- `changsheng_wheel(pillars, day_gan, size)` — 12 宫轮盘 + 四柱标记 + 图例面板。中心圆按日干五行配色
+- `dayun_line(dayun, ri_gan, width, height)` — 水平时间轴，8 步大运
+- `dayun_ring(dayun, ri_gan, size)` — 环形大运图，8 步绕圈排列，按天干五行配色（受 Species in Pieces 启发）
+
+## 前端架构
+
+单页应用（`templates/index.html`），基于原生 JS 无框架：
+
+- **排盘 → 分析** 两步走：用户提交表单 → `/api/paipan` → 渲染命盘（含 SVG 图表）→ 用户点击"深度分析"→ `/api/analyze` → 流式渲染 Markdown
+- **localStorage 持久化**：`bazi_plate`（排盘结果 JSON）和 `bazi_analysis`（分析文本 + messages 数组）保存在 localStorage，刷新不丢失
+- **分析断线恢复**：`bazi_analysis_pending` 保存待处理状态，切标签页/关页面后自动恢复重试，命中服务端缓存秒返（详见「分析结果缓存与断线恢复」）
+- **报告打印**：`/report` 页（`templates/report.html`）从 localStorage 读取数据渲染，浏览器 Ctrl+P 打印
+- **长耗时提醒**：分析调用前设置 `beforeunload` 事件，提示用户重新打开可自动恢复
+- **Markdown 渲染**：前端用自定义 `formatMarkdown()` 渲染（正则替换，零依赖）
+- **交互动画**：
+  - 背景呼吸光晕（`body::before` 暖金色 radial-gradient 脉冲，10s 循环）
+  - 按钮点击波纹（JS 动态创建 `.btn-ripple` 元素，0.6s 消散）
+  - 滚动揭示（IntersectionObserver 监听 h2/h3/blockquote，滚入视口时淡入）
+  - 分析完成粒子庆祝（60 颗金色粒子从分析区中心爆开）
+  - 卡片悬浮金边脉冲（hover 时左边缘金色 + 淡金阴影 + 微上浮）
+  - 表格行悬浮浮起（hover 时暖金底色 + 上浮 1px）
+  - 分析章节五行分色（h2 按木火土金水循环配色左边框）
+
+## 地理编码管道
+
+```
+用户输入地名 → /api/cities?q= (模糊搜索，前端自动补全)
+                  │
+                  └─ city_coords.py  search_city()  内置 250+ 城市，零延迟
+                                                    支持省+市、市名、区县名
+用户选择城市 → /api/geocode?q= (精确查询)
+                  │
+                  ├─ city_coords.py  search_city()  优先
+                  └─ Nominatim (OSM)                 回退，需网络
+```
+
+## 部署注意事项
+
+### PythonAnywhere（主部署）
+- **Python 版本不一致**：WSGI 用 3.11，Bash 默认 3.13。`pip install` 必须用 `python3.11 -m pip --user`，WSGI 文件 `sys.path` 指向 `.local/lib/python3.11/site-packages`
+- **唯一可靠重启方式**：Disable → 等几秒 → Enable（Reload 不够）
+- **禁止 CSP 头**：`@app.after_request` 设 CSP 会破坏 WSGI 代理层
+- **禁止外部 CDN**：`cdn.jsdelivr.net` 等被拦截，所有静态资源本地化
+- **API Key**：免费账户无环境变量 UI，需手动上传 `config.local.py` 到 `/home/thewher/mysite/`
+- **文件更新**：在 Files 页面直接上传覆盖，或 Bash console 中 `git clone` 后手动补充 `config.local.py`
+
+### Render（备用）
+- `render.yaml` 自动配置，需在 Dashboard 手动添加 `ANTHROPIC_AUTH_TOKEN` 环境变量
+- 启动命令：`python app.py --no-debug --port $PORT --host 0.0.0.0`
+
+## 常见踩坑
+
+1. **zhdate 版本**：`zhdate>=0.1`（不是 `>=1.0`），`>=1.0` 会安装失败
+2. **API Key 不能提交 Git**：Key 在 `config.local.py`（被 `.gitignore` 忽略），不要在任何 `.py` 文件中硬编码。已通过 `git log` 确认历史中无 Key 泄露
+3. **PythonAnywhere 部署后缺少 config.local.py**：`git pull` 不会下载此文件，需手动上传。验证：`python3.11 -c "from analysis_service import API_CONFIG; print('OK' if API_CONFIG.get('api_key') else 'MISSING')"`
+4. **深度分析 4-6 分钟**：12K+ system prompt + 24K token 输出，关闭页面前有 `beforeunload` 提醒
+5. **起运计算精度差异**：sxtwl 3.66 岁 vs 纯 Python 回退 3.77 岁，差异 ~0.1 岁（约 1 个月），属 Meeus 算法与 sxtwl 的精度差异
+6. **节气缓存**：`_ST_CACHE` 预计算 3年×24节气，首次排盘后缓存命中，从 5000+ 次计算降到 72 次
+7. **BaziPlate.start_year 初始值**：`calc_dayun()` 中硬编码了 2005，但 `plate.compute()` 会调用 `round(y + du['start_age'])` 修正
+8. **夜子时处理**：23:00-23:59（夜子时）日柱按次日算，时柱按次日日干起五鼠遁，`calc_sizhu()` 中 `is_yezi` 分支处理
+9. **时区**：`calc_qiyun` 中 `birth_dt` 无时区时自动设为 UTC+8（北京时）
+10. **GitHub DNS 被劫持**：`140.82.121.4 github.com` → hosts
+11. **PythonAnywhere 创建 Flask 应用时覆盖 app.py**：需重新上传或 `git checkout` 恢复
+12. **分析缓存键**：`_make_cache_key()` 基于四柱+性别+起运生成，同八字不同性别会视为不同缓存键。缓存命中返回 `cached: true`，前端显示「命中服务端缓存」提示
+13. **本地 vs 线上 pending 冲突**：本地 localhost 和线上 PythonAnywhere 共享同一个浏览器的 localStorage（同一域名），在本地测试 pending 恢复时不会影响线上用户
