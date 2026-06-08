@@ -18,6 +18,14 @@ python -c "from bazi_calculator import paipan; print(paipan(2005,8,19,1,35,'男'
 
 首次运行时确保 `config.local.py` 存在（包含 API Key），否则 LLM 分析功能不可用。
 
+```bash
+# 测试服务端缓存
+python -c "from app import _make_cache_key, _cache_get, _cache_set; \
+key = _make_cache_key({'pillars':{'year':{'gz':'乙酉'},'month':{'gz':'甲申'},'day':{'gz':'乙亥'},'hour':{'gz':'丁丑'}},'input':{'gender':'男'},'qiyun':{'age':3.66}}); \
+_cache_set(key, {'success':True,'analysis':'test'}); \
+print('cache hit' if _cache_get(key) else 'cache miss')"
+```
+
 ## 架构：符号计算 + LLM 推理 双层设计
 
 ```
@@ -49,6 +57,8 @@ python -c "from bazi_calculator import paipan; print(paipan(2005,8,19,1,35,'男'
 ```
 
 **关键分工**：符号层做确定性计算（四柱/大运/十神，不允许误差），LLM 层做模糊推理（格局判定/旺衰评估/人生建议，需要经验判断）。两层通过 `plate_to_dict()` 输出的结构化 JSON 耦合。
+
+**Agent 定义文件**：`.claude/agents/traditional-bazi-master.md`（~800 行，73KB）**被 git 追踪**，随代码一同部署。定义了 7 级递进推理链（格局→旺衰→调候→十神→刑冲合害→神煞→大运流年）和 31 个核心概念的严格定义。而 `.claude/settings.json`、`.claude/agent-memory/`、`config.local.py` 被 `.gitignore` 排除。
 
 ## API Key 配置（三层回退）
 
@@ -96,57 +106,13 @@ WEB_PASSWORD = "mypass123"  # 改成你的密码
 
 ## 分析结果缓存与断线恢复
 
-深度分析耗时 4-6 分钟，期间切标签页或关页面会导致 HTTP 请求中断。为解决此问题，实现了三层防护：
+深度分析耗时 4-6 分钟，期间切标签页或关页面会导致 HTTP 请求中断。三层防护：
 
-### 服务端缓存（`app.py`）
+1. **服务端缓存**（`app.py`）：`_make_cache_key()` 按四柱+性别+起运哈希 → 命中则秒返，不消耗限流。最大 50 条，1 小时 TTL
+2. **客户端 pending 持久化**（`index.html`）：分析开始时 `bazi_analysis_pending` 存入 localStorage，成功后清除。页面加载时检测到未过期 pending 自动重试
+3. **运行时恢复**：`visibilitychange` 检测标签页切回 + fetch AbortError/NetworkError 自动指数退避重试（5s/15s/30s，最多 3 次），8 分钟超时 AbortController 取消
 
-```python
-_analysis_cache = {}        # {sha256(四柱|性别|起运)[:16]: {result, ts}}
-_ANALYSIS_CACHE_MAX = 50    # 最多缓存 50 条
-_ANALYSIS_CACHE_TTL = 3600  # 1 小时过期
-```
-
-- `_make_cache_key(plate_dict)` — 从命盘四柱+性别+起运生成 SHA256 键
-- `_cache_get(key)` — 读缓存，自动淘汰过期条目
-- `_cache_set(key, result)` — 写缓存，超上限淘汰最旧条目
-
-流程：密码校验 → 排盘（如传出生参数）→ **查缓存（命中则秒返，不消耗限流）** → 限流检查 → 调 LLM → 写缓存 → 返回。
-
-### 客户端恢复（`templates/index.html`）
-
-| 机制 | 触发条件 | 行为 |
-|------|----------|------|
-| localStorage pending | 分析开始时自动保存 | `bazi_analysis_pending` 存 plate + retries + requestId |
-| 页面加载恢复 | 打开页面时检测到 pending | 自动渲染命盘 → 弹出密码框 → 重试分析（命中缓存秒返） |
-| 标签页可见性检测 | `visibilitychange` hidden→visible 且已超 8 分钟 | 主动 abort → 自动重试 |
-| 指数退避重试 | fetch AbortError / NetworkError | 5s → 15s → 30s，最多 3 次 |
-| AbortController 超时 | 8 分钟无响应 | 主动取消，触发自动重试 |
-
-关键变量：
-- `_analysisAbortController` — 用于超时取消的 AbortController
-- `_analysisStartTime` — 分析开始时间戳（visibility 检测用）
-- `savePendingAnalysis()` / `loadPendingAnalysis()` / `clearPendingAnalysis()` — pending 状态管理
-- `doAnalyze(isRetry)` — 重写，支持自动/手动重试
-
-### 重试流程
-
-```
-用户点击"深度分析"
-  → savePendingAnalysis()               localStorage 存待处理状态
-  → fetch('/api/analyze', signal)        带 AbortController
-  │
-  ├─ 成功 → clearPendingAnalysis() → 渲染结果
-  │
-  ├─ AbortError（超时/切标签页）→ 不清除 pending → retries++ → 自动重试
-  ├─ NetworkError（网络断开）→ 不清除 pending → retries++ → 自动重试
-  └─ 其他错误 → clearPendingAnalysis() → 显示错误
-
-关闭页面重新打开
-  → loadPendingAnalysis() 检测到未过期 pending
-  → 渲染命盘 → 自动调用 doAnalyze(true) → 命中缓存秒返
-```
-
-**注意**：密码不存 localStorage，重试时需要重新输入。`sessionStorage` 中的密码仅在当前标签页有效。
+密码不存 localStorage，重试时需重新输入。
 
 ## 反馈日志收集
 
@@ -241,8 +207,6 @@ analysis_service.py
 ### 多轮对话（`/api/analyze/continue`）
 
 用户对 Agent 的分析结果进行追问时，将之前的完整 `messages` 数组 + 用户的新 `reply` 发给 `/api/analyze/continue`。服务端提取 system 消息、拼接 user/assistant 历史，追加新 user 消息后调用 API。max_tokens 降至 8192。
-
-**Agent 定义文件**：`.claude/agents/traditional-bazi-master.md`（~800 行），定义了 7 级递进推理链（格局→旺衰→调候→十神→刑冲合害→神煞→大运流年）和 31 个核心概念的严格定义。
 
 ## PDF 生成（3 个函数，均在 generate_bazi_pdf.py）
 
