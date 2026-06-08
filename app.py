@@ -19,7 +19,157 @@ from bazi_calculator import paipan
 from generate_bazi_pdf import build_generic_pdf
 from city_coords import search_city
 
+# 加载密码保护配置
+WEB_PASSWORD = ""
+CONFIG_LOCAL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.local.py")
+if os.path.exists(CONFIG_LOCAL):
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("config_local", CONFIG_LOCAL)
+        cfg = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cfg)
+        WEB_PASSWORD = getattr(cfg, "WEB_PASSWORD", "")
+    except Exception:
+        pass
+
 app = Flask(__name__)
+
+def check_password(ip: str, data: dict) -> str | None:
+    """检查深度分析密码，含防爆破锁。返回 None 表示通过，返回字符串表示错误信息。"""
+    if not WEB_PASSWORD:
+        return None  # 未设置密码，允许所有人使用
+
+    now = _time.time()
+    window = PW_LOCKOUT_MINUTES * 60
+
+    # 清理过期记录 + 检查是否被锁定
+    _pw_failures[ip] = [t for t in _pw_failures[ip] if now - t < window]
+    if len(_pw_failures[ip]) >= PW_MAX_TRIES:
+        remain = round((_pw_failures[ip][0] + window - now) / 60, 1)
+        return f"密码错误次数过多，请 {remain} 分钟后再试"
+
+    if data.get("password", "") == WEB_PASSWORD:
+        _pw_failures[ip] = []  # 正确则清零
+        return None
+
+    # 密码错误：记录
+    _pw_failures[ip].append(now)
+    remain = PW_MAX_TRIES - len(_pw_failures[ip])
+    if remain <= 0:
+        return f"密码错误次数过多，请 {PW_LOCKOUT_MINUTES} 分钟后再试"
+    return f"密码错误，还剩 {remain} 次机会"
+
+# ============================================================
+# 简易限流 — 防止 API Token 被滥用
+# ============================================================
+import time as _time
+from collections import defaultdict
+
+_rate_limit_store = defaultdict(list)
+
+# 密码错误跟踪（IP → 失败时间戳列表）
+_pw_failures = defaultdict(list)
+PW_MAX_TRIES = 5        # 最多尝试次数
+PW_LOCKOUT_MINUTES = 3  # 锁定时长（分钟）
+
+# 分析结果缓存（按命盘哈希去重，避免切标签页重试时重复调用 LLM）
+import hashlib
+_analysis_cache = {}        # {cache_key: {"result": dict, "ts": float}}
+_ANALYSIS_CACHE_MAX = 50
+_ANALYSIS_CACHE_TTL = 3600  # 1 小时
+
+def _make_cache_key(plate_dict: dict) -> str:
+    """从命盘提取关键字段生成缓存键（相同命盘 + 相同性别 = 相同键）"""
+    pillars = plate_dict.get("pillars", {})
+    info = plate_dict.get("input", {})
+    key_parts = [
+        pillars.get("year", {}).get("gz", ""),
+        pillars.get("month", {}).get("gz", ""),
+        pillars.get("day", {}).get("gz", ""),
+        pillars.get("hour", {}).get("gz", ""),
+        info.get("gender", ""),
+        str(plate_dict.get("qiyun", {}).get("age", "")),
+    ]
+    raw = "|".join(key_parts)
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+def _cache_get(key: str) -> dict | None:
+    """读取缓存，自动淘汰过期条目"""
+    if key not in _analysis_cache:
+        return None
+    entry = _analysis_cache[key]
+    if _time.time() - entry["ts"] > _ANALYSIS_CACHE_TTL:
+        del _analysis_cache[key]
+        return None
+    return entry["result"]
+
+def _cache_set(key: str, result: dict):
+    """写入缓存，超出上限时淘汰最旧条目"""
+    if len(_analysis_cache) >= _ANALYSIS_CACHE_MAX:
+        # 淘汰最旧的条目
+        oldest_key = min(_analysis_cache, key=lambda k: _analysis_cache[k]["ts"])
+        del _analysis_cache[oldest_key]
+    _analysis_cache[key] = {"result": result, "ts": _time.time()}
+
+# 反馈日志目录
+FEEDBACK_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedback_logs")
+
+def save_feedback_log(plate_dict: dict, messages: list[dict], ip: str = "", turn_type: str = "initial"):
+    """保存深度分析对话日志，用于后续优化 Agent 准确性。
+
+    Args:
+        plate_dict: plate_to_dict() 输出
+        messages: 完整对话 [{role, content}, ...]
+        ip: 请求 IP（脱敏用）
+        turn_type: "initial" 或 "continue"
+    """
+    try:
+        os.makedirs(FEEDBACK_DIR, exist_ok=True)
+
+        # 提取排盘摘要
+        pillars = plate_dict.get("pillars", {})
+        sizhu_str = " ".join(pillars.get(p, {}).get("gz", "??") for p in ["year", "month", "day", "hour"])
+        info = plate_dict.get("input", {})
+
+        log = {
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "ip_masked": ip[:4] + "***" if len(ip) > 4 else "unknown",
+            "turn_type": turn_type,
+            "plate_summary": {
+                "birth": info.get("birth_datetime", "?"),
+                "gender": info.get("gender", "?"),
+                "location": info.get("location", "?"),
+                "ri_zhu": plate_dict.get("ri_zhu", "?"),
+                "year_type": plate_dict.get("year_type", "?"),
+                "sizhu": sizhu_str,
+                "qiyun_age": plate_dict.get("qiyun", {}).get("age", "?"),
+            },
+            "conversation": messages,
+        }
+
+        # 文件名：时间戳 + 日主 + 短hash
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ri = plate_dict.get("ri_zhu", "X")
+        short_hash = abs(hash(sizhu_str + ts)) % 10000
+        filename = f"{ts}_{ri}_{short_hash:04d}.json"
+        filepath = os.path.join(FEEDBACK_DIR, filename)
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(log, f, ensure_ascii=False, indent=2)
+
+        print(f"[Feedback] Saved: {filename}")
+
+    except Exception:
+        pass  # 日志记录失败不影响主流程
+
+
+def check_rate_limit(ip: str, max_requests: int = 3, window_minutes: int = 60) -> bool:
+    now = _time.time(); window = window_minutes * 60
+    _rate_limit_store[ip] = [t for t in _rate_limit_store[ip] if now - t < window]
+    if len(_rate_limit_store[ip]) >= max_requests:
+        return False
+    _rate_limit_store[ip].append(now)
+    return True
 
 # ============================================================
 # 地理编码：内置数据库优先，Nominatim 为后备
@@ -141,6 +291,54 @@ def plate_to_dict(plate) -> dict:
         "pillars": plate.kongwang["pillars"],
     }
 
+    # 神煞计算
+    day_gan = s["day"]["gan"]
+    day_zhi = s["day"]["zhi"]
+    nian_zhi = s["year"]["zhi"]
+    yue_zhi = s["month"]["zhi"]
+    shi_zhi = s["hour"]["zhi"]
+
+    # 天乙贵人
+    guiren_map = {'甲':'丑未','乙':'子申','丙':'亥酉','丁':'亥酉','戊':'丑未','己':'子申','庚':'丑未','辛':'午寅','壬':'巳卯','癸':'巳卯'}
+    gr = guiren_map.get(day_gan, '')
+    # 文昌贵人
+    wenchang_map = {'甲':'巳','乙':'午','丙':'申','丁':'酉','戊':'申','己':'酉','庚':'亥','辛':'子','壬':'寅','癸':'卯'}
+    wc = wenchang_map.get(day_gan, '')
+    # 驿马（日支起）
+    yima_map = {'申':'寅','子':'寅','辰':'寅','寅':'申','午':'申','戌':'申','巳':'亥','酉':'亥','丑':'亥','亥':'巳','卯':'巳','未':'巳'}
+    ym = yima_map.get(day_zhi, '')
+    # 桃花
+    taohua_map = {'申':'酉','子':'酉','辰':'酉','寅':'卯','午':'卯','戌':'卯','巳':'午','酉':'午','丑':'午','亥':'子','卯':'子','未':'子'}
+    th = taohua_map.get(day_zhi, '')
+    # 华盖
+    huagai_map = {'申':'辰','子':'辰','辰':'辰','寅':'戌','午':'戌','戌':'戌','巳':'丑','酉':'丑','丑':'丑','亥':'未','卯':'未','未':'未'}
+    hg = huagai_map.get(day_zhi, '')
+    # 羊刃（阳干帝旺，阴干不取）
+    yangren_map = {'甲':'卯','丙':'午','戊':'午','庚':'酉','壬':'子'}
+    yr = yangren_map.get(day_gan, '')
+
+    # 检查神煞入局
+    all_zhi = [s[p]["zhi"] for p in ["year","month","day","hour"]]
+    pillar_names = ["年柱","月柱","日柱","时柱"]
+    def find_pillar(zhi_char, zhi_list):
+        return [pillar_names[i] for i,z in enumerate(zhi_list) if z == zhi_char]
+
+    # 天乙贵人（两个地支）
+    gr_zhi = [gr[0], gr[1]] if len(gr)==2 else []
+    gr_in = []
+    for gz in gr_zhi:
+        for i,z in enumerate(all_zhi):
+            if z == gz: gr_in.append(pillar_names[i])
+    # 修正格式
+    shensha = {
+        "tianguiren": {"desc":"天乙贵人","value":gr,"in_pillars":gr_in,"info":"最大的吉神，逢之贵人提携、逢凶化吉","source":f"日干{day_gan}起：{gr}"},
+        "wenchang": {"desc":"文昌贵人","value":wc,"in_pillars":find_pillar(wc,all_zhi),"info":"利学业、考试、文书、创作","source":f"日干{day_gan}起：{wc}"},
+        "yima": {"desc":"驿马","value":ym,"in_pillars":find_pillar(ym,all_zhi),"info":"主动荡、奔波、迁移","source":f"日支{day_zhi}起：{ym}"},
+        "taohua": {"desc":"桃花","value":th,"in_pillars":find_pillar(th,all_zhi),"info":"主人缘、异性缘、艺术才华","source":f"日支{day_zhi}起：{th}"},
+        "huagai": {"desc":"华盖","value":hg,"in_pillars":find_pillar(hg,all_zhi),"info":"主孤高、才情、玄学缘分","source":f"日支{day_zhi}起：{hg}"},
+        "yangren": {"desc":"羊刃","value":yr,"in_pillars":find_pillar(yr,all_zhi),"info":"主刚强，刃无制则刑伤","source":f"日干{day_gan}起：{yr}" if yr else "乙为阴干，不取羊刃"},
+    }
+
     return {
         "input": {
             "birth_datetime": plate.birth_dt.strftime("%Y-%m-%d %H:%M"),
@@ -174,6 +372,7 @@ def plate_to_dict(plate) -> dict:
         "taiyuan": plate.taiyuan,
         "minggong": plate.minggong,
         "shengong": plate.shengong,
+        "shensha": shensha,
     }
 
 
@@ -206,10 +405,14 @@ def api_geocode():
 def api_network_info():
     """返回本机网络信息，方便移动端访问"""
     ips = get_local_ips()
+    host = request.host.split(":")[0] if ":" in request.host else request.host
+    port = request.host.split(":")[-1] if ":" in request.host else "5000"
+    # 区分本机开发和云部署
+    public_url = request.host
     return jsonify({
-        "localhost": f"http://localhost:5000",
-        "lan_urls": [f"http://{ip}:5000" for ip in ips],
-        "ips": ips,
+        "access_url": f"http://{request.host}",
+        "is_local": host.startswith("127.") or host.startswith("10.") or host.startswith("192.168."),
+        "lan_urls": [f"http://{ip}:{port}" for ip in ips] if (host.startswith("127.") or host.startswith("10.") or host.startswith("192.168.")) else [],
     })
 
 
@@ -262,6 +465,25 @@ def api_paipan():
         longitude = float(data["longitude"])
         gender = data["gender"]
         location = data.get("location", "")
+        is_lunar = data.get("is_lunar", False)
+
+        # 农历→公历转换
+        if is_lunar:
+            try:
+                from zhdate import ZhDate
+                lunar = ZhDate(year, month, day)
+                solar = lunar.to_datetime()
+                year, month, day = solar.year, solar.month, solar.day
+            except ImportError:
+                return jsonify({"error": "农历转换需要 zhdate 库，请用公历输入"}), 400
+
+        # 应用客户端真太阳时校正
+        solar_correction_minutes = int(data.get("solar_correction", 0))
+        if solar_correction_minutes != 0:
+            total_minutes = hour * 60 + minute + solar_correction_minutes
+            total_minutes = total_minutes % 1440  # wrap around day
+            hour = total_minutes // 60
+            minute = total_minutes % 60
 
         if gender not in ("男", "女"):
             return jsonify({"error": "性别必须为 '男' 或 '女'"}), 400
@@ -332,6 +554,78 @@ def api_pdf():
         return jsonify({"error": f"PDF 生成失败: {str(e)}"}), 500
 
 
+@app.route("/report")
+def report_html():
+    """返回可打印的完整分析报告 HTML 页面"""
+    return render_template("report.html")
+
+
+@app.route("/api/chart/wuxing", methods=["POST"])
+def api_chart_wuxing():
+    """生成五行分布 SVG 图表"""
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求格式错误"}), 400
+
+    try:
+        from chart_svg import wuxing_pie
+        svg = wuxing_pie(data.get("wuxing", {}))
+        from flask import Response
+        return Response(svg, mimetype="image/svg+xml")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/chart/changsheng", methods=["POST"])
+def api_chart_changsheng():
+    """生成日主十二长生轮盘 SVG 图表"""
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求格式错误"}), 400
+    try:
+        from chart_svg import changsheng_wheel
+        svg = changsheng_wheel(data.get("pillars", {}), data.get("ri_zhu", ""))
+        from flask import Response
+        return Response(svg, mimetype="image/svg+xml")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/chart/dayun", methods=["POST"])
+def api_chart_dayun():
+    """生成大运走势 SVG 图表"""
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求格式错误"}), 400
+
+    try:
+        from chart_svg import dayun_line
+        svg = dayun_line(data.get("dayun", []), data.get("ri_gan", ""))
+        from flask import Response
+        return Response(svg, mimetype="image/svg+xml")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/chart/dayun-ring", methods=["POST"])
+def api_chart_dayun_ring():
+    """生成大运环形 SVG 图表（受 Species in Pieces 启发）"""
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求格式错误"}), 400
+    try:
+        from chart_svg import dayun_ring
+        svg = dayun_ring(data.get("dayun", []), data.get("ri_gan", ""))
+        from flask import Response
+        return Response(svg, mimetype="image/svg+xml")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/analyze", methods=["POST"])
 def api_analyze():
     """Agent 深度分析：调用 LLM 对命盘进行 7 级递进分析"""
@@ -340,9 +634,14 @@ def api_analyze():
     except Exception:
         return jsonify({"error": "请求数据格式错误"}), 400
 
+    # 密码校验（优先检查，避免无效请求消耗 token）
+    ip = request.remote_addr or 'unknown'
+    pw_err = check_password(ip, data)
+    if pw_err:
+        return jsonify({"error": pw_err, "need_password": True}), 403
+
     # 支持两种传参方式：直接传排盘字典，或传出生参数
     if "plate" in data:
-        # 已有排盘结果，直接分析
         plate_dict = data["plate"]
     else:
         # 传出生参数，先排盘
@@ -371,18 +670,91 @@ def api_analyze():
         except Exception as e:
             return jsonify({"error": f"排盘计算失败: {str(e)}"}), 500
 
+    # 查缓存（缓存命中不消耗限流配额）
+    cache_key = _make_cache_key(plate_dict)
+    cached = _cache_get(cache_key)
+    if cached:
+        return jsonify({**cached, "cached": True})
+
+    if not check_rate_limit(ip, max_requests=3, window_minutes=60):
+        return jsonify({"error": "请求过于频繁，请稍后再试（每小时限 3 次）"}), 429
+
     # 调用 LLM 分析（使用惰性导入避免循环依赖）
     from analysis_service import analyze_bazi
 
     result = analyze_bazi(plate_dict, timeout=180)
 
     if result["success"]:
-        return jsonify({
+        # 保存反馈日志
+        save_feedback_log(plate_dict, result.get("messages", []), ip=ip, turn_type="initial")
+        response_data = {
             "success": True,
             "analysis": result["analysis"],
             "model": result.get("model", ""),
             "usage": result.get("usage", {}),
-        })
+            "messages": result.get("messages", []),
+        }
+        # 写入缓存（后续重试直接返回）
+        if cache_key:
+            _cache_set(cache_key, response_data)
+        return jsonify(response_data)
+    else:
+        return jsonify({"success": False, "error": result["error"]}), 500
+
+
+@app.route("/api/analyze/continue", methods=["POST"])
+def api_analyze_continue():
+    """续接分析：将之前的对话 + 用户回复发给 Agent 继续批断"""
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求数据格式错误"}), 400
+
+    # 密码校验
+    ip = request.remote_addr or 'unknown'
+    pw_err = check_password(ip, data)
+    if pw_err:
+        return jsonify({"error": pw_err, "need_password": True}), 403
+
+    if not check_rate_limit(ip, max_requests=5, window_minutes=60):
+        return jsonify({"error": "请求过于频繁，请稍后再试"}), 429
+
+    if "messages" not in data or "reply" not in data:
+        return jsonify({"error": "缺少参数: messages 或 reply"}), 400
+
+    from analysis_service import continue_analysis
+    result = continue_analysis(data["messages"], data["reply"], timeout=180)
+
+    if result["success"]:
+        # 组装完整对话 + 保存反馈日志
+        full_msgs = list(data["messages"])
+        full_msgs.append({"role": "user", "content": data["reply"]})
+        full_msgs.append({"role": "assistant", "content": result["analysis"]})
+        # 从首条 user 消息提取排盘摘要（Markdown 格式）
+        plate_summary = {}
+        for m in data["messages"]:
+            if m.get("role") == "user" and "命盘数据" in m.get("content", ""):
+                # 提取日主
+                import re as _re
+                m_ri = _re.search(r"日主[：:]\s*(\S+)", m["content"])
+                m_g = _re.search(r"性别[：:]\s*(\S+)", m["content"])
+                m_b = _re.search(r"公历[：:]\s*(.+?)(?:\n|$)", m["content"])
+                plate_summary = {
+                    "birth": m_b.group(1).strip() if m_b else "?",
+                    "gender": m_g.group(1).strip() if m_g else "?",
+                    "ri_zhu": m_ri.group(1).strip() if m_ri else "?",
+                }
+                break
+        # 用最小 plate_dict 来存日志
+        minimal_plate = {
+            "input": {"birth_datetime": plate_summary.get("birth", "?"), "gender": plate_summary.get("gender", "?"), "location": ""},
+            "ri_zhu": plate_summary.get("ri_zhu", "?"),
+            "year_type": "",
+            "pillars": {},
+            "qiyun": {"age": "?"},
+        }
+        save_feedback_log(minimal_plate, full_msgs, ip=ip, turn_type="continue")
+        return jsonify({"success": True, "analysis": result["analysis"]})
     else:
         return jsonify({"success": False, "error": result["error"]}), 500
 

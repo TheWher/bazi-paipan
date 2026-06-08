@@ -8,53 +8,51 @@
 </head>
 <body>
     <div class="container">
-        <!-- 标题 -->
         <header class="app-header">
-            <h1>八字排盘</h1>
+            <h1 style="cursor:pointer" onclick="window.scrollTo({top:0,behavior:'smooth'})">八字排盘</h1>
             <p class="subtitle">输入出生信息，一键排出完整命盘并生成 PDF 报告</p>
         </header>
 
-        <!-- 表单 -->
         <section class="form-section">
             <div class="form-grid">
-                <!-- 出生日期 -->
-                <div class="form-group">
-                    <label>出生年份</label>
-                    <input type="number" id="year" placeholder="2005" min="1900" max="2100" value="2005">
-                </div>
-                <div class="form-group">
-                    <label>月份</label>
-                    <input type="number" id="month" placeholder="8" min="1" max="12" value="8">
-                </div>
-                <div class="form-group">
-                    <label>日期</label>
-                    <input type="number" id="day" placeholder="19" min="1" max="31" value="19">
-                </div>
-                <div class="form-group">
-                    <label>时（24小时制）</label>
-                    <input type="number" id="hour" placeholder="1" min="0" max="23" value="1">
-                </div>
-                <div class="form-group">
-                    <label>分</label>
-                    <input type="number" id="minute" placeholder="35" min="0" max="59" value="35">
+                <!-- 公历/农历切换 -->
+                <div class="form-group form-wide solar-lunar-toggle">
+                    <label>历法</label>
+                    <div class="radio-group">
+                        <label class="radio-label"><input type="radio" name="calendar" value="solar" checked> 公历</label>
+                        <label class="radio-label"><input type="radio" name="calendar" value="lunar"> 农历</label>
+                    </div>
                 </div>
 
-                <!-- 性别 -->
+                <div class="form-group"><label>年份</label><input type="number" id="year" placeholder="2005" min="1900" max="2100"></div>
+                <div class="form-group"><label>月份</label><input type="number" id="month" placeholder="8" min="1" max="12"></div>
+                <div class="form-group"><label>日期</label><input type="number" id="day" placeholder="19" min="1" max="31"></div>
+                <div class="form-group"><label>时（24小时制）</label><input type="number" id="hour" placeholder="1" min="0" max="23"></div>
+                <div class="form-group"><label>分</label><input type="number" id="minute" placeholder="35" min="0" max="59"></div>
+
                 <div class="form-group">
                     <label>性别</label>
                     <div class="radio-group">
-                        <label class="radio-label">
-                            <input type="radio" name="gender" value="男" checked> 男
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="gender" value="女"> 女
-                        </label>
+                        <label class="radio-label"><input type="radio" name="gender" value="男" checked> 男</label>
+                        <label class="radio-label"><input type="radio" name="gender" value="女"> 女</label>
+                    </div>
+                </div>
+
+                <!-- 真太阳时 -->
+                <div class="form-group form-wide">
+                    <label><input type="checkbox" id="use-true-solar"> 使用真太阳时校正</label>
+                </div>
+                <div class="form-group form-wide" id="lnglat" style="display:none">
+                    <label>出生经度（°E，如北京 116.4，东莞 113.75）</label>
+                    <div class="location-row">
+                        <input type="number" id="longitude" step="0.01" placeholder="120" min="70" max="140" value="120">
+                        <span class="lng-hint">东经为正，每差 1° 约差 4 分钟</span>
                     </div>
                 </div>
 
                 <!-- 出生地 -->
                 <div class="form-group form-wide">
-                    <label>出生地点</label>
+                    <label>出生地点（可选）</label>
                     <div class="location-row">
                         <div class="location-input-wrap">
                             <input type="text" id="location" placeholder="输入城市名，如：东莞" autocomplete="off">
@@ -64,699 +62,679 @@
                     </div>
                     <div id="geocode-status" class="geocode-status hidden"></div>
                 </div>
-
-                <!-- 经度（隐藏，查询后填充） -->
-                <input type="hidden" id="longitude" value="113.75">
             </div>
 
-            <!-- 操作按钮 -->
             <div class="btn-row">
                 <button id="btn-paipan" class="btn btn-primary btn-lg">⚡ 开始排盘</button>
                 <button id="btn-analyze" class="btn btn-gold btn-lg" disabled>🧠 深度分析</button>
-                <button id="btn-pdf" class="btn btn-accent btn-lg" disabled>📥 下载 PDF</button>
+                <button id="btn-pdf" class="btn btn-accent btn-lg" disabled>📄 打印报告</button>
+                <button id="btn-clear" class="btn btn-clear btn-sm">🗑️ 清空</button>
             </div>
         </section>
 
-        <!-- 加载状态 -->
-        <div id="loading" class="loading hidden">
-            <div class="spinner"></div>
-            <p id="loading-text">计算中...</p>
-        </div>
-
-        <!-- 错误信息 -->
+        <div id="loading" class="loading hidden"><div class="spinner"></div><p id="loading-text">计算中...</p></div>
         <div id="error-box" class="error-box hidden"></div>
 
-        <!-- 排盘结果 -->
         <section id="result-section" class="result-section hidden">
-            <!-- 基本输入回显 -->
-            <div class="card">
-                <h2 class="card-title">📋 基本信息</h2>
-                <div class="info-grid" id="basic-info"></div>
-            </div>
-
-            <!-- 四柱命盘 -->
-            <div class="card">
-                <h2 class="card-title">🏛️ 四柱命盘</h2>
-                <div class="table-scroll">
-                    <table class="bazi-table" id="pillars-table">
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th>年柱</th>
-                                <th>月柱</th>
-                                <th>日柱</th>
-                                <th>时柱</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr id="row-ganzhi"></tr>
-                            <tr id="row-tiangan"></tr>
-                            <tr id="row-dizhi"></tr>
-                            <tr id="row-shishen"></tr>
-                            <tr id="row-nayin"></tr>
-                            <tr id="row-changsheng"></tr>
-                            <tr id="row-canggan"></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- 起运与大运 -->
-            <div class="card">
-                <h2 class="card-title">🔄 起运与大运</h2>
-                <div id="qiyun-info" class="info-grid"></div>
-                <div class="table-scroll">
-                    <table class="bazi-table" id="dayun-table">
-                        <thead>
-                            <tr>
-                                <th>步数</th>
-                                <th>干支</th>
-                                <th>年龄</th>
-                                <th>年份</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dayun-tbody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- 神煞速览 -->
-            <div class="card">
-                <h2 class="card-title">🔮 神煞速览</h2>
-                <div id="shensha-info" class="info-grid"></div>
-            </div>
+            <div class="card"><h2 class="card-title">📋 基本信息</h2><div class="info-grid" id="basic-info"></div></div>
+            <div class="card"><h2 class="card-title">🏛️ 四柱命盘</h2><div class="table-scroll"><table class="bazi-table" id="pillars-table"><thead><tr><th></th><th>年柱</th><th>月柱</th><th>日柱</th><th>时柱</th></tr></thead><tbody><tr id="row-ganzhi"></tr><tr id="row-tiangan"></tr><tr id="row-dizhi"></tr><tr id="row-shishen"></tr><tr id="row-nayin"></tr><tr id="row-changsheng"></tr><tr id="row-canggan"></tr></tbody></table></div></div>
+            <div class="card"><h2 class="card-title">🔄 起运与大运</h2><div id="qiyun-info" class="info-grid"></div><div class="table-scroll"><table class="bazi-table" id="dayun-table"><thead><tr><th>步数</th><th>干支</th><th>年龄</th><th>年份</th></tr></thead><tbody id="dayun-tbody"></tbody></table></div></div>
+            <div class="card"><h2 class="card-title">🔮 神煞速览</h2><div id="shensha-info" class="info-grid"></div></div>
         </section>
 
-        <!-- 深度分析结果 -->
+        <section id="charts-section" class="result-section hidden">
+            <div class="charts-row">
+                <div class="card chart-card"><h2 class="card-title">🎨 五行分布</h2><div id="chart-wuxing" class="chart-box"></div></div>
+                <div class="card chart-card"><h2 class="card-title">🔄 十二长生</h2><div id="chart-changsheng" class="chart-box"></div></div>
+            </div>
+            <div class="card chart-card"><h2 class="card-title">⭕ 大运环图</h2><div id="chart-dayun-ring" class="chart-box" style="max-width:520px;margin:0 auto;"></div></div>
+        </section>
+
         <section id="analysis-section" class="result-section hidden">
-            <div class="card">
-                <h2 class="card-title">🧠 Agent 深度分析</h2>
-                <div id="analysis-meta" class="analysis-meta"></div>
-                <div id="analysis-content" class="analysis-content"></div>
-            </div>
-            <div class="btn-row">
-                <button id="btn-analysis-pdf" class="btn btn-accent btn-lg">📥 下载含分析 PDF</button>
-            </div>
+            <div class="card"><h2 class="card-title">🧠 Agent 深度分析</h2><div id="analysis-content" class="analysis-content"></div><div id="analysis-chat" class="analysis-chat hidden"><div class="chat-divider">💬 回复 Agent 继续分析</div><textarea id="chat-input" class="chat-input" rows="3" placeholder="例如：小学成绩确实一般，中学后进步明显..."></textarea><div class="chat-btns"><button id="btn-chat-send" class="btn btn-primary">发送回复，继续批断</button><span class="chat-hint">Agent 在验盘阶段需要你确认过去几件事，确认后才会继续深入分析</span></div></div></div>
+            <div class="btn-row"><button id="btn-analysis-pdf" class="btn btn-accent btn-lg">📄 打印完整报告</button></div>
         </section>
 
-        <!-- 页脚 -->
         <footer class="app-footer">
-            <div class="footer-access" id="footer-access">
-                <div class="access-title">📱 手机 / 其他设备访问</div>
-                <div class="access-urls" id="access-urls">
-                    <span class="loading-text">检测中...</span>
-                </div>
-                <div class="access-qr" id="access-qr"></div>
-                <div class="access-hint">
-                    ⚠️ 手机和电脑需连接<strong>同一 WiFi</strong>才能通过局域网地址访问<br>
-                    如需外网访问，请在命令行运行：<code>cloudflared tunnel --url http://localhost:5000</code>
-                </div>
-            </div>
-            <hr class="footer-divider">
-            <p>基于 <a href="https://github.com/yuangu/sxtwl" target="_blank">sxtwl 寿星天文历</a> 精确排盘</p>
-            <p>真太阳时校正 · 五鼠遁起时 · 节气定月 · 起运精确到天</p>
+            <div class="footer-access" id="footer-access"><div class="access-title">📱 手机 / 其他设备访问</div><div class="access-urls" id="access-urls"><span class="loading-text">检测中...</span></div><div class="access-qr" id="access-qr"></div><div class="access-hint" id="access-hint">加载中...</div></div>
+            <hr class="footer-divider"><p>基于 <a href="https://github.com/yuangu/sxtwl" target="_blank">sxtwl 寿星天文历</a> 精确排盘</p><p>真太阳时校正 · 五鼠遁起时 · 节气定月 · 起运精确到天</p>
         </footer>
     </div>
 
-    <script>
-        // ============================================================
-        // 全局状态
-        // ============================================================
-        let plateData = null;       // 排盘结果
-        let geocodeSelected = {     // 选中的经纬度
-            lon: 113.75,
-            lat: 23.02,
-            display_name: ''
+    <!-- Password Modal -->
+    <div id="pw-overlay" class="pw-overlay hidden">
+        <div class="pw-dialog">
+            <h3>🔐 深度分析需要密码</h3>
+            <p>API 调用成本较高，请向管理员获取密码</p>
+            <input type="password" id="pw-input" placeholder="请输入密码" autocomplete="off">
+            <div class="pw-error" id="pw-error"></div>
+            <div class="btn-row">
+                <button id="btn-pw-cancel" class="btn btn-cancel">取消</button>
+                <button id="btn-pw-confirm" class="btn btn-primary">确认</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+// ========== DOM 引用 ==========
+const $ = id => document.getElementById(id);
+const elYear=$('year'),elMonth=$('month'),elDay=$('day'),elHour=$('hour'),elMinute=$('minute');
+const elLocation=$('location'),elLongitude=$('longitude'),elUseTrueSolar=$('use-true-solar');
+const elLngLat=$('lnglat'),elGeocodeStatus=$('geocode-status'),elSuggestions=$('city-suggestions');
+const elBtnGeocode=$('btn-geocode'),elBtnPaipan=$('btn-paipan'),elBtnAnalyze=$('btn-analyze'),elBtnPdf=$('btn-pdf');
+const elLoading=$('loading'),elLoadingText=$('loading-text'),elErrorBox=$('error-box');
+const elResultSection=$('result-section'),elAnalysisSection=$('analysis-section');
+const elAnalysisContent=$('analysis-content'),elAnalysisChat=$('analysis-chat');
+const elChatInput=$('chat-input'),elBtnChatSend=$('btn-chat-send'),elBtnAnalysisPdf=$('btn-analysis-pdf');
+const elPwOverlay=$('pw-overlay'),elPwInput=$('pw-input'),elPwError=$('pw-error'),elBtnPwConfirm=$('btn-pw-confirm'),elBtnPwCancel=$('btn-pw-cancel');
+
+let plateData=null, analysisText=null, analysisInProgress=false, conversationMessages=null;
+let _pwResolve=null; // Promise resolver for password prompt
+let _analysisAbortController=null; // AbortController for cancelling in-flight analysis
+let _analysisStartTime=0; // timestamp when analysis started (for timeout detection)
+
+// ========== 自动填充当前时间 ==========
+function autoFillNow() {
+    const n = new Date();
+    if (!elYear.value) elYear.value = n.getFullYear();
+    if (!elMonth.value) elMonth.value = n.getMonth() + 1;
+    if (!elDay.value) elDay.value = n.getDate();
+    if (!elHour.value) elHour.value = n.getHours();
+    if (!elMinute.value) elMinute.value = n.getMinutes();
+}
+
+// ========== 密码管理（sessionStorage，关浏览器即失效） ==========
+function getPassword() {
+    return sessionStorage.getItem('bazi_pw') || '';
+}
+function setPassword(pw) {
+    sessionStorage.setItem('bazi_pw', pw);
+}
+function clearPassword() {
+    sessionStorage.removeItem('bazi_pw');
+}
+
+// 返回 Promise，resolve=密码字符串，用户取消时 resolve=null
+function promptPassword(reason = '') {
+    return new Promise(resolve => {
+        // 如果已有缓存密码，直接返回
+        const cached = getPassword();
+        if (cached) { resolve(cached); return; }
+
+        if (elPwError) elPwError.textContent = reason || '';
+        if (elPwInput) elPwInput.value = '';
+        elPwOverlay.classList.remove('hidden');
+        elPwInput.focus();
+        _pwResolve = resolve;
+    });
+}
+
+function confirmPassword() {
+    const pw = elPwInput.value.trim();
+    if (!pw) { elPwError.textContent = '请输入密码'; return; }
+    setPassword(pw);
+    elPwOverlay.classList.add('hidden');
+    if (_pwResolve) { _pwResolve(pw); _pwResolve = null; }
+}
+
+function cancelPassword() {
+    elPwOverlay.classList.add('hidden');
+    if (_pwResolve) { _pwResolve(null); _pwResolve = null; }
+}
+
+if (elBtnPwConfirm) elBtnPwConfirm.addEventListener('click', confirmPassword);
+if (elBtnPwCancel) elBtnPwCancel.addEventListener('click', cancelPassword);
+if (elPwInput) elPwInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmPassword(); if (e.key === 'Escape') cancelPassword(); });
+
+// ========== 分析待处理状态（切标签页/关页面后恢复） ==========
+function savePendingAnalysis() {
+    if (!plateData) return;
+    // 保留已有的 retry 计数（如果有）
+    const existing = loadPendingAnalysis();
+    localStorage.setItem('bazi_analysis_pending', JSON.stringify({
+        plate: plateData,
+        retries: existing ? existing.retries : 0,
+        startedAt: existing ? existing.startedAt : Date.now(),
+        requestId: existing ? existing.requestId : (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36))
+    }));
+}
+function loadPendingAnalysis() {
+    try {
+        const d = JSON.parse(localStorage.getItem('bazi_analysis_pending'));
+        if (!d || !d.plate) return null;
+        // 30 分钟过期
+        if (Date.now() - d.startedAt > 30 * 60 * 1000) {
+            localStorage.removeItem('bazi_analysis_pending');
+            return null;
+        }
+        return d;
+    } catch(e) { return null; }
+}
+function clearPendingAnalysis() {
+    localStorage.removeItem('bazi_analysis_pending');
+}
+
+// ========== localStorage 持久化 ==========
+function saveForm() {
+    const data = {year:elYear.value,month:elMonth.value,day:elDay.value,hour:elHour.value,minute:elMinute.value,location:elLocation.value,longitude:elLongitude.value,gender:document.querySelector('input[name="gender"]:checked').value,calendar:document.querySelector('input[name="calendar"]:checked').value,useTrueSolar:elUseTrueSolar.checked};
+    localStorage.setItem('bazi_form', JSON.stringify(data));
+}
+function loadForm() {
+    try {
+        const d = JSON.parse(localStorage.getItem('bazi_form'));
+        if (d) { elYear.value=d.year;elMonth.value=d.month;elDay.value=d.day;elHour.value=d.hour;elMinute.value=d.minute;elLocation.value=d.location||'';elLongitude.value=d.longitude||'120'; document.querySelector('input[name="gender"][value="'+(d.gender||'男')+'"]').checked=true; document.querySelector('input[name="calendar"][value="'+(d.calendar||'solar')+'"]').checked=true; elUseTrueSolar.checked=d.useTrueSolar||false; if(elUseTrueSolar.checked)elLngLat.style.display=''; }
+    } catch(e) {}
+}
+[elYear,elMonth,elDay,elHour,elMinute,elLocation,elLongitude].forEach(el => el.addEventListener('change', saveForm));
+elUseTrueSolar.addEventListener('change', () => { elLngLat.style.display = elUseTrueSolar.checked ? '' : 'none'; saveForm(); });
+document.querySelectorAll('input[name="gender"],input[name="calendar"]').forEach(el => el.addEventListener('change', saveForm));
+
+// ========== 输入验证 ==========
+function validateInput() {
+    const y=parseInt(elYear.value),m=parseInt(elMonth.value),d=parseInt(elDay.value),h=parseInt(elHour.value),mi=parseInt(elMinute.value)||0;
+    if (!y||!m||!d||isNaN(h)) return '请完整填写出生日期';
+    if (y<1900||y>2100) return '年份范围 1900-2100';
+    if (m<1||m>12) return '月份范围 1-12';
+    const daysInMonth = new Date(y, m, 0).getDate();
+    if (d<1||d>daysInMonth) return `${y}年${m}月只有 ${daysInMonth} 天，输入了 ${d} 日`;
+    if (h<0||h>23) return '小时范围 0-23';
+    if (mi<0||mi>59) return '分钟范围 0-59';
+    // 未来日期提醒
+    const inputDate = new Date(y, m-1, d, h, mi);
+    if (inputDate > new Date()) return '出生日期不能是未来时间';
+    return null;
+}
+
+// ========== 真太阳时校正（客户端） ==========
+function getSolarAdjustedTime(hour, minute, lng) {
+    // 北京时间基准经度 120°E，每差 1° 校正 4 分钟
+    const correction = (parseFloat(lng) - 120) * 4; // 分钟
+    const totalMinutes = hour * 60 + minute + correction;
+    return {
+        correction_minutes: Math.round(correction),
+        adjusted_hour: totalMinutes / 60,
+        adjusted_time: `${Math.floor(((totalMinutes%1440)+1440)%1440/60).toString().padStart(2,'0')}:${Math.round(((totalMinutes%1440)+1440)%1440%60).toString().padStart(2,'0')}`
+    };
+}
+
+// ========== 城市自动补全 ==========
+let suggestTimer=null, suggestIndex=-1;
+elLocation.addEventListener('input', () => { clearTimeout(suggestTimer); const q=elLocation.value.trim(); if(q.length<1){elSuggestions.classList.add('hidden');return;} suggestTimer=setTimeout(()=>fetchSuggestions(q),200); });
+elLocation.addEventListener('keydown', e => {
+    const items=elSuggestions.querySelectorAll('.city-suggestion-item');
+    if(e.key==='ArrowDown'){e.preventDefault();suggestIndex=Math.min(suggestIndex+1,items.length-1);updateActive(items);}
+    else if(e.key==='ArrowUp'){e.preventDefault();suggestIndex=Math.max(suggestIndex-1,0);updateActive(items);}
+    else if(e.key==='Enter'&&suggestIndex>=0&&items.length>0){e.preventDefault();items[suggestIndex].click();}
+    else if(e.key==='Escape'){elSuggestions.classList.add('hidden');suggestIndex=-1;}
+});
+elLocation.addEventListener('blur', () => setTimeout(()=>elSuggestions.classList.add('hidden'),150));
+function updateActive(items){items.forEach((item,i)=>item.classList.toggle('active',i===suggestIndex));}
+async function fetchSuggestions(q){
+    try{const r=await fetch('/api/cities?q='+encodeURIComponent(q));const d=await r.json();if(!d.results||!d.results.length){elSuggestions.classList.add('hidden');return;}suggestIndex=-1;elSuggestions.innerHTML=d.results.map((r,i)=>`<div class="city-suggestion-item" data-lon="${r.lon}" data-name="${r.display_name}"><span class="city-name">${r.display_name}</span><span class="city-info">${r.lon.toFixed(2)}°E</span></div>`).join('');elSuggestions.classList.remove('hidden');elSuggestions.querySelectorAll('.city-suggestion-item').forEach(item=>{item.addEventListener('mousedown',e=>{e.preventDefault();selectCity({lon:parseFloat(item.dataset.lon),display_name:item.dataset.name});});});}catch(e){}}
+function selectCity(city){elLocation.value=city.display_name;elLongitude.value=city.lon.toFixed(2);elSuggestions.classList.add('hidden');elGeocodeStatus.innerHTML=`<span class="geocode-ok">✅ 已定位：${city.display_name}</span><span class="geocode-coords">经度 ${city.lon.toFixed(2)}°E</span>`;elGeocodeStatus.classList.remove('hidden');saveForm();}
+
+elBtnGeocode.addEventListener('click', async () => {
+    const loc=elLocation.value.trim(); if(!loc) return showError('请输入出生地点');
+    elBtnGeocode.disabled=true; hideError();
+    try{const r=await fetch('/api/geocode?q='+encodeURIComponent(loc));const d=await r.json();if(d.error){showError(d.error);return;}if(!d.results||!d.results.length){showError('未找到该地点');return;}selectCity({lon:d.results[0].lon,display_name:d.results[0].display_name});if(d.results.length>1){let h=elGeocodeStatus.innerHTML;h+='<div class="geocode-alt">其他候选：';d.results.slice(1).forEach((a,i)=>{h+=`<a href="#" class="alt-link" data-lon="${a.lon}" data-name="${a.display_name}">[${i+1}] ${a.display_name}</a> `;});h+='</div>';elGeocodeStatus.innerHTML=h;elGeocodeStatus.querySelectorAll('.alt-link').forEach(l=>{l.addEventListener('click',e=>{e.preventDefault();selectCity({lon:parseFloat(l.dataset.lon),display_name:l.dataset.name});});});}}catch(e){showError('网络错误');}finally{elBtnGeocode.disabled=false;}
+});
+
+// ========== 排盘 ==========
+elBtnPaipan.addEventListener('click', async () => {
+    const err = validateInput(); if (err) return showError(err);
+    hideError(); showLoading('计算中...'); elBtnPaipan.disabled=true; elBtnPdf.disabled=true; elBtnAnalyze.disabled=true;
+    const isLunar = document.querySelector('input[name="calendar"]:checked').value === 'lunar';
+    const gender = document.querySelector('input[name="gender"]:checked').value;
+    let lng = parseFloat(elLongitude.value)||120; let solarCorrection = 0;
+    if (elUseTrueSolar.checked) { solarCorrection = (lng-120)*4; }
+
+    try {
+        const body = {
+            year:parseInt(elYear.value),month:parseInt(elMonth.value),day:parseInt(elDay.value),
+            hour:parseInt(elHour.value),minute:parseInt(elMinute.value)||0,
+            gender,longitude:lng,location:elLocation.value.trim()||'未知',
+            is_lunar:isLunar,solar_correction:solarCorrection
         };
+        const r = await fetch('/api/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const d = await r.json();
+        if (d.error) { showError(d.error); return; }
+        plateData=d; analysisText=null; conversationMessages=null;
+        localStorage.removeItem('bazi_analysis'); localStorage.removeItem('bazi_plate');
+        saveForm();
+        renderResult(d); elResultSection.classList.remove('hidden');
+        elBtnPdf.disabled=false; elBtnAnalyze.disabled=false;
+        elAnalysisSection.classList.add('hidden'); elAnalysisContent.innerHTML=''; elAnalysisChat.classList.add('hidden');
+        document.getElementById('charts-section').classList.add('hidden');
+        elResultSection.scrollIntoView({behavior:'smooth'});
+    } catch(e) { showError('网络错误或服务未启动'); }
+    finally { hideLoading(); elBtnPaipan.disabled=false; }
+});
 
-        // ============================================================
-        // DOM 引用
-        // ============================================================
-        const $ = (id) => document.getElementById(id);
+// ========== 渲染 ==========
+function renderResult(data) {
+    const info=data.input,solar=data.solar,lunar=data.lunar,qy=data.qiyun,pillars=data.pillars;
+    let solarInfo = solar.correction_minutes!==0 ? `校正 ${solar.correction_minutes}分钟，约 ${solar.adjusted_hour.toFixed(1)} 时` : '未使用校正';
+    $('basic-info').innerHTML = `
+        <div><span class="info-label">公历</span><span class="info-value">${info.birth_datetime}</span></div>
+        <div><span class="info-label">农历</span><span class="info-value">${lunar.year}年${lunar.month}月${lunar.day}日${lunar.is_leap?'（闰月）':''}</span></div>
+        <div><span class="info-label">时辰</span><span class="info-value">${data.shichen}</span></div>
+        <div><span class="info-label">性别</span><span class="info-value">${info.gender}</span></div>
+        <div><span class="info-label">出生地</span><span class="info-value">${info.location}（${info.longitude}°E）</span></div>
+        <div><span class="info-label">真太阳时</span><span class="info-value">${solarInfo}</span></div>
+        <div><span class="info-label">日主</span><span class="info-value">${data.ri_zhu}（${data.year_type}）</span></div>`;
+    const orders=['year','month','day','hour'],colNames=['年柱','月柱','日柱','时柱'];
+    const ganRow=['<td class="row-label">干支</td>'],tianRow=['<td class="row-label">天干</td>'],zhiRow=['<td class="row-label">地支</td>'];
+    const ssRow=['<td class="row-label">十神</td>'],nyRow=['<td class="row-label">纳音</td>'],csRow=['<td class="row-label">十二长生</td>'],cgRow=['<td class="row-label">藏干</td>'];
+    orders.forEach(p=>{const d=pillars[p],c=p==='day'?' class="day-zhu"':'';ganRow.push(`<td${c}>${d.gz}<span class="gz-sub">${d.gan}${d.zhi}</span></td>`);tianRow.push(`<td${c}>${d.gan}</td>`);zhiRow.push(`<td${c}>${d.zhi}</td>`);ssRow.push(`<td${c}>${d.shishen}</td>`);nyRow.push(`<td${c}>${d.nayin}</td>`);csRow.push(`<td${c}>${d.changsheng}</td>`);cgRow.push(`<td${c}>${d.canggan.map(c=>c.gan).join(' · ')}</td>`);});
+    $('row-ganzhi').innerHTML=ganRow.join('');$('row-tiangan').innerHTML=tianRow.join('');$('row-dizhi').innerHTML=zhiRow.join('');
+    $('row-shishen').innerHTML=ssRow.join('');$('row-nayin').innerHTML=nyRow.join('');$('row-changsheng').innerHTML=csRow.join('');$('row-canggan').innerHTML=cgRow.join('');
+    const kong=data.kongwang,kongDesc=orders.filter(p=>kong.pillars[p]).map(p=>colNames[orders.indexOf(p)]+'支'+pillars[p].zhi).join('、')||'无';
+    $('qiyun-info').innerHTML=`<div><span class="info-label">起运年龄</span><span class="info-value">${qy.age} 岁（虚岁 ${qy.age_xu}）</span></div><div><span class="info-label">交运年份</span><span class="info-value">约 ${qy.year} 年</span></div><div><span class="info-label">大运方向</span><span class="info-value">${qy.direction}（距节气 ${qy.diff_days} 天）</span></div><div><span class="info-label">空亡</span><span class="info-value">${kong.kong1}${kong.kong2}（${kongDesc}）</span></div><div><span class="info-label">胎元</span><span class="info-value">${data.taiyuan}</span></div><div><span class="info-label">命宫 / 身宫</span><span class="info-value">${data.minggong} / ${data.shengong}</span></div>`;
+    $('dayun-tbody').innerHTML=data.dayun.map(d=>`<tr><td>第 ${d.step} 步</td><td class="dayun-gz">${d.gz}</td><td>${d.start_age} - ${d.end_age} 岁</td><td>${d.start_year} - ${d.end_year} 年</td></tr>`).join('');
 
-        const elYear = $('year');
-        const elMonth = $('month');
-        const elDay = $('day');
-        const elHour = $('hour');
-        const elMinute = $('minute');
-        const elLocation = $('location');
-        const elLongitude = $('longitude');
-        const elGeocodeStatus = $('geocode-status');
-        const elBtnGeocode = $('btn-geocode');
-        const elBtnPaipan = $('btn-paipan');
-        const elBtnPdf = $('btn-pdf');
-        const elLoading = $('loading');
-        const elLoadingText = $('loading-text');
-        const elErrorBox = $('error-box');
-        const elResultSection = $('result-section');
-        const elSuggestions = $('city-suggestions');
+    // 神煞速览
+    const ss = data.shensha || {};
+    const shenshaHtml = Object.values(ss).map(s => {
+        if (!s.value) return '';
+        const inStr = s.in_pillars && s.in_pillars.length>0 ? ` ⭐入${s.in_pillars.join('、')}` : '';
+        const srcStr = s.source ? `<span class="info-label" style="font-size:0.7em;color:#bbb;font-weight:400">（${s.source}）</span>` : '';
+        return `<div><span class="info-label" title="${s.info}">${s.desc}</span><span class="info-value" title="${s.info}">${s.value}${inStr}</span>${srcStr}</div>`;
+    }).filter(Boolean).join('');
+    $('shensha-info').innerHTML = shenshaHtml || '<div><span class="info-label">暂未加载</span></div>';
 
-        // ============================================================
-        // 工具函数
-        // ============================================================
-        function showLoading(text) {
-            elLoadingText.textContent = text || '计算中...';
-            elLoading.classList.remove('hidden');
-            elErrorBox.classList.add('hidden');
+    // 渲染图表
+    renderCharts(data);
+}
+
+// ========== SVG 图表（服务端生成，零 CDN 依赖） ==========
+async function renderCharts(data) {
+    const pillars = data.pillars, dayun = data.dayun;
+
+    // 五行分布计算
+    const wuxingCount = {'木':0,'火':0,'土':0,'金':0,'水':0};
+    const ganWuXing = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'};
+    const zhiWuXing = {'子':'水','丑':'土','寅':'木','卯':'木','辰':'土','巳':'火','午':'火','未':'土','申':'金','酉':'金','戌':'土','亥':'水'};
+    ['year','month','day','hour'].forEach(p => {
+        const d = pillars[p];
+        wuxingCount[ganWuXing[d.gan]] = (wuxingCount[ganWuXing[d.gan]]||0) + 1;
+        wuxingCount[zhiWuXing[d.zhi]] = (wuxingCount[zhiWuXing[d.zhi]]||0) + 1;
+    });
+
+    // 加载服务端 SVG 图表
+    const wxDom = document.getElementById('chart-wuxing');
+    const csDom = document.getElementById('chart-changsheng');
+    try {
+        if (wxDom) {
+            const r = await fetch('/api/chart/wuxing', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({wuxing:wuxingCount})});
+            if (r.ok) wxDom.innerHTML = await r.text();
         }
-
-        function hideLoading() {
-            elLoading.classList.add('hidden');
+        if (csDom) {
+            const r = await fetch('/api/chart/changsheng', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pillars:data.pillars,ri_zhu:data.ri_zhu})});
+            if (r.ok) csDom.innerHTML = await r.text();
         }
+        // 大运环形图
+        const drDom = document.getElementById('chart-dayun-ring');
+        if (drDom) {
+            const r = await fetch('/api/chart/dayun-ring', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({dayun:data.dayun,ri_gan:data.ri_zhu})});
+            if (r.ok) drDom.innerHTML = await r.text();
+        }
+    } catch(e) { console.warn('Chart load failed:', e); }
+    document.getElementById('charts-section').classList.remove('hidden');
+}
 
-        function showError(msg) {
-            elErrorBox.textContent = '❌ ' + msg;
-            elErrorBox.classList.remove('hidden');
+// ========== 工具函数 ==========
+function showLoading(t){elLoadingText.textContent=t;elLoading.classList.remove('hidden');elErrorBox.classList.add('hidden');}
+function hideLoading(){elLoading.classList.add('hidden');}
+function showError(m){elErrorBox.textContent='❌ '+m;elErrorBox.classList.remove('hidden');hideLoading();}
+function hideError(){elErrorBox.classList.add('hidden');}
+function formatMarkdown(text){
+    let h=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    h=h.replace(/^#### (.+)$/gm,'<h5>$1</h5>');h=h.replace(/^### (.+)$/gm,'<h4>$1</h4>');h=h.replace(/^## (.+)$/gm,'<h3>$1</h3>');h=h.replace(/^# (.+)$/gm,'<h2>$1</h2>');
+    h=h.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>');h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');h=h.replace(/\*(.+?)\*/g,'<em>$1</em>');
+    h=h.replace(/^- (.+)$/gm,'<li>$1</li>');h=h.replace(/^---+$/gm,'<hr>');
+    let blocks=h.split(/\n\n+/);return blocks.map(b=>{b=b.trim();if(!b)return'';if(/^<(h[2-5]|li|hr|table)/.test(b))return b;b=b.replace(/\n/g,'<br>');return'<p>'+b+'</p>';}).join('\n');
+}
+
+// ========== 深度分析（含断线重试、页面恢复） ==========
+async function doAnalyze(isRetry = false) {
+    if(!plateData) return;
+    hideError();
+
+    // 从 pending 状态恢复时，plateData 可能已被设置
+    const pending = loadPendingAnalysis();
+    if (isRetry && pending) {
+        plateData = pending.plate;
+        // 渲染命盘（如果还没渲染）
+        if (elResultSection.classList.contains('hidden')) {
+            renderResult(plateData);
+            elResultSection.classList.remove('hidden');
+            elBtnPdf.disabled = false;
+        }
+    }
+
+    const pendingBefore = loadPendingAnalysis();
+    const retryCount = (pendingBefore ? pendingBefore.retries : 0);
+
+    if (retryCount >= 3) {
+        showError('已重试 3 次仍未成功，请稍后再试或检查网络连接');
+        clearPendingAnalysis();
+        return;
+    }
+
+    // 指数退避延迟
+    if (isRetry && retryCount > 0) {
+        const delays = [5000, 15000, 30000]; // 5s, 15s, 30s
+        const delay = delays[Math.min(retryCount - 1, delays.length - 1)];
+        showLoading(`分析中断，${Math.round(delay/1000)}秒后自动重试（第 ${retryCount} 次）...`);
+        await new Promise(r => setTimeout(r, delay));
+    }
+
+    showLoading(isRetry ? '正在重新连接 Agent（约需 4-6 分钟）...' : '正在调用 Agent 进行深度分析（约需 4-6 分钟，请耐心等待）...');
+    analysisInProgress = true;
+    _analysisStartTime = Date.now();
+    elBtnAnalyze.disabled = true;
+    elAnalysisSection.classList.add('hidden');
+
+    try {
+        const pw = await promptPassword(isRetry ? '重试需要重新输入密码' : '');
+        if (pw === null) {
             hideLoading();
+            elBtnAnalyze.disabled = false;
+            analysisInProgress = false;
+            return;
         }
 
-        function hideError() {
-            elErrorBox.classList.add('hidden');
-        }
+        // 保存待处理状态（切标签页/关页面后可恢复）
+        savePendingAnalysis();
 
-        // ============================================================
-        // 城市自动补全
-        // ============================================================
-        let suggestTimer = null;
-        let suggestIndex = -1;
+        // 创建 AbortController（用于超时取消）
+        _analysisAbortController = new AbortController();
+        // 8 分钟超时
+        const timeoutId = setTimeout(() => { if (_analysisAbortController) _analysisAbortController.abort(); }, 8 * 60 * 1000);
 
-        elLocation.addEventListener('input', () => {
-            clearTimeout(suggestTimer);
-            const q = elLocation.value.trim();
-            if (q.length < 1) {
-                elSuggestions.classList.add('hidden');
-                return;
-            }
-            suggestTimer = setTimeout(() => fetchSuggestions(q), 200);
+        const r = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({plate: plateData, password: pw}),
+            signal: _analysisAbortController.signal
         });
+        clearTimeout(timeoutId);
+        _analysisAbortController = null;
 
-        elLocation.addEventListener('keydown', (e) => {
-            const items = elSuggestions.querySelectorAll('.city-suggestion-item');
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                suggestIndex = Math.min(suggestIndex + 1, items.length - 1);
-                updateActiveSuggestion(items);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                suggestIndex = Math.max(suggestIndex - 1, 0);
-                updateActiveSuggestion(items);
-            } else if (e.key === 'Enter') {
-                if (suggestIndex >= 0 && items.length > 0) {
-                    e.preventDefault();
-                    items[suggestIndex].click();
-                }
-            } else if (e.key === 'Escape') {
-                elSuggestions.classList.add('hidden');
-                suggestIndex = -1;
-            }
-        });
-
-        elLocation.addEventListener('blur', () => {
-            setTimeout(() => elSuggestions.classList.add('hidden'), 150);
-        });
-
-        function updateActiveSuggestion(items) {
-            items.forEach((item, i) => {
-                item.classList.toggle('active', i === suggestIndex);
-            });
+        const d = await r.json();
+        if (!d.success) {
+            if (d.need_password) { clearPassword(); clearPendingAnalysis(); showError(d.error); return; }
+            clearPendingAnalysis();
+            showError(d.error || '分析失败');
+            return;
         }
 
-        async function fetchSuggestions(q) {
-            try {
-                const resp = await fetch(`/api/cities?q=${encodeURIComponent(q)}`);
-                const data = await resp.json();
-                if (!data.results || data.results.length === 0) {
-                    elSuggestions.classList.add('hidden');
-                    return;
-                }
-                suggestIndex = -1;
-                elSuggestions.innerHTML = data.results.map((r, i) => `
-                    <div class="city-suggestion-item" data-index="${i}"
-                         data-lon="${r.lon}" data-lat="${r.lat}" data-name="${r.display_name}">
-                        <span class="city-name">${r.display_name}</span>
-                        <span class="city-info">${r.lon.toFixed(2)}°E</span>
-                    </div>
-                `).join('');
-                elSuggestions.classList.remove('hidden');
+        // 成功：清除待处理状态，保存结果
+        clearPendingAnalysis();
+        analysisText = d.analysis;
+        if (d.messages) { conversationMessages = d.messages; elAnalysisChat.classList.remove('hidden'); }
+        localStorage.setItem('bazi_plate', JSON.stringify(plateData));
+        localStorage.setItem('bazi_analysis', analysisText);
+        elAnalysisContent.innerHTML = formatMarkdown(analysisText);
+        elAnalysisSection.classList.remove('hidden');
+        elBtnAnalysisPdf.disabled = false;
+        elAnalysisSection.scrollIntoView({behavior: 'smooth'});
 
-                // 点击事件
-                elSuggestions.querySelectorAll('.city-suggestion-item').forEach(item => {
-                    item.addEventListener('mousedown', (e) => {
-                        e.preventDefault();
-                        selectCity({
-                            lon: parseFloat(item.dataset.lon),
-                            lat: parseFloat(item.dataset.lat),
-                            display_name: item.dataset.name,
-                        });
-                    });
-                });
-            } catch (err) {
-                // 静默失败
-            }
+        // 如果是缓存命中，显示提示
+        if (d.cached) {
+            const cacheNote = document.createElement('div');
+            cacheNote.className = 'cache-note';
+            cacheNote.textContent = '⚡ 命中服务端缓存，瞬间返回（无需重新调用 AI）';
+            cacheNote.style.cssText = 'color:#d4a843;font-size:0.8em;margin-bottom:12px;text-align:center';
+            elAnalysisContent.insertBefore(cacheNote, elAnalysisContent.firstChild);
         }
 
-        function selectCity(city) {
-            geocodeSelected = city;
-            elLocation.value = city.display_name;
-            elLongitude.value = city.lon.toFixed(4);
-            elSuggestions.classList.add('hidden');
-            elGeocodeStatus.innerHTML = `
-                <span class="geocode-ok">✅ 已定位：${city.display_name}</span>
-                <span class="geocode-coords">经度 ${city.lon.toFixed(4)}°E · 纬度 ${city.lat.toFixed(4)}°N</span>
-            `;
-            elGeocodeStatus.classList.remove('hidden');
+        // 粒子庆祝
+        setTimeout(() => {
+            const rect = elAnalysisSection.getBoundingClientRect();
+            particleBurst(rect.left + rect.width/2, rect.top + 100);
+        }, 400);
+
+    } catch (e) {
+        // AbortError = 主动取消或超时，不清除 pending（可以重试）
+        if (e.name === 'AbortError') {
+            hideLoading();
+            elBtnAnalyze.disabled = false;
+            analysisInProgress = false;
+            _analysisAbortController = null;
+            // 自动标记重试
+            const p = loadPendingAnalysis();
+            if (p && p.retries < 3) {
+                p.retries++;
+                localStorage.setItem('bazi_analysis_pending', JSON.stringify(p));
+                showLoading('连接中断，即将自动重试...');
+                setTimeout(() => doAnalyze(true), 2000);
+            } else {
+                showError('分析请求超时（8分钟），请刷新页面后重试');
+                clearPendingAnalysis();
+            }
+            return;
         }
 
-        // ============================================================
-        // 地理编码按钮
-        // ============================================================
-        elBtnGeocode.addEventListener('click', async () => {
-            const loc = elLocation.value.trim();
-            if (!loc) {
-                showError('请输入出生地点');
-                return;
+        // TypeError / NetworkError = 网络中断，可重试
+        if (e.name === 'TypeError' || e.message.includes('NetworkError') || e.message.includes('Failed to fetch')) {
+            hideLoading();
+            elBtnAnalyze.disabled = false;
+            analysisInProgress = false;
+            _analysisAbortController = null;
+            const p = loadPendingAnalysis();
+            if (p && p.retries < 3) {
+                p.retries++;
+                localStorage.setItem('bazi_analysis_pending', JSON.stringify(p));
+                showLoading('网络中断，即将自动重试...');
+                setTimeout(() => doAnalyze(true), 3000);
+            } else {
+                showError('网络连接失败，请检查网络后刷新页面重试');
+                clearPendingAnalysis();
             }
+            return;
+        }
 
-            showLoading('正在查询经纬度...');
-            elBtnGeocode.disabled = true;
-            hideError();
+        clearPendingAnalysis();
+        showError('网络错误或分析超时，请重试');
+    } finally {
+        hideLoading();
+        elBtnAnalyze.disabled = false;
+        analysisInProgress = false;
+        _analysisAbortController = null;
+    }
+}
+elBtnAnalyze.addEventListener('click', () => doAnalyze(false));
 
-            try {
-                const resp = await fetch(`/api/geocode?q=${encodeURIComponent(loc)}`);
-                const data = await resp.json();
+// ========== 续接对话 ==========
+elBtnChatSend.addEventListener('click', async () => {
+    const reply=elChatInput.value.trim();if(!reply||!conversationMessages)return;elBtnChatSend.disabled=true;elChatInput.disabled=true;showLoading('正在等待 Agent 回复（约需 4-6 分钟）...');analysisInProgress=true;
+    try{
+        const pw = getPassword();
+        const r = await fetch('/api/analyze/continue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:conversationMessages,reply:reply, password:pw})});
+        const d = await r.json();
+        if (!d.success) { if (d.need_password) { clearPassword(); showError(d.error); return; } showError(d.error||'续接失败'); return; }
+        conversationMessages.push({role:'user',content:reply});conversationMessages.push({role:'assistant',content:d.analysis});
+        elAnalysisContent.innerHTML+='<hr style="margin:20px 0"><div class="chat-reply">'+formatMarkdown(d.analysis)+'</div>';elChatInput.value='';elAnalysisContent.scrollIntoView({behavior:'smooth',block:'end'});}
+    catch(e){showError('网络错误');}finally{hideLoading();elBtnChatSend.disabled=false;elChatInput.disabled=false;analysisInProgress=false;}
+});
 
-                if (data.error) {
-                    showError(data.error);
-                    return;
-                }
+// ========== 打印报告 ==========
+elBtnPdf.addEventListener('click',()=>{localStorage.setItem('bazi_plate',JSON.stringify(plateData));localStorage.setItem('bazi_analysis',analysisText||'');window.open('/report','_blank');});
+elBtnAnalysisPdf.addEventListener('click',()=>{if(!plateData||!analysisText)return;window.open('/report','_blank');});
 
-                if (!data.results || data.results.length === 0) {
-                    showError('未找到该地点，请尝试更详细的地名（如"广东省东莞市"）');
-                    return;
-                }
+// ========== 页面关闭提醒 ==========
+window.addEventListener('beforeunload', e => {
+    if (analysisInProgress) {
+        // 分析中关闭页面：保存 pending 状态（已由 doAnalyze 保存过，这里做二次确认）
+        savePendingAnalysis();
+        e.preventDefault();
+        e.returnValue = '分析正在进行中，关闭页面将丢失结果。确定离开吗？（重新打开页面可自动恢复）';
+        return e.returnValue;
+    }
+});
 
-                // 取第一个结果
-                const r = data.results[0];
-                selectCity({
-                    lon: r.lon,
-                    lat: r.lat,
-                    display_name: r.display_name,
-                });
-
-                // 显示其他候选
-                if (data.results.length > 1) {
-                    let html = elGeocodeStatus.innerHTML;
-                    html += '<div class="geocode-alt">其他候选：';
-                    data.results.slice(1).forEach((alt, i) => {
-                        html += `<a href="#" class="alt-link" data-lon="${alt.lon}" data-lat="${alt.lat}" data-name="${alt.display_name}">[${i + 1}] ${alt.display_name}</a> `;
-                    });
-                    html += '</div>';
-                    elGeocodeStatus.innerHTML = html;
-
-                    // 候选链接点击
-                    elGeocodeStatus.querySelectorAll('.alt-link').forEach(link => {
-                        link.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            selectCity({
-                                lon: parseFloat(link.dataset.lon),
-                                lat: parseFloat(link.dataset.lat),
-                                display_name: link.dataset.name,
-                            });
-                        });
-                    });
-                }
-
-            } catch (err) {
-                showError('网络错误或服务未启动，请确认服务器在运行');
-            } finally {
-                hideLoading();
-                elBtnGeocode.disabled = false;
-            }
-        });
-
-        // ============================================================
-        // 排盘
-        // ============================================================
-        elBtnPaipan.addEventListener('click', async () => {
-            hideError();
-
-            // 收集参数
-            const params = {
-                year: parseInt(elYear.value),
-                month: parseInt(elMonth.value),
-                day: parseInt(elDay.value),
-                hour: parseInt(elHour.value),
-                minute: parseInt(elMinute.value) || 0,
-                gender: document.querySelector('input[name="gender"]:checked').value,
-                longitude: parseFloat(elLongitude.value) || 113.75,
-                location: elLocation.value.trim() || '未知',
-            };
-
-            // 基本校验
-            if (!params.year || !params.month || !params.day) {
-                showError('请完整填写出生日期');
-                return;
-            }
-            if (params.year < 1900 || params.year > 2100) {
-                showError('年份范围 1900-2100');
-                return;
-            }
-
-            showLoading('正在排盘计算...');
-            elBtnPaipan.disabled = true;
-            elBtnPdf.disabled = true;
-
-            try {
-                const resp = await fetch('/api/paipan', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(params),
-                });
-                const data = await resp.json();
-
-                if (data.error) {
-                    showError(data.error);
-                    return;
-                }
-
-                plateData = data;
-                renderResult(data);
-                elResultSection.classList.remove('hidden');
-                elBtnPdf.disabled = false;
+// ========== 标签页可见性变化检测 ==========
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && analysisInProgress) {
+        // 回到标签页，检查是否已超时（超过 8 分钟没响应 → 可能已断线）
+        const elapsed = Date.now() - _analysisStartTime;
+        if (elapsed > 8 * 60 * 1000 && _analysisAbortController) {
+            // 超时，主动取消并发起重试
+            _analysisAbortController.abort();
+            _analysisAbortController = null;
+            const p = loadPendingAnalysis();
+            if (p && p.retries < 3) {
+                p.retries++;
+                localStorage.setItem('bazi_analysis_pending', JSON.stringify(p));
+                analysisInProgress = false;
                 elBtnAnalyze.disabled = false;
-                elAnalysisSection.classList.add('hidden');
-                analysisText = null;
-                elResultSection.scrollIntoView({ behavior: 'smooth' });
-
-            } catch (err) {
-                showError('网络错误，请检查服务是否启动');
-            } finally {
                 hideLoading();
-                elBtnPaipan.disabled = false;
+                showLoading('检测到分析超时，即将自动重试...');
+                setTimeout(() => doAnalyze(true), 2000);
             }
-        });
-
-        // ============================================================
-        // 渲染结果
-        // ============================================================
-        function renderResult(data) {
-            // 基本信息
-            const info = data.input;
-            const solar = data.solar;
-            const lunar = data.lunar;
-            const leap = lunar.is_leap ? '（闰月）' : '';
-
-            $('basic-info').innerHTML = `
-                <div><span class="info-label">公历</span><span class="info-value">${info.birth_datetime}</span></div>
-                <div><span class="info-label">农历</span><span class="info-value">${lunar.year}年${lunar.month}月${lunar.day}日${leap}</span></div>
-                <div><span class="info-label">时辰</span><span class="info-value">${data.shichen}</span></div>
-                <div><span class="info-label">性别</span><span class="info-value">${info.gender}</span></div>
-                <div><span class="info-label">出生地</span><span class="info-value">${info.location}（${info.longitude}°E）</span></div>
-                <div><span class="info-label">真太阳时校正</span><span class="info-value">${solar.correction_minutes > 0 ? '+' : ''}${solar.correction_minutes}分钟，约 ${solar.adjusted_hour} 时</span></div>
-                <div><span class="info-label">日主</span><span class="info-value">${data.ri_zhu}（${data.year_type}）</span></div>
-            `;
-
-            // 四柱表格
-            const pillars = data.pillars;
-            const orders = ['year', 'month', 'day', 'hour'];
-            const colNames = ['年柱', '月柱', '日柱', '时柱'];
-
-            const ganRow = ['<td class="row-label">干支</td>'];
-            const tianganRow = ['<td class="row-label">天干</td>'];
-            const dizhiRow = ['<td class="row-label">地支</td>'];
-            const shishenRow = ['<td class="row-label">十神</td>'];
-            const nayinRow = ['<td class="row-label">纳音</td>'];
-            const changshengRow = ['<td class="row-label">十二长生</td>'];
-            const cangganRow = ['<td class="row-label">藏干</td>'];
-
-            orders.forEach(p => {
-                const d = pillars[p];
-                const css = p === 'day' ? ' class="day-zhu"' : '';
-                ganRow.push(`<td${css}>${d.gz}<span class="gz-sub">${d.gan}${d.zhi}</span></td>`);
-                tianganRow.push(`<td${css}>${d.gan}</td>`);
-                dizhiRow.push(`<td${css}>${d.zhi}</td>`);
-                shishenRow.push(`<td${css}>${d.shishen}</td>`);
-                nayinRow.push(`<td${css}>${d.nayin}</td>`);
-                changshengRow.push(`<td${css}>${d.changsheng}</td>`);
-                const cg = d.canggan.map(c => `${c.gan}`).join(' · ');
-                cangganRow.push(`<td${css}>${cg}</td>`);
-            });
-
-            $('row-ganzhi').innerHTML = ganRow.join('');
-            $('row-tiangan').innerHTML = tianganRow.join('');
-            $('row-dizhi').innerHTML = dizhiRow.join('');
-            $('row-shishen').innerHTML = shishenRow.join('');
-            $('row-nayin').innerHTML = nayinRow.join('');
-            $('row-changsheng').innerHTML = changshengRow.join('');
-            $('row-canggan').innerHTML = cangganRow.join('');
-
-            // 起运信息
-            const qy = data.qiyun;
-            const kong = data.kongwang;
-            const kongDesc = orders
-                .filter(p => kong.pillars[p])
-                .map(p => colNames[orders.indexOf(p)] + '支' + pillars[p].zhi)
-                .join('、') || '无';
-            $('qiyun-info').innerHTML = `
-                <div><span class="info-label">起运年龄</span><span class="info-value">${qy.age} 岁（虚岁 ${qy.age_xu}）</span></div>
-                <div><span class="info-label">交运年份</span><span class="info-value">约 ${qy.year} 年</span></div>
-                <div><span class="info-label">大运方向</span><span class="info-value">${qy.direction}（距节气 ${qy.diff_days} 天）</span></div>
-                <div><span class="info-label">空亡</span><span class="info-value">${kong.kong1}${kong.kong2}（${kongDesc}）</span></div>
-                <div><span class="info-label">胎元</span><span class="info-value">${data.taiyuan}</span></div>
-                <div><span class="info-label">命宫 / 身宫</span><span class="info-value">${data.minggong} / ${data.shengong}</span></div>
-            `;
-
-            // 大运表格
-            const dayunHtml = data.dayun.map(d => `
-                <tr>
-                    <td>第 ${d.step} 步</td>
-                    <td class="dayun-gz">${d.gz}</td>
-                    <td>${d.start_age} - ${d.end_age} 岁</td>
-                    <td>${d.start_year} - ${d.end_year} 年</td>
-                </tr>
-            `).join('');
-            $('dayun-tbody').innerHTML = dayunHtml;
-
-            // 神煞信息
-            const dzAll = orders.map(p => pillars[p].zhi);
-            $('shensha-info').innerHTML = `
-                <div><span class="info-label">日支${data.pillars.day.zhi}</span><span class="info-value">日坐${data.pillars.day.changsheng}，${data.ri_zhu}日主${data.pillars.day.zhi === '亥' ? '驿马星动' : data.pillars.day.zhi === '寅' || data.pillars.day.zhi === '申' || data.pillars.day.zhi === '巳' ? '四生支' : data.pillars.day.zhi === '子' || data.pillars.day.zhi === '午' || data.pillars.day.zhi === '卯' || data.pillars.day.zhi === '酉' ? '四正支' : '四库支'}</span></div>
-                <div><span class="info-label">月支${data.pillars.month.zhi}</span><span class="info-value">月令${data.pillars.month.changsheng}</span></div>
-                <div><span class="info-label">年支${data.pillars.year.zhi}</span><span class="info-value">纳音${data.pillars.year.nayin}</span></div>
-                <div><span class="info-label">时支${data.pillars.hour.zhi}</span><span class="info-value">时柱${data.pillars.hour.shishen}，${data.pillars.hour.changsheng}</span></div>
-            `;
         }
+    }
+});
 
-        // ============================================================
-        // 下载 PDF
-        // ============================================================
-        elBtnPdf.addEventListener('click', async () => {
-            hideError();
-            showLoading('正在生成 PDF 报告...');
-            elBtnPdf.disabled = true;
-
-            try {
-                const params = {
-                    year: parseInt(elYear.value),
-                    month: parseInt(elMonth.value),
-                    day: parseInt(elDay.value),
-                    hour: parseInt(elHour.value),
-                    minute: parseInt(elMinute.value) || 0,
-                    gender: document.querySelector('input[name="gender"]:checked').value,
-                    longitude: parseFloat(elLongitude.value) || 113.75,
-                    location: elLocation.value.trim() || '未知',
-                };
-
-                const resp = await fetch('/api/pdf', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(params),
-                });
-
-                if (!resp.ok) {
-                    const errData = await resp.json();
-                    showError(errData.error || 'PDF 生成失败');
-                    return;
-                }
-
-                // 触发浏览器下载
-                const blob = await resp.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `八字命盘_${params.year}${String(params.month).padStart(2,'0')}${String(params.day).padStart(2,'0')}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-
-            } catch (err) {
-                showError('网络错误，PDF 下载失败');
-            } finally {
-                hideLoading();
-                elBtnPdf.disabled = false;
-            }
-        });
-
-        // ============================================================
-        // 深度分析
-        // ============================================================
-        const elBtnAnalyze = $('btn-analyze');
-        const elAnalysisSection = $('analysis-section');
-        const elAnalysisMeta = $('analysis-meta');
-        const elAnalysisContent = $('analysis-content');
-        const elBtnAnalysisPdf = $('btn-analysis-pdf');
-        let analysisText = null;
-
-        elBtnAnalyze.addEventListener('click', async () => {
-            if (!plateData) return;
-
-            hideError();
-            showLoading('正在调用 Agent 进行深度分析（约需 60-120 秒，请耐心等待）...');
-            elBtnAnalyze.disabled = true;
-            elAnalysisSection.classList.add('hidden');
-
-            try {
-                const resp = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ plate: plateData }),
-                });
-
-                const data = await resp.json();
-
-                if (!data.success) {
-                    showError(data.error || '分析失败');
-                    return;
-                }
-
-                analysisText = data.analysis;
-
-                // 渲染分析结果
-                elAnalysisMeta.innerHTML = `
-                    <span class="analysis-model">模型：${data.model || 'DeepSeek'}</span>
-                    <span class="analysis-tokens">Token：${JSON.stringify(data.usage)}</span>
-                `;
-
-                // 将 Markdown 转为 HTML（简单处理）
-                let html = analysisText
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/\n\n/g, '</p><p>')
-                    .replace(/\n/g, '<br>')
-                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-                    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
-                    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-                    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
-                    .replace(/^- (.+)$/gm, '<li>$1</li>')
-                    .replace(/\|(.+)\|/g, (match) => {
-                        // 简单表格处理
-                        return match.includes('---') ? '' : '<br>' + match + '<br>';
-                    });
-
-                elAnalysisContent.innerHTML = '<p>' + html + '</p>';
+// ========== 恢复分析（页面加载时） ==========
+(function restoreAnalysis(){
+    // 1) 优先恢复已完成的完整分析
+    const saved = localStorage.getItem('bazi_analysis'), savedPlate = localStorage.getItem('bazi_plate');
+    if (saved && savedPlate) {
+        try {
+            const sd = JSON.parse(savedPlate), inp = sd.input;
+            if (inp && inp.birth_datetime && inp.birth_datetime.startsWith(`${elYear.value}-${String(elMonth.value).padStart(2, '0')}-${String(elDay.value).padStart(2, '0')} ${String(elHour.value).padStart(2, '0')}`) && inp.gender === document.querySelector('input[name="gender"]:checked').value) {
+                plateData = sd; analysisText = saved;
+                renderResult(plateData);
+                elResultSection.classList.remove('hidden');
+                elBtnPdf.disabled = false; elBtnAnalyze.disabled = false;
+                elAnalysisContent.innerHTML = formatMarkdown(analysisText);
                 elAnalysisSection.classList.remove('hidden');
                 elBtnAnalysisPdf.disabled = false;
+            } else {
+                localStorage.removeItem('bazi_analysis');
+                localStorage.removeItem('bazi_plate');
+            }
+        } catch(e) {}
+    }
 
-                // 滚动到分析区
-                elAnalysisSection.scrollIntoView({ behavior: 'smooth' });
+    // 2) 检查是否有中断的待处理分析
+    const pending = loadPendingAnalysis();
+    if (pending && !saved) {
+        // 恢复 plateData 并触发自动重试
+        plateData = pending.plate;
+        renderResult(plateData);
+        elResultSection.classList.remove('hidden');
+        elBtnPdf.disabled = false; elBtnAnalyze.disabled = false;
+        document.getElementById('charts-section').classList.remove('hidden');
+        // 标记为已完成恢复，等用户回来后再触发分析
+        if (pending.retries < 3) {
+            // 延迟一下再重试，让页面先渲染
+            setTimeout(() => {
+                showLoading('检测到上次分析中断，正在自动恢复...');
+                doAnalyze(true);
+            }, 1000);
+        } else {
+            showError('上次分析已失败 3 次，请手动重新开始');
+            clearPendingAnalysis();
+        }
+    }
+})();
 
-            } catch (err) {
-                showError('网络错误或分析超时，请重试');
-            } finally {
-                hideLoading();
-                elBtnAnalyze.disabled = false;
+// ========== 网络信息 ==========
+(async function loadNetworkInfo(){try{const r=await fetch('/api/network-info');const info=await r.json();const urls=[`<a href="${info.access_url}" target="_blank">${info.access_url}</a>`];if(info.lan_urls&&info.lan_urls.length>0){urls.push('<span style="font-size:0.75em;color:#aaa">局域网：</span>');info.lan_urls.forEach(url=>urls.push(`<a href="${url}" target="_blank">${url}</a>`));}$('access-urls').innerHTML=urls.join('<br>');if(info.lan_urls&&info.lan_urls.length>0){const qrUrl='/api/qrcode?url='+encodeURIComponent(info.lan_urls[0]);$('access-qr').innerHTML=`<img src="${qrUrl}" alt="扫码访问" class="qr-img">`;$('access-hint').innerHTML='⚠️ 手机和电脑需连接<strong>同一 WiFi</strong>才能访问局域网地址';}else{$('access-qr').innerHTML='';$('access-hint').innerHTML='🌐 已部署到公网，任何人可直接访问';}}catch(e){$('access-urls').innerHTML=window.location.origin;$('access-hint').innerHTML='';}})();
+
+// ========== 清空表单 ==========
+$('btn-clear').addEventListener('click', () => {
+    [elYear,elMonth,elDay,elHour,elMinute,elLocation,elLongitude].forEach(el => el.value = '');
+    elLongitude.value = '120';
+    elUseTrueSolar.checked = false; elLngLat.style.display = 'none';
+    elGeocodeStatus.classList.add('hidden'); elSuggestions.classList.add('hidden');
+    plateData = null; analysisText = null; conversationMessages = null;
+    elResultSection.classList.add('hidden'); elAnalysisSection.classList.add('hidden');
+    document.getElementById('charts-section').classList.add('hidden');
+    elBtnPdf.disabled = true; elBtnAnalyze.disabled = true; elBtnAnalysisPdf.disabled = true;
+    localStorage.removeItem('bazi_form'); localStorage.removeItem('bazi_analysis'); localStorage.removeItem('bazi_plate');
+    clearPendingAnalysis();
+    hideError(); autoFillNow();
+});
+
+// ========== 初始化 ==========
+loadForm(); autoFillNow();
+document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter')elBtnPaipan.click();});
+
+// ========== 滚动揭示（IntersectionObserver，受 Species in Pieces 启发）==========
+function setupScrollReveal() {
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.animation = 'revealIn 0.6s cubic-bezier(0.22,0.61,0.36,1) forwards';
+                observer.unobserve(entry.target);
             }
         });
+    }, { threshold: 0.15, rootMargin: '0px 0px -30px 0px' });
 
-        // 下载含分析 PDF
-        elBtnAnalysisPdf.addEventListener('click', async () => {
-            if (!plateData || !analysisText) return;
+    // 观察分析区的 h2/h3/blockquote
+    const els = document.querySelectorAll('#analysis-content h2, #analysis-content h3, #analysis-content blockquote');
+    els.forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(20px)';
+        observer.observe(el);
+    });
+}
+// 每次分析渲染后调用
+const _origRenderMarkdown = formatMarkdown;
+formatMarkdown = function(text) {
+    const html = _origRenderMarkdown(text);
+    setTimeout(setupScrollReveal, 200);  // DOM 渲染后再绑定
+    return html;
+};
 
-            hideError();
-            showLoading('正在生成含分析 PDF...');
-            elBtnAnalysisPdf.disabled = true;
+// ========== 粒子庆祝（分析完成时）==========
+function particleBurst(x, y) {
+    const colors = ['#d4a843','#f5e6a3','#c8a835','#e8c870','#f0d878','#fff','#8b6914'];
+    const count = 60;
+    const frag = document.createDocumentFragment();
 
-            try {
-                const resp = await fetch('/api/pdf', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ...plateData.input,
-                        year: parseInt(plateData.input.birth_datetime.substring(0, 4)),
-                        month: parseInt(plateData.input.birth_datetime.substring(5, 7)),
-                        day: parseInt(plateData.input.birth_datetime.substring(8, 10)),
-                        hour: parseInt(plateData.input.birth_datetime.substring(11, 13)),
-                        minute: parseInt(plateData.input.birth_datetime.substring(14, 16) || '0'),
-                        gender: plateData.input.gender,
-                        longitude: plateData.input.longitude,
-                        location: plateData.input.location,
-                        analysis: analysisText,
-                    }),
-                });
+    for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
+        const velocity = 80 + Math.random() * 160;
+        const size = 3 + Math.random() * 6;
+        const color = colors[Math.floor(Math.random() * colors.length)];
 
-                if (!resp.ok) {
-                    const errData = await resp.json().catch(() => ({}));
-                    showError(errData.error || 'PDF 生成失败');
-                    return;
-                }
+        p.style.cssText = `
+            position:fixed;left:${x}px;top:${y}px;width:${size}px;height:${size}px;
+            background:${color};border-radius:${Math.random()>0.5?'50%':'2px'};
+            pointer-events:none;z-index:9999;
+            --dx:${Math.cos(angle)*velocity}px;--dy:${Math.sin(angle)*velocity-50}px;
+            animation:particleFly ${0.6+Math.random()*0.8}s ease-out forwards;
+            animation-delay:${Math.random()*0.15}s;
+        `;
+        frag.appendChild(p);
+    }
+    document.body.appendChild(frag);
+    // 动画结束后清理
+    setTimeout(() => {
+        document.querySelectorAll('[style*="particleFly"]').forEach(el => el.remove());
+    }, 1500);
+}
 
-                const blob = await resp.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `八字分析报告_${plateData.input.birth_datetime.substring(0, 10)}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-
-            } catch (err) {
-                showError('网络错误，下载失败');
-            } finally {
-                hideLoading();
-                elBtnAnalysisPdf.disabled = false;
-            }
-        });
-
-        // ============================================================
-        // 网络访问信息
-        // ============================================================
-        (async function loadNetworkInfo() {
-            try {
-                const resp = await fetch('/api/network-info');
-                const info = await resp.json();
-
-                const urls = [];
-                urls.push(`<a href="${info.localhost}" target="_blank">${info.localhost}</a> （本机）`);
-                info.lan_urls.forEach(url => {
-                    urls.push(`<a href="${url}" target="_blank">${url}</a>`);
-                });
-
-                const urlsDiv = document.getElementById('access-urls');
-                urlsDiv.innerHTML = urls.join('<br>');
-
-                // 生成第一个 LAN URL 的二维码
-                if (info.lan_urls.length > 0) {
-                    const qrDiv = document.getElementById('access-qr');
-                    const qrUrl = `/api/qrcode?url=${encodeURIComponent(info.lan_urls[0])}`;
-                    qrDiv.innerHTML = `<img src="${qrUrl}" alt="扫码访问" class="qr-img">`;
-                }
-            } catch (err) {
-                document.getElementById('access-urls').innerHTML = '（仅本机可用）';
-            }
-        })();
-
-        // ============================================================
-        // 键盘快捷键
-        // ============================================================
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'Enter') {
-                elBtnPaipan.click();
-            }
-        });
-    </script>
+// ========== 按钮点击波纹 ==========
+document.addEventListener('click', e => {
+    const btn = e.target.closest('.btn');
+    if (!btn || btn.disabled) return;
+    const ripple = document.createElement('span');
+    ripple.className = 'btn-ripple';
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+    ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+    btn.appendChild(ripple);
+    ripple.addEventListener('animationend', () => ripple.remove());
+});
+</script>
 </body>
 </html>
