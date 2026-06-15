@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>八字命理分析报告</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;color:#1a1a1a;line-height:1.8;max-width:780px;margin:0 auto;padding:50px 28px}
+.cover{text-align:center;padding:80px 0;page-break-after:always}
+.cover h1{font-size:2.4em;color:#000;letter-spacing:.08em;margin-bottom:36px}
+.cover .info{font-size:1.1em;color:#555;line-height:2.4}
+.cover .line{width:50%;height:1px;background:#ccc;margin:36px auto}
+h2{font-size:1.35em;color:#000;border-bottom:2px solid #000;padding-bottom:8px;margin:48px 0 18px;page-break-after:avoid}
+h3{font-size:1.1em;color:#222;margin:28px 0 12px}
+h4{font-size:1em;color:#444;margin:18px 0 8px}
+p{margin:10px 0;text-align:justify}
+ul,ol{margin:10px 0 10px 1.5em}
+li{margin:5px 0}
+table{width:100%;border-collapse:collapse;margin:16px 0}
+td,th{padding:9px 14px;border:1px solid #ddd;text-align:center;font-size:.88em}
+thead th{background:#f5f5f5;font-weight:700;font-size:.82em;text-transform:uppercase;letter-spacing:.03em}
+strong{color:#000}
+blockquote{margin:14px 0;padding:10px 18px;border-left:3px solid #000;background:#f9f9f9;color:#555}
+.highlight{background:#fdf6e8;padding:2px 6px;border-radius:3px}
+.footer{margin-top:40px;padding-top:16px;border-top:1px solid #ddd;color:#999;font-size:.8em;text-align:center}
+.noprint{text-align:center;margin:20px 0}
+.btn-print{padding:12px 40px;font-size:1.1em;background:#c4963a;color:#fff;border:none;border-radius:6px;cursor:pointer}
+@media print{
+  .noprint{display:none}
+  body{padding:20px 0}
+  @page{margin:1.5cm}
+}
+</style>
+</head>
+<body>
+
+<div class="noprint">
+  <button class="btn-print" onclick="window.print()">🖨️ 打印报告 / 另存为 PDF</button>
+  <p style="color:#999;margin-top:10px;font-size:.9em">点击按钮后，在打印对话框中选择「另存为 PDF」即可</p>
+</div>
+
+<div id="content">
+  <p style="text-align:center;color:#999;padding:60px">正在加载报告数据...</p>
+</div>
+
+<script>
+// 从 localStorage 读取分析数据
+const plateData = localStorage.getItem('bazi_plate');
+const analysisText = localStorage.getItem('bazi_analysis');
+
+if (plateData) {
+    const p = JSON.parse(plateData);
+    const hasAnalysis = analysisText && analysisText.length > 10;
+
+    // 将 Markdown 转 HTML（仅当有分析时）
+    let analysisHtml = '';
+    if (hasAnalysis) {
+        let html = analysisText
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+        html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+        html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+        html = html.replace(/^# (.+)$/gm, '<h2>$1</h2>');
+        html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+        let blocks = html.split(/\n\n+/);
+        analysisHtml = blocks.map(block => {
+            block = block.trim();
+            if (!block) return '';
+            if (/^<(h[2-4]|li|hr|table)/.test(block)) return block;
+            block = block.replace(/\n/g, '<br>');
+            return '<p>' + block + '</p>';
+        }).join('\n');
+    }
+
+    const info = p.input;
+    const lunar = p.lunar;
+    const solar = p.solar;
+    const qy = p.qiyun;
+    const pillars = p.pillars;
+
+    const cover = `
+<div class="cover">
+  <h1>八字命理分析报告</h1>
+  <div class="line"></div>
+  <div class="info">
+    <p>公历：${info.birth_datetime}</p>
+    <p>农历：${lunar.year}年${lunar.month}月${lunar.day}日</p>
+    <p>性别：${info.gender} &nbsp; 出生地：${info.location}（${info.longitude}°E）</p>
+    <p>真太阳时校正：${solar.correction_minutes}分钟</p>
+    <p>日主：${p.ri_zhu}（${p.year_type}）</p>
+    <p>起运：${qy.age}岁 ${qy.direction}</p>
+  </div>
+  <div class="line"></div>
+</div>
+    `;
+
+    // 四柱表
+    const orders = ['year','month','day','hour'];
+    let tableHtml = '<h2>四柱命盘</h2><table><tr><th></th><th>年柱</th><th>月柱</th><th>日柱</th><th>时柱</th></tr>';
+    const rows = ['干支','天干','地支','十神','纳音','十二长生','藏干'];
+    const keys = ['gz','gan','zhi','shishen','nayin','changsheng','canggan'];
+    rows.forEach((label, ri) => {
+        tableHtml += '<tr><th>' + label + '</th>';
+        orders.forEach(o => {
+            let val = '';
+            if (keys[ri] === 'canggan') {
+                val = (pillars[o].canggan || []).map(c => c.gan).join(' · ') || '—';
+            } else {
+                val = pillars[o][keys[ri]] || '—';
+            }
+            tableHtml += '<td>' + val + '</td>';
+        });
+        tableHtml += '</tr>';
+    });
+    tableHtml += '</table>';
+
+    // 大运表
+    let dayunHtml = '<h2>大运</h2><table><tr><th>步数</th><th>干支</th><th>年龄</th><th>年份</th></tr>';
+    (p.dayun || []).forEach(d => {
+        dayunHtml += `<tr><td>第${d.step}步</td><td><strong>${d.gz}</strong></td><td>${d.start_age}-${d.end_age}岁</td><td>${d.start_year}-${d.end_year}年</td></tr>`;
+    });
+    dayunHtml += '</table>';
+
+    let finalHtml = cover + tableHtml + dayunHtml;
+    if (hasAnalysis) {
+        finalHtml += '<hr style="margin:30px 0">' + analysisHtml;
+    } else {
+        finalHtml += '<p style="text-align:center;color:#999;padding:30px;font-size:.9em">💡 提示：先进行「深度分析」后再打开此页面可获得完整分析报告</p>';
+    }
+    document.getElementById('content').innerHTML = finalHtml;
+} else {
+    document.getElementById('content').innerHTML = '<p style="text-align:center;color:#c33;padding:40px">未找到排盘数据。请先在首页进行排盘后再打开此页面。</p>';
+}
+</script>
+
+</body>
+</html>

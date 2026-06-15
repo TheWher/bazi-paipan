@@ -48,46 +48,41 @@ def _find_cjk_font(font_names: list[str]) -> str | None:
 
 
 def _setup_fonts(pdf: FPDF):
-    """配置 PDF 中文字体，自动适配平台"""
-    font_map = {
-        'Song': ['simsun.ttc', 'simsun.ttf', 'NotoSansCJKsc-Regular.otf', 'NotoSansSC-Regular.otf',
-                 'wqy-zenhei.ttc', 'wqy-microhei.ttc', 'DroidSansFallback.ttf'],
-        'Hei':  ['simhei.ttf', 'NotoSansCJKsc-Bold.otf', 'NotoSansSC-Bold.otf',
-                 'wqy-zenhei.ttc', 'wqy-microhei.ttc', 'DroidSansFallback.ttf'],
-        'Kai':  ['simkai.ttf', 'NotoSerifCJKsc-Regular.otf', 'NotoSerifSC-Regular.otf',
-                 'wqy-zenhei.ttc', 'DroidSansFallback.ttf'],
-        'Fang': ['simfang.ttf', 'NotoSerifCJKsc-Regular.otf', 'NotoSerifSC-Regular.otf',
-                 'wqy-zenhei.ttc', 'DroidSansFallback.ttf'],
-    }
-
-    for family, names in font_map.items():
-        font_path = _find_cjk_font(names)
-        if font_path:
-            try:
-                pdf.add_font(family, '', font_path, uni=True)
-                continue
-            except Exception:
-                pass
-        # 回退：尝试用已注册的字体
-        for fb_name in names:
-            if os.path.basename(font_path or '') == fb_name:
-                continue
-            fb_path = _find_cjk_font([fb_name])
-            if fb_path:
-                try:
-                    pdf.add_font(family, '', fb_path, uni=True)
-                    break
-                except Exception:
-                    pass
-
-    # 如果连一个中文字体都没有，报明确错误
-    if 'Song' not in pdf.fonts:
+    """配置 PDF 中文字体，自动适配平台。找到任意 CJK 字体即可用于所有样式。"""
+    # 搜索所有可能的 CJK 字体名
+    all_names = [
+        'bazi_font.ttf',
+        'simsun.ttc', 'simsun.ttf', 'simhei.ttf', 'simkai.ttf', 'simfang.ttf',
+        'NotoSansCJKsc-Regular.otf', 'NotoSansCJKsc-Bold.otf', 'NotoSansSC-Regular.otf',
+        'NotoSansSC-Bold.otf', 'NotoSerifCJKsc-Regular.otf', 'NotoSerifSC-Regular.otf',
+        'wqy-zenhei.ttc', 'wqy-microhei.ttc', 'DroidSansFallback.ttf',
+        'msyh.ttf', 'msyh.ttc', 'mingliu.ttc',
+    ]
+    font_path = _find_cjk_font(all_names)
+    if not font_path:
         raise RuntimeError(
             "未找到中文字体文件。请将 simsun.ttc 或 NotoSansCJKsc-Regular.otf "
             "放入项目 fonts/ 目录，或安装中文字体包。\n"
             "Ubuntu/Debian: sudo apt install fonts-noto-cjk\n"
             "PythonAnywhere: 将字体上传到 ~/bazi-paipan/fonts/ 目录"
         )
+
+    # 预修复字体兼容性：fontTools lazy=True 在某些平台/字体组合下失败
+    # 用 lazy=False 完整加载后再保存，强制修复表格结构
+    from fontTools.ttLib import TTFont
+    repaired_path = font_path + '.repaired.ttf'
+    if not os.path.exists(repaired_path):
+        f = TTFont(font_path, lazy=False)
+        f.save(repaired_path)
+    font_path = repaired_path
+
+    # 同一个字体注册为多个样式名
+    for family in ('Song', 'Hei', 'Kai', 'Fang'):
+        pdf.add_font(family, '', font_path, uni=True)
+
+    # 确保核心字体都注册成功
+    pdf.add_font('CJK', '', font_path, uni=True)
+    pdf.set_fallback_fonts(['CJK'])
 
 
 class BaziPDF(FPDF):

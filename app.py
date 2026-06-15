@@ -112,9 +112,9 @@ def _cache_set(key: str, result: dict):
     _analysis_cache[key] = {"result": result, "ts": _time.time()}
 
 # 反馈日志目录
-FEEDBACK_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedback_logs")
+FEEDBACK_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedback")
 
-def save_feedback_log(plate_dict: dict, messages: list[dict], ip: str = "", turn_type: str = "initial"):
+def save_feedback_log(plate_dict: dict, messages: list[dict], ip: str = "", turn_type: str = "initial") -> str | None:
     """保存深度分析对话日志，用于后续优化 Agent 准确性。
 
     Args:
@@ -122,6 +122,9 @@ def save_feedback_log(plate_dict: dict, messages: list[dict], ip: str = "", turn
         messages: 完整对话 [{role, content}, ...]
         ip: 请求 IP（脱敏用）
         turn_type: "initial" 或 "continue"
+
+    Returns:
+        保存的文件名，失败返回 None
     """
     try:
         os.makedirs(FEEDBACK_DIR, exist_ok=True)
@@ -158,9 +161,11 @@ def save_feedback_log(plate_dict: dict, messages: list[dict], ip: str = "", turn
             json.dump(log, f, ensure_ascii=False, indent=2)
 
         print(f"[Feedback] Saved: {filename}")
+        return filename
 
     except Exception:
         pass  # 日志记录失败不影响主流程
+    return None
 
 
 def check_rate_limit(ip: str, max_requests: int = 3, window_minutes: int = 60) -> bool:
@@ -628,7 +633,7 @@ def api_chart_dayun_ring():
 
 @app.route("/api/analyze", methods=["POST"])
 def api_analyze():
-    """Agent 深度分析：调用 LLM 对命盘进行 7 级递进分析"""
+    """Agent 深度分析：调用 LLM 对命盘进行 9 级递进分析（调候→格局→旺衰→病药→十神→刑冲合害→神煞→大运流年→四维交叉验证）"""
     try:
         data = request.get_json(force=True)
     except Exception:
@@ -686,13 +691,14 @@ def api_analyze():
 
     if result["success"]:
         # 保存反馈日志
-        save_feedback_log(plate_dict, result.get("messages", []), ip=ip, turn_type="initial")
+        feedback_file = save_feedback_log(plate_dict, result.get("messages", []), ip=ip, turn_type="initial")
         response_data = {
             "success": True,
             "analysis": result["analysis"],
             "model": result.get("model", ""),
             "usage": result.get("usage", {}),
             "messages": result.get("messages", []),
+            "feedback_file": feedback_file or "",
         }
         # 写入缓存（后续重试直接返回）
         if cache_key:
@@ -757,6 +763,125 @@ def api_analyze_continue():
         return jsonify({"success": True, "analysis": result["analysis"]})
     else:
         return jsonify({"success": False, "error": result["error"]}), 500
+
+
+# ============================================================
+# 验盘反馈 API
+# ============================================================
+
+@app.route("/api/verify", methods=["POST"])
+def api_verify():
+    """保存验盘反馈：用户对 Agent 验证预测的确认/纠正标签。
+
+    Request:
+        {feedback_file: "20260615_034827_乙_8592.json",
+         predictions: [{index: 0, label: "correct"|"wrong"|"partially_correct",
+                        user_note: "实际是考上民办二本，发挥更好"}]}
+    """
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求数据格式错误"}), 400
+
+    filename = data.get("feedback_file", "").strip()
+    predictions = data.get("predictions", [])
+
+    if not filename or not predictions:
+        return jsonify({"error": "缺少参数: feedback_file 或 predictions"}), 400
+
+    # 安全检查：防止路径穿越
+    if "/" in filename or "\\" in filename or ".." in filename:
+        return jsonify({"error": "无效的文件名"}), 400
+
+    filepath = os.path.join(FEEDBACK_DIR, filename)
+    if not os.path.exists(filepath):
+        return jsonify({"error": "反馈日志文件不存在"}), 404
+
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            log = json.load(f)
+
+        # 初始化 verification 字段
+        if "verification" not in log:
+            log["verification"] = {"predictions": [], "summary": {}}
+
+        # 合并预测标签（去重，按 index 覆盖）
+        existing_by_idx = {p["index"]: p for p in log["verification"]["predictions"]}
+        for pred in predictions:
+            existing_by_idx[pred["index"]] = {
+                "index": pred["index"],
+                "label": pred.get("label", "unlabeled"),
+                "user_note": pred.get("user_note", ""),
+                "verified_at": datetime.now().isoformat(timespec="seconds"),
+            }
+        log["verification"]["predictions"] = sorted(
+            existing_by_idx.values(), key=lambda x: x["index"]
+        )
+
+        # 计算汇总
+        labels = [p["label"] for p in log["verification"]["predictions"]]
+        log["verification"]["summary"] = {
+            "total": len(labels),
+            "correct": labels.count("correct"),
+            "wrong": labels.count("wrong"),
+            "partially_correct": labels.count("partially_correct"),
+            "hit_rate": round(
+                (labels.count("correct") + labels.count("partially_correct") * 0.5)
+                / max(len(labels), 1),
+                2,
+            ),
+        }
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(log, f, ensure_ascii=False, indent=2)
+
+        return jsonify({
+            "success": True,
+            "summary": log["verification"]["summary"],
+        })
+
+    except Exception as e:
+        return jsonify({"error": f"保存反馈失败: {str(e)}"}), 500
+
+
+@app.route("/api/feedback/list", methods=["GET"])
+def api_feedback_list():
+    """列出所有反馈日志的摘要信息，用于评估面板。"""
+    limit = request.args.get("limit", 50, type=int)
+    verified_only = request.args.get("verified_only", "0") == "1"
+
+    try:
+        results = []
+        files = sorted(
+            [f for f in os.listdir(FEEDBACK_DIR) if f.endswith(".json")],
+            reverse=True,
+        )
+        for fn in files[:limit]:
+            filepath = os.path.join(FEEDBACK_DIR, fn)
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    log = json.load(f)
+                entry = {
+                    "filename": fn,
+                    "timestamp": log.get("timestamp", "?"),
+                    "turn_type": log.get("turn_type", "?"),
+                    "plate_summary": log.get("plate_summary", {}),
+                    "verification": log.get("verification", {}).get("summary"),
+                    "has_verification": "verification" in log,
+                }
+                if verified_only and not entry["has_verification"]:
+                    continue
+                results.append(entry)
+            except Exception:
+                continue
+
+        return jsonify({
+            "total_files": len(files),
+            "results": results,
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ============================================================

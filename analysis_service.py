@@ -3,7 +3,7 @@
 """八字深度分析服务
 
 调用 DeepSeek Anthropic 兼容 API，以 traditional-bazi-master Agent
-的系统提示词为指导，对命盘数据进行 7 级递进分析。
+的系统提示词为指导，对命盘数据进行 9 级递进分析（调候→格局→旺衰→病药→十神→刑冲合害→神煞→大运流年→四维交叉验证）。
 """
 
 import json
@@ -43,6 +43,20 @@ if not API_CONFIG.get("api_key"):
         except Exception:
             pass
 
+# 3) config.local.py（本地/部署敏感配置，不提交 Git）
+if not API_CONFIG.get("api_key"):
+    CONFIG_LOCAL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.local.py")
+    if os.path.exists(CONFIG_LOCAL):
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("config_local", CONFIG_LOCAL)
+            cfg = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(cfg)
+            for k in ("base_url", "model", "api_key"):
+                API_CONFIG.setdefault(k, getattr(cfg, "API_CONFIG", {}).get(k, ""))
+        except Exception:
+            pass
+
 # Agent 定义文件
 AGENT_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
@@ -64,11 +78,7 @@ def _load_system_prompt() -> str:
         if end != -1:
             content = content[end + 3:].strip()
 
-    # 去除末尾的 Persistent Agent Memory 部分（让 Agent 专注于分析）
-    memory_marker = "# Persistent Agent Memory"
-    idx = content.find(memory_marker)
-    if idx != -1:
-        content = content[:idx].strip()
+    # 保留完整 Agent 定义（含 Memory 部分），与 CLI 完全一致
 
     return content
 
@@ -88,6 +98,8 @@ def _build_user_message(plate_dict: dict) -> str:
 
     # 基础信息
     msg_parts.append("请根据以下八字命盘进行完整的命理分析。")
+    msg_parts.append("")
+    msg_parts.append(f"**当前日期：{time.strftime('%Y年%m月%d日')}**（用于确定当前流年和大运位置）")
     msg_parts.append("")
     msg_parts.append("## 命盘数据")
     msg_parts.append("")
@@ -158,20 +170,35 @@ def _build_user_message(plate_dict: dict) -> str:
     # 分析要求
     msg_parts.append("## 分析要求")
     msg_parts.append("")
-    msg_parts.append("请按你的 7 级递进分析方法，输出完整的命理分析报告：")
+    msg_parts.append("请按你的 9 级递进分析方法（调候→格局→旺衰→病药→十神→刑冲合害→神煞→大运流年）和四维交叉验证，输出完整的命理分析报告。**注意排版美观**：")
     msg_parts.append("")
-    msg_parts.append("1. **命盘综述**（四柱确认、格局判定、用神喜忌）")
-    msg_parts.append("2. **格局分析**（从月令出发，判定格局成败、是否有救应）")
-    msg_parts.append("3. **旺衰判断**（得令/得地/得势综合评估，身强身弱）")
-    msg_parts.append("4. **调候需求**（寒暖燥湿分析）")
-    msg_parts.append("5. **十神分析**（十神组合映射到性格、六亲）")
-    msg_parts.append("6. **刑冲合害**（地支关系及影响）")
-    msg_parts.append("7. **大运走势**（每一步大运的吉凶简评 + 当前大运详细分析）")
-    msg_parts.append("8. **事业财运**（行业方向、创业vs上班、财运层次、时机）")
-    msg_parts.append("9. **婚姻感情**（配偶特征、正缘窗口、婚姻质量、建议）")
-    msg_parts.append("10. **健康养生**（先天薄弱环节、养生方向）")
+    msg_parts.append("- 每个大章节用 `##` 标题，章之间空一行")
+    msg_parts.append("- 小节用 `###` 标题")
+    msg_parts.append("- 每个段落不超过 5 行，段落之间空一行")
+    msg_parts.append("- 对比、分类等内容尽量用表格呈现")
+    msg_parts.append("- 重点词汇用 `**粗体**` 强调")
     msg_parts.append("")
-    msg_parts.append("要求：每个结论必须说明五行/十神/格局依据，引用经典出处。术语严格按核心概念库定义。遇不确定处标明"待验证"。")
+    msg_parts.append("**分析前必须先验盘！** 在正式批断前，根据此命盘反推 2-3 件过去已发生的事（从以下验证事件中选：学历/高考年份、父母家境、搬家迁徙年份、重大伤病年份、初次恋爱年份），预测其特征并请用户对照验证。这是核查时辰是否准确的关键步骤——时辰偏差半小时就可能全盘错位。")
+    msg_parts.append("")
+    msg_parts.append("**验盘输出格式：** 先以\"在正式批断之前，我先根据当前排定的命盘，反推过去几件已发生的事，你帮我对照一下是否吻合——这一步是为了验证时辰是否准确\"开场，然后逐条给出预测（如\"你XX岁前后学业表现应该是...你实际的学历情况如何？\"），待用户反馈后再进入正式批断。如果用户尚未反馈，验盘后先暂停，不要继续后面的章节。")
+    msg_parts.append("")
+    msg_parts.append("验盘通过后，按以下章节顺序输出完整的命理分析报告。**注意排版美观**：")
+    msg_parts.append("")
+    msg_parts.append("1. ## 命盘综述（四柱确认、日主五行、格局初判）")
+    msg_parts.append("2. ## 调候分析（第一优先——寒暖燥湿检查，夏冬出生必先看，有无调候用神）")
+    msg_parts.append("3. ## 格局分析（第二优先——从月令出发，判定格局成败、是否有救应）")
+    msg_parts.append("4. ## 旺衰判断（第三优先——得令/得地/得势综合评估，注意旺衰不是目的）")
+    msg_parts.append("5. ## 病药分析（第四优先——找出命局病症与解药，有病有药还是无药可救）")
+    msg_parts.append("6. ## 流通分析（检查命局五行流通性——天干地支是否连续相生、有无截断淤堵点、通关是否到位。金→水→木→火→土顺生为流通佳，相战无通关为淤堵）")
+    msg_parts.append("7. ## 十神与性格（十神组合映射到性格特质）")
+    msg_parts.append("8. ## 刑冲合害（地支关系及影响，含拱夹暗合、墓库开闭检查）")
+    msg_parts.append("9. ## 大运走势（每步大运简评 + 当前大运详评，用表格列出 8 步大运）")
+    msg_parts.append("10. ## 四维交叉验证（调候/格局/旺衰/病药四维独立结论并列对比，找共同点与矛盾点，综合画像）")
+    msg_parts.append("11. ## 事业财运（行业方向、创业vs上班、财运层次、时机）")
+    msg_parts.append("12. ## 婚姻感情（配偶特征、正缘窗口、婚姻质量、建议）")
+    msg_parts.append("13. ## 健康养生（先天薄弱环节、养生方向）")
+    msg_parts.append("")
+    msg_parts.append('要求：每个结论说明五行/十神/格局依据，引用经典出处。术语严格定义。不确定处标明【待验证】。四维交叉验证中如有维度间矛盾，必须如实呈现而非强行统一。')
 
     return "\n".join(msg_parts)
 
@@ -201,7 +228,8 @@ def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
     }
     payload = {
         "model": API_CONFIG["model"],
-        "max_tokens": 4096,
+        "max_tokens": 24576,
+        "temperature": 0.3,
         "system": system_prompt,
         "messages": [
             {"role": "user", "content": user_message},
@@ -228,10 +256,78 @@ def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
             "analysis": analysis_text,
             "model": data.get("model", API_CONFIG["model"]),
             "usage": data.get("usage", {}),
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+                {"role": "assistant", "content": analysis_text},
+            ],
         }
 
     except requests.Timeout:
         return {"success": False, "error": f"API 调用超时（{timeout}秒），分析内容较长请重试"}
+    except Exception as e:
+        return {"success": False, "error": f"API 调用失败: {str(e)}"}
+
+
+def continue_analysis(messages: list[dict], user_reply: str, timeout: int = 180) -> dict:
+    """续接分析对话
+
+    Args:
+        messages: 之前的对话 [{role: "system"|"user"|"assistant", content: ...}]
+        user_reply: 用户对 Agent 验盘问题的回复
+        timeout: API 超时秒数
+
+    Returns:
+        {"success": True, "analysis": "..."} 或 {"success": False, "error": "..."}
+    """
+    if not API_CONFIG.get("api_key"):
+        return {"success": False, "error": "未配置 API Key"}
+
+    url = f"{API_CONFIG['base_url']}/v1/messages"
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": API_CONFIG["api_key"],
+        "anthropic-version": "2023-06-01",
+    }
+
+    # 确保 messages[0] 是 system（如果不是就插入）
+    api_messages = []
+    system_msg = None
+    for m in messages:
+        if m["role"] == "system":
+            system_msg = m
+        else:
+            api_messages.append({"role": m["role"], "content": m["content"]})
+
+    # 添加用户的新回复
+    api_messages.append({"role": "user", "content": user_reply})
+
+    payload = {
+        "model": API_CONFIG["model"],
+        "max_tokens": 16384,
+        "temperature": 0.3,
+        "system": system_msg["content"] if system_msg else "",
+        "messages": api_messages,
+    }
+
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
+        if resp.status_code != 200:
+            return {"success": False, "error": f"API 返回错误 ({resp.status_code}): {resp.text[:300]}"}
+
+        data = resp.json()
+        analysis_text = ""
+        for block in data.get("content", []):
+            if block.get("type") == "text":
+                analysis_text += block["text"]
+
+        if not analysis_text:
+            return {"success": False, "error": "API 返回了空内容"}
+
+        return {"success": True, "analysis": analysis_text}
+
+    except requests.Timeout:
+        return {"success": False, "error": f"API 调用超时（{timeout}秒）"}
     except Exception as e:
         return {"success": False, "error": f"API 调用失败: {str(e)}"}
 

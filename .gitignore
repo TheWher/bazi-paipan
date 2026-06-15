@@ -7,3 +7,5 @@ Archive/
 .env
 *.pdf
 .DS_Store
+config.local.py
+feedback_logs/

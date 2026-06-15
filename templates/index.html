@@ -13,7 +13,20 @@
             <p class="subtitle">输入出生信息，一键排出完整命盘并生成 PDF 报告</p>
         </header>
 
+        <section class="history-section" id="history-section">
+            <details id="history-details">
+                <summary>📋 历史命例 (<span id="history-count">0</span>)</summary>
+                <div id="history-list" class="history-list"><div class="history-empty">暂无历史命例，排盘分析后自动保存</div></div>
+                <button id="btn-clear-history" class="btn btn-clear btn-sm" style="margin-top:8px">🗑️ 清空全部历史</button>
+            </details>
+        </section>
+
         <section class="form-section">
+            <!-- 快捷输入 -->
+            <div class="quick-input-row">
+                <input type="text" id="quick-input" class="quick-input" maxlength="12" inputmode="numeric">
+                <span class="quick-hint">快捷输入 200508190135 → 自动填表（8位年月日/10位+时/12位+时分）</span>
+            </div>
             <div class="form-grid">
                 <!-- 公历/农历切换 -->
                 <div class="form-group form-wide solar-lunar-toggle">
@@ -88,11 +101,34 @@
                 <div class="card chart-card"><h2 class="card-title">🔄 十二长生</h2><div id="chart-changsheng" class="chart-box"></div></div>
             </div>
             <div class="card chart-card"><h2 class="card-title">⭕ 大运环图</h2><div id="chart-dayun-ring" class="chart-box" style="max-width:520px;margin:0 auto;"></div></div>
+            <div class="card chart-card"><h2 class="card-title">🔗 干支生克关系</h2><div id="chart-shengke" class="chart-box" style="max-width:780px;margin:0 auto;"></div><div style="text-align:center;font-size:0.75em;color:#999;margin-top:4px;">白圈灰线黑字 · 上区天干相克 · 下区地支合冲刑害 · 长线在上</div></div>
         </section>
 
         <section id="analysis-section" class="result-section hidden">
             <div class="card"><h2 class="card-title">🧠 Agent 深度分析</h2><div id="analysis-content" class="analysis-content"></div><div id="analysis-chat" class="analysis-chat hidden"><div class="chat-divider">💬 回复 Agent 继续分析</div><textarea id="chat-input" class="chat-input" rows="3" placeholder="例如：小学成绩确实一般，中学后进步明显..."></textarea><div class="chat-btns"><button id="btn-chat-send" class="btn btn-primary">发送回复，继续批断</button><span class="chat-hint">Agent 在验盘阶段需要你确认过去几件事，确认后才会继续深入分析</span></div></div></div>
+            <!-- 验盘反馈面板 -->
+            <div id="verify-panel" class="verify-panel hidden">
+                <div class="card">
+                    <h2 class="card-title">✅ 验盘确认</h2>
+                    <p class="verify-intro">请对照 Agent 的预测，逐条确认是否符合你的实际情况。反馈数据将用于持续优化分析准确率。</p>
+                    <div id="verify-predictions" class="verify-predictions"></div>
+                    <div class="verify-actions">
+                        <button id="btn-verify-submit" class="btn btn-gold">📤 提交反馈</button>
+                        <span id="verify-status" class="verify-status"></span>
+                    </div>
+                </div>
+            </div>
             <div class="btn-row"><button id="btn-analysis-pdf" class="btn btn-accent btn-lg">📄 打印完整报告</button></div>
+        </section>
+
+        <section class="xuetang-section" id="xuetang-section">
+            <div class="card">
+                <h2 class="card-title" style="cursor:pointer" onclick="document.getElementById('xuetang-body').classList.toggle('hidden')">📚 八字学堂 · 42 个核心术语详解 <span style="font-size:0.7em;color:#999">（点击展开/收起）</span></h2>
+                <div id="xuetang-body" class="hidden">
+                    <div class="xuetang-intro" style="margin-bottom:16px;color:#aaa;font-size:0.85em;line-height:1.6;">以下术语按分析逻辑分类排列，每个词条包含<strong style="color:#d4a843">白话解释</strong>和<strong style="color:#d4a843">经典出处</strong>。在分析报告中悬停任何术语也会弹出解释。</div>
+                    <div id="xuetang-grid" class="xuetang-grid"></div>
+                </div>
+            </div>
         </section>
 
         <footer class="app-footer">
@@ -132,6 +168,108 @@ let plateData=null, analysisText=null, analysisInProgress=false, conversationMes
 let _pwResolve=null; // Promise resolver for password prompt
 let _analysisAbortController=null; // AbortController for cancelling in-flight analysis
 let _analysisStartTime=0; // timestamp when analysis started (for timeout detection)
+let _feedbackFile=''; // current analysis feedback filename for verification
+let _verifyLabels={}; // {predictionIndex: "correct"|"wrong"|"partially_correct"}
+
+// ========== 词条解释库（42术语白话版） ==========
+const GLOSSARY = {
+'日主':'你本人。八字日柱的天干，整个命盘以它为中心','月令':'出生月份的地支，能量最大，格局的来源。\"八字用神，专求月令\"——《子平真诠》',
+'四柱':'年、月、日、时四组干支的合称，每组=天干+地支','调候':'调节寒暖燥湿。夏天出生需要水降温，冬天出生需要火暖身——《穷通宝鉴》的核心方法',
+'格局':'从月令出发，判断命局的\"骨架\"是什么类型（正官格、七杀格等），决定了人生大方向',
+'旺衰':'日主的力量强弱。旺≠好，弱≠差，关键是看和格局是否搭配',
+'用神':'对命局最有益的五行，是整个格局的\"主心骨\"','喜神':'辅助用神的五行，让格局更完美。用神是主力，喜神是副手',
+'忌神':'破坏格局的五行，是命局中的负面力量','闲神':'中立的五行，平时不参与斗争，但大运流年来了会\"站队\"——《滴天髓》专辟\"闲神\"章',
+'病药':'八字的核心矛盾（病）和解决方案（药）。\"有病方为贵，无伤不是奇\"——《神峰通考》',
+'透出':'地支藏的五行在天干上露了头，力量展现出来了。\"地支所藏之干，透出干头，则显其用矣\"——《子平真诠》',
+'虚透':'天干上有这个十神但地支没有根——有心无力，有想法没执行力',
+'藏而不透':'地支里有但天干上看不到——能力潜伏着，需要大运流年\"叫醒\"它',
+'得根':'天干上的十神在地支有老家（本气根），实力扎实','得气':'有根但不稳，比虚透好但不如得根——\"有靠山但不牢\"',
+'十神':'以日主为中心定义的五种人际关系：比劫（兄弟姐妹）、食伤（才华子女）、财星（财富配偶）、官杀（事业丈夫）、印星（学业母亲）',
+'正官':'正当的约束和名誉。主正职、公务员、规则意识强','七杀':'偏门的权力和压力。主军警、创业、高管、竞争——\"有制为偏官，无制为七杀\"',
+'正财':'稳定收入、正当财富、正缘婚姻。工资、实业经营','偏财':'意外之财、投资、副业。来得快去得也快',
+'正印':'正当的学识和庇护。主学历、母亲、稳定工作','偏印':'偏门的学问和技术。主冷门专业、玄学、继母',
+'食神':'温和的才华和福气。主艺术、美食、享受生活','伤官':'激进的才华和叛逆。主创意、自由职业、挑战权威',
+'比肩':'同性的伙伴，合作者。讲义气但可能竞争','劫财':'异性的伙伴，竞争者。主破财、兄弟争产',
+'身强':'日主力量充足，能承担财官压力','身弱':'日主力量不足，需要印星和比劫帮忙',
+'大运':'每十年一换的运势大方向。起运年龄由出生日到下一个节气的天数决定',
+'流年':'每一年的具体运势。大运是季节，流年是天气','刑冲合害':'地支之间的互动关系：冲=冲突变动，合=合作绑定，刑=慢性纠纷，害=暗中破坏',
+'拱':'用两个明见的地支\"拱\"出一个看不到的虚神——申辰拱子水，寅戌拱午火。虚神为喜用则有暗中的贵人机缘',
+'夹':'天干相同的相邻两柱，中间夹出一个虚缺的地支——子寅夹丑。\"见不见之形，无时不有\"',
+'暗合':'两地支藏干之间偷偷相合——子巳暗合（癸戊合）。主暗中助力或隐秘情感纠葛',
+'墓库':'辰戌丑未四个地支。旺的时候是仓库（可取用），衰的时候是牢笼（能量锁死）',
+'开库':'冲开墓库让能量释放——冲开财库可能发财，冲开官库可能升职',
+'星宫同参':'断事要同时看\"星\"（十神=什么人什么事）和\"宫\"（四柱位置=什么阶段什么领域）。只看十神不看宫位等于只认演员不看舞台',
+'空亡':'天干配地支多出的两个空位——落空的地支力量减弱。\"逢冲则实，逢合则实\"——《三命通会》',
+'伏吟':'大运流年干支和原局某柱一模一样——好事坏事都加倍','反吟':'大运流年干支和原局某柱天克地冲——猛烈变动',
+'纳音':'每组干支对应的五行音律属性，如\"乙酉\"纳音为\"泉中水\"',
+'胎元命宫身宫':'胎元=受胎月份，命宫=安命之宫，身宫=安身之宫——三个辅助参考点',
+'真太阳时':'根据出生地经度校正后的真实太阳时间——东莞(113.75°E)比北京时间晚约25分钟，时辰临近边界时特别重要'
+};
+
+// ========== 命例历史管理 ==========
+const HISTORY_KEY = 'bazi_history';
+function loadHistory(){ try{ return JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]'); }catch(e){ return []; } }
+function saveHistory(list){ localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); }
+function addToHistory(plate, analysis){
+    const h = loadHistory();
+    const input = plate.input || {};
+    const autoLabel = `${input.gender||'?'}·${plate.ri_zhu||'?'}日主·${input.birth_datetime||'?'}`;
+    const key = autoLabel;
+    const existing = h.findIndex(e => e.label === key || e._autoLabel === key);
+    // 已有分析条目则保留旧名字，仅更新数据
+    const oldName = existing >= 0 ? h[existing].name : '';
+    const entry = {id:Date.now(), name: oldName, _autoLabel: key, gender:input.gender, birth:input.birth_datetime, rizhu:plate.ri_zhu, sizhu:plate.sizhu, plate, analysis, time:new Date().toLocaleString()};
+    if(existing >= 0){ h[existing] = entry; } else { h.unshift(entry); }
+    if(h.length > 20) h.length = 20;
+    saveHistory(h); renderHistory();
+    // 新命例弹出命名提示
+    if(!oldName){
+        setTimeout(()=>{ const name = prompt('为此命例起个名字（如"张三 2005"），方便以后查找：', autoLabel); if(name){ entry.name = name.trim(); saveHistory(h); renderHistory(); } }, 300);
+    }
+}
+function deleteHistory(id){ saveHistory(loadHistory().filter(e=>e.id!==id)); renderHistory(); }
+function renameHistory(id){
+    const h = loadHistory(); const e = h.find(e=>e.id===id); if(!e) return;
+    const name = prompt('重命名：', e.name || e._autoLabel || '');
+    if(name){ e.name = e.name.trim(); saveHistory(h); renderHistory(); }
+}
+function restoreHistory(id){
+    const e = loadHistory().find(e=>e.id===id); if(!e) return;
+    plateData = e.plate; analysisText = e.analysis;
+    if(e.analysis) {
+        conversationMessages = [{role:'system',content:''},{role:'user',content:''},{role:'assistant',content:e.analysis}];
+    }
+    elResultSection.classList.remove('hidden'); renderResult(e.plate);
+    if(e.analysis){ elAnalysisSection.classList.remove('hidden'); elAnalysisContent.innerHTML=formatMarkdown(e.analysis); injectGlossary(elAnalysisContent); elAnalysisChat.classList.remove('hidden'); }
+    else elAnalysisSection.classList.add('hidden');
+    elBtnAnalyze.disabled = false; elBtnPdf.disabled = false;
+    window.scrollTo({top:elResultSection.offsetTop-20,behavior:'smooth'});
+}
+
+function renderHistory(){
+    const el = $('history-list'); if(!el) return;
+    const h = loadHistory();
+    $('history-count').textContent = h.length;
+    el.innerHTML = h.length ? h.map(e=>{
+        const displayName = e.name || e._autoLabel || e.label || '未知命例';
+        return `<div class="history-item" onclick="restoreHistory(${e.id})">
+            <span class="history-label">${displayName}</span>
+            <span class="history-time">${e.time}</span>
+            <button class="history-rename" onclick="event.stopPropagation();renameHistory(${e.id})" title="重命名">✎</button>
+            <button class="history-del" onclick="event.stopPropagation();deleteHistory(${e.id})" title="删除">×</button>
+        </div>`;
+    }).join('') : '<div class="history-empty">暂无历史命例，排盘分析后自动保存</div>';
+}
+
+// ========== 快捷输入 ==========
+$('quick-input').addEventListener('input', function(){
+    const v = this.value.replace(/\D/g,'');
+    if(v.length>=8){
+        elYear.value=v.substring(0,4);elMonth.value=v.substring(4,6);elDay.value=v.substring(6,8);
+        elHour.value=v.length>=10?v.substring(8,10):'0';elMinute.value=v.length>=12?v.substring(10,12):'0';
+    }
+});
+$('quick-input').addEventListener('keydown', function(e){ if(e.key==='Enter'){ elBtnPaipan.click(); } });
 
 // ========== 自动填充当前时间 ==========
 function autoFillNow() {
@@ -304,7 +442,7 @@ elBtnPaipan.addEventListener('click', async () => {
         renderResult(d); elResultSection.classList.remove('hidden');
         elBtnPdf.disabled=false; elBtnAnalyze.disabled=false;
         elAnalysisSection.classList.add('hidden'); elAnalysisContent.innerHTML=''; elAnalysisChat.classList.add('hidden');
-        document.getElementById('charts-section').classList.add('hidden');
+        addToHistory(d, null);
         elResultSection.scrollIntoView({behavior:'smooth'});
     } catch(e) { showError('网络错误或服务未启动'); }
     finally { hideLoading(); elBtnPaipan.disabled=false; }
@@ -379,7 +517,99 @@ async function renderCharts(data) {
             if (r.ok) drDom.innerHTML = await r.text();
         }
     } catch(e) { console.warn('Chart load failed:', e); }
+    renderShengkeChart(data);
     document.getElementById('charts-section').classList.remove('hidden');
+}
+
+// ========== 干支关系图 SVG ==========
+function renderShengkeChart(data){
+    const el = document.getElementById('chart-shengke');
+    if(!el||!data||!data.pillars) return;
+
+    const V = 800;
+    const cx = V/2;
+    const tag = (n,a,i) => `<${n} ${Object.entries(a).map(([k,v])=>`${k}="${v}"`).join(' ')}>${i||''}</${n}>`;
+    const wxColor = {'甲':'#2e7d32','乙':'#388e3c','丙':'#c62828','丁':'#d32f2f','戊':'#e65100','己':'#ef6c00','庚':'#b8860b','辛':'#c7940a','壬':'#1565c0','癸':'#1976d2',
+                      '子':'#1565c0','丑':'#8d6e63','寅':'#2e7d32','卯':'#388e3c','辰':'#a1887f','巳':'#c62828','午':'#d32f2f','未':'#8d6e63','申':'#b8860b','酉':'#c7940a','戌':'#a1887f','亥':'#1976d2'};
+
+    const cols = ['year','month','day','hour'];
+    const labels = ['年柱','月柱','日柱','时柱'];
+    const gans = cols.map(c=>data.pillars[c]?.gan||'');
+    const zhis = cols.map(c=>data.pillars[c]?.zhi||'');
+    const colW = 165, startX = cx - colW*1.5;
+    const ganY = 170, zhiY = 245, H = 560;
+
+    let parts = [];
+
+    // ===== 顶区：天干相克 =====
+    const ganKe = {'甲':'戊庚','乙':'己辛','丙':'庚壬','丁':'辛癸','戊':'壬甲','己':'癸乙','庚':'甲丙','辛':'乙丁','壬':'丙戊','癸':'丁己'};
+    const ganRels = [];
+    for(let i=0;i<4;i++) for(let j=i+1;j<4;j++){ if((ganKe[gans[i]]||'').includes(gans[j])) ganRels.push({i,j,dist:Math.abs(j-i)}); }
+    ganRels.sort((a,b)=>b.dist-a.dist); // 长线在上
+    const topRels = ganRels.reduce((acc,r,i)=>{ const y=30+i*44; acc.push({x1:startX+r.i*colW,x2:startX+r.j*colW,y,text:gans[r.i]+'克'+gans[r.j]}); return acc; },[]);
+    const topBase = topRels.length>0 ? topRels[topRels.length-1].y+6 : 0;
+
+    topRels.forEach(r=>{
+        parts.push(tag('circle',{cx:r.x1,cy:r.y,r:16,fill:'#fff',stroke:'#ccc','stroke-width':1.5}));
+        parts.push(tag('text',{x:r.x1,y:r.y,fill:'#333','font-size':'13','font-weight':'bold','text-anchor':'middle','dominant-baseline':'central'},gans[ganRels.find(gr=>startX+gr.i*colW===r.x1)?.i]));
+        parts.push(tag('circle',{cx:r.x2,cy:r.y,r:16,fill:'#fff',stroke:'#ccc','stroke-width':1.5}));
+        parts.push(tag('text',{x:r.x2,y:r.y,fill:'#333','font-size':'13','font-weight':'bold','text-anchor':'middle','dominant-baseline':'central'},gans[ganRels.find(gr=>startX+gr.j*colW===r.x2)?.j]));
+        parts.push(tag('line',{x1:r.x1+16,y1:r.y,x2:r.x2-16,y2:r.y,stroke:'#bbb','stroke-width':1}));
+        parts.push(tag('text',{x:(r.x1+r.x2)/2,y:r.y-12,fill:'#e53935','font-size':'10','text-anchor':'middle'},'克'));
+    });
+
+    // ===== 中区：四柱主体 =====
+    const gkD = {'甲':'申酉','乙':'申酉','丙':'子亥','丁':'子亥','戊':'寅卯','己':'寅卯','庚':'巳午','辛':'巳午','壬':'丑未辰戌','癸':'丑未辰戌'};
+    const dkG = {'子':'丙丁','丑':'甲乙','寅':'戊己','卯':'戊己','辰':'壬癸','巳':'庚辛','午':'庚辛','未':'壬癸','申':'甲乙','酉':'甲乙','戌':'丙丁','亥':'丙丁'};
+
+    cols.forEach((_,i)=>{
+        const x = startX + i*colW, gan = gans[i], zhi = zhis[i];
+        // 标题
+        parts.push(tag('text',{x,y:ganY-50,fill:'#aaa','font-size':'12','text-anchor':'middle'},labels[i]));
+        // 天干
+        parts.push(tag('text',{x,y:ganY,fill:wxColor[gan],'font-size':'26','font-weight':'bold','text-anchor':'middle','dominant-baseline':'central'},gan));
+        // 地支
+        parts.push(tag('text',{x,y:zhiY,fill:wxColor[zhi],'font-size':'24','font-weight':'bold','text-anchor':'middle','dominant-baseline':'central'},zhi));
+        // 盖头/截脚
+        const jj = (gkD[gan]||'').includes(zhi);
+        const gt = (dkG[zhi]||'').includes(gan);
+        if(jj||gt) parts.push(tag('text',{x,y:zhiY+22,fill:'#a1887f','font-size':'10','text-anchor':'middle'},jj?'截脚':'盖头'));
+    });
+
+    // ===== 底区：地支合冲刑害 =====
+    const liuhe={'子':'丑','丑':'子','寅':'亥','亥':'寅','卯':'戌','戌':'卯','辰':'酉','酉':'辰','巳':'申','申':'巳','午':'未','未':'午'};
+    const liuchong={'子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳'};
+    const xianghai={'子':'未','未':'子','丑':'午','午':'丑','寅':'巳','巳':'寅','卯':'辰','辰':'卯','申':'亥','亥':'申','酉':'戌','戌':'酉'};
+    const sanhe=[{s:['申','子','辰'],n:'水'},{s:['亥','卯','未'],n:'木'},{s:['寅','午','戌'],n:'火'},{s:['巳','酉','丑'],n:'金'}];
+    const anhe=[{s:['子','巳'],n:'暗合'},{s:['寅','丑'],n:'暗合'},{s:['卯','申'],n:'暗合'},{s:['午','亥'],n:'暗合'}];
+    const zhiRels = [];
+    for(let i=0;i<4;i++) for(let j=i+1;j<4;j++){
+        const a=zhis[i], b=zhis[j];
+        const rel = {i,j,dist:Math.abs(j-i),text:'',color:'#999'};
+        if(a===b) rel.text=a+a+'自刑';
+        else if(liuhe[a]===b) rel.text=a+b+'六合';
+        else if(liuchong[a]===b) rel.text=a+b+'六冲';
+        else if(xianghai[a]===b) rel.text=a+b+'相害';
+        else { for(const sh of sanhe){ if(sh.s.includes(a)&&sh.s.includes(b)){ rel.text=a+b+'半合'+sh.n+'局'; break; } } }
+        if(!rel.text){ for(const ah of anhe){ if(ah.s.includes(a)&&ah.s.includes(b)){ rel.text=a+b+'暗合'; break; } } }
+        if(!rel.text) continue; // 无关系则跳过
+        zhiRels.push(rel);
+    }
+    zhiRels.sort((a,b)=>b.dist-a.dist); // 长线在上
+
+    const botBase = 300;
+    zhiRels.forEach((r,ri)=>{
+        const y = botBase + ri*42;
+        const x1 = startX+r.i*colW, x2 = startX+r.j*colW;
+        parts.push(tag('circle',{cx:x1,cy:y,r:16,fill:'#fff',stroke:'#ccc','stroke-width':1.5}));
+        parts.push(tag('text',{x:x1,y,fill:'#333','font-size':'13','font-weight':'bold','text-anchor':'middle','dominant-baseline':'central'},zhis[r.i]));
+        parts.push(tag('circle',{cx:x2,cy:y,r:16,fill:'#fff',stroke:'#ccc','stroke-width':1.5}));
+        parts.push(tag('text',{x:x2,y,fill:'#333','font-size':'13','font-weight':'bold','text-anchor':'middle','dominant-baseline':'central'},zhis[r.j]));
+        parts.push(tag('line',{x1:x1+16,y1:y,x2:x2-16,y2:y,stroke:'#bbb','stroke-width':1}));
+        parts.push(tag('text',{x:(x1+x2)/2,y:y-12,fill:'#888','font-size':'10','text-anchor':'middle'},r.text));
+    });
+
+    el.innerHTML = tag('svg',{viewBox:`0 0 ${V} ${H}`,xmlns:'http://www.w3.org/2000/svg',style:'width:100%;max-width:680px;display:block;margin:0 auto;'},parts.join(''));
 }
 
 // ========== 工具函数 ==========
@@ -393,6 +623,36 @@ function formatMarkdown(text){
     h=h.replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>');h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');h=h.replace(/\*(.+?)\*/g,'<em>$1</em>');
     h=h.replace(/^- (.+)$/gm,'<li>$1</li>');h=h.replace(/^---+$/gm,'<hr>');
     let blocks=h.split(/\n\n+/);return blocks.map(b=>{b=b.trim();if(!b)return'';if(/^<(h[2-5]|li|hr|table)/.test(b))return b;b=b.replace(/\n/g,'<br>');return'<p>'+b+'</p>';}).join('\n');
+}
+
+// 注入词条 tooltip（在 DOM 挂载后调用）
+function injectGlossary(container){
+    const terms = Object.keys(GLOSSARY).sort((a,b)=>b.length-a.length); // 长词优先
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+    const replacements = [];
+    while(walker.nextNode()){
+        const node = walker.currentNode;
+        if(node.parentElement.classList.contains('glossary-term')) continue;
+        let text = node.textContent;
+        let changed = false;
+        for(const term of terms){
+            const idx = text.indexOf(term);
+            if(idx === -1) continue;
+            changed = true;
+            const span = document.createElement('span');
+            span.className = 'glossary-term';
+            span.textContent = term;
+            span.title = GLOSSARY[term];
+            span.setAttribute('data-tip', GLOSSARY[term]);
+            const before = text.substring(0, idx);
+            const after = text.substring(idx + term.length);
+            const beforeNode = document.createTextNode(before);
+            node.parentNode.insertBefore(beforeNode, node);
+            node.parentNode.insertBefore(span, node);
+            node.textContent = after;
+            text = after;
+        }
+    }
 }
 
 // ========== 深度分析（含断线重试、页面恢复） ==========
@@ -429,7 +689,7 @@ async function doAnalyze(isRetry = false) {
         await new Promise(r => setTimeout(r, delay));
     }
 
-    showLoading(isRetry ? '正在重新连接 Agent（约需 4-6 分钟）...' : '正在调用 Agent 进行深度分析（约需 4-6 分钟，请耐心等待）...');
+    showLoading(isRetry ? '正在重新连接 Agent...' : '正在验盘——反推过往事件验证时辰（约需 30 秒）...');
     analysisInProgress = true;
     _analysisStartTime = Date.now();
     elBtnAnalyze.disabled = true;
@@ -472,13 +732,26 @@ async function doAnalyze(isRetry = false) {
         // 成功：清除待处理状态，保存结果
         clearPendingAnalysis();
         analysisText = d.analysis;
+        _feedbackFile = d.feedback_file || '';
         if (d.messages) { conversationMessages = d.messages; elAnalysisChat.classList.remove('hidden'); }
         localStorage.setItem('bazi_plate', JSON.stringify(plateData));
         localStorage.setItem('bazi_analysis', analysisText);
         elAnalysisContent.innerHTML = formatMarkdown(analysisText);
+        injectGlossary(elAnalysisContent);
+        addToHistory(plateData, analysisText);
         elAnalysisSection.classList.remove('hidden');
         elBtnAnalysisPdf.disabled = false;
         elAnalysisSection.scrollIntoView({behavior: 'smooth'});
+
+        // 提取验盘预测并渲染验证面板
+        if (d.messages && d.messages.length >= 3) {
+            const asstMsg = d.messages[d.messages.length - 1].content;
+            const preds = extractVerificationPredictions(asstMsg);
+            if (preds.length > 0) {
+                _verifyLabels = {};
+                renderVerificationPanel(preds);
+            }
+        }
 
         // 如果是缓存命中，显示提示
         if (d.cached) {
@@ -546,16 +819,168 @@ async function doAnalyze(isRetry = false) {
 }
 elBtnAnalyze.addEventListener('click', () => doAnalyze(false));
 
+// ========== 验盘反馈 ==========
+
+/** 从 Agent 验盘输出中提取预测条目 */
+function extractVerificationPredictions(assistantText) {
+    const preds = [];
+    // 匹配模式：第X条/第X件 + 任意内容直到下一个分割点
+    // Agent 验盘格式：### 第一件：... \n > **预测特征：** ... \n
+    const patterns = [
+        // 模式1: ### 第X件/条：标题
+        /(?:###|####)\s*第([一二三四五六七八九十\d]+)[件条][：:]\s*(.+?)(?=(?:\n(?:###|####)\s*第[一二三四五六七八九十\d]+[件条])|\n---|\n\*\*第|\n> \*\*预测|\n\n\*\*[^\*]+\*\*\n|$)/gs,
+        // 模式2: **第X条：**
+        /\*\*第([一二三四五六七八九十\d]+)条[：:]\*\*\s*(.+?)(?=\*\*第[一二三四五六七八九十\d]+条|\n---|$)/gs,
+    ];
+
+    const chineseNum = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10};
+
+    for (const pattern of patterns) {
+        let m;
+        const text = assistantText;
+        // Reset lastIndex
+        pattern.lastIndex = 0;
+        while ((m = pattern.exec(text)) !== null) {
+            const numStr = m[1].trim();
+            const idx = chineseNum[numStr] || parseInt(numStr) || preds.length + 1;
+            let body = m[2].trim().substring(0, 400); // 截断长文本
+            // 清理 markdown 格式
+            body = body.replace(/\*\*/g, '').replace(/> /g, '').replace(/\n+/g, ' ').trim();
+            if (body.length > 10) {
+                preds.push({index: idx - 1, title: `第${idx}条验证`, body: body});
+            }
+        }
+        if (preds.length > 0) break;
+    }
+
+    // 如果没匹配到结构化格式，尝试提取包含"预测"关键词的段落
+    if (preds.length === 0) {
+        const lines = assistantText.split('\n');
+        let currentPred = '';
+        for (const line of lines) {
+            if (/预测|验证|对照|反推/.test(line) && line.length > 15) {
+                if (currentPred) preds.push({index: preds.length, title: `验证项${preds.length+1}`, body: currentPred.substring(0, 300)});
+                currentPred = line;
+            } else if (currentPred && line.trim()) {
+                currentPred += ' ' + line.trim();
+            }
+        }
+        if (currentPred && currentPred.length > 15) {
+            preds.push({index: preds.length, title: `验证项${preds.length+1}`, body: currentPred.substring(0, 300)});
+        }
+    }
+
+    return preds.slice(0, 5); // 最多 5 条
+}
+
+/** 渲染验盘反馈面板 */
+function renderVerificationPanel(predictions) {
+    const panel = $('verify-panel');
+    const container = $('verify-predictions');
+    container.innerHTML = '';
+
+    predictions.forEach((pred, i) => {
+        const div = document.createElement('div');
+        div.className = 'verify-prediction';
+        div.innerHTML = `
+            <div class="verify-pred-header">
+                <span class="verify-pred-num">#${i + 1}</span>
+                <span class="verify-pred-title">${escapeHtml(pred.title)}</span>
+            </div>
+            <div class="verify-pred-body">${escapeHtml(pred.body)}</div>
+            <div class="verify-pred-btns" data-idx="${pred.index}">
+                <button class="verify-btn verify-yes" data-label="correct" onclick="setVerifyLabel(${pred.index}, 'correct', this)">✓ 准确</button>
+                <button class="verify-btn verify-maybe" data-label="partially_correct" onclick="setVerifyLabel(${pred.index}, 'partially_correct', this)">⚠ 部分准确</button>
+                <button class="verify-btn verify-no" data-label="wrong" onclick="setVerifyLabel(${pred.index}, 'wrong', this)">✗ 不对</button>
+            </div>
+            <textarea class="verify-note" id="verify-note-${pred.index}" placeholder="补充说明（可选）：实际情况是..." rows="1"></textarea>
+        `;
+        container.appendChild(div);
+    });
+
+    panel.classList.remove('hidden');
+    $('verify-status').textContent = '';
+    $('btn-verify-submit').disabled = false;
+}
+
+/** 设置单条预测的标签 */
+function setVerifyLabel(idx, label, btnEl) {
+    _verifyLabels[idx] = label;
+    // 高亮选中按钮
+    const btns = btnEl.parentElement.querySelectorAll('.verify-btn');
+    btns.forEach(b => b.classList.remove('selected'));
+    btnEl.classList.add('selected');
+}
+
+/** 提交验盘反馈 */
+async function submitVerification() {
+    if (!_feedbackFile) {
+        $('verify-status').textContent = '⚠ 缺少反馈文件名，无法提交';
+        return;
+    }
+    const preds = [];
+    for (const [idx, label] of Object.entries(_verifyLabels)) {
+        const noteEl = document.getElementById('verify-note-' + idx);
+        preds.push({
+            index: parseInt(idx),
+            label: label,
+            user_note: noteEl ? noteEl.value.trim() : '',
+        });
+    }
+    if (preds.length === 0) {
+        $('verify-status').textContent = '⚠ 请至少对一条预测进行确认';
+        return;
+    }
+
+    $('btn-verify-submit').disabled = true;
+    $('verify-status').textContent = '提交中...';
+
+    try {
+        const r = await fetch('/api/verify', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({feedback_file: _feedbackFile, predictions: preds}),
+        });
+        const d = await r.json();
+        if (d.success) {
+            const s = d.summary;
+            $('verify-status').innerHTML = `✅ 反馈已保存！准确 ${s.correct}/${s.total}，命中率 ${Math.round(s.hit_rate * 100)}%`;
+            // 禁用所有按钮
+            document.querySelectorAll('.verify-btn').forEach(b => b.disabled = true);
+            document.querySelectorAll('.verify-note').forEach(t => t.disabled = true);
+            $('btn-verify-submit').disabled = true;
+        } else {
+            $('verify-status').textContent = '❌ ' + (d.error || '提交失败');
+            $('btn-verify-submit').disabled = false;
+        }
+    } catch (e) {
+        $('verify-status').textContent = '❌ 网络错误';
+        $('btn-verify-submit').disabled = false;
+    }
+}
+$('btn-verify-submit').addEventListener('click', submitVerification);
+
+function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+}
+
 // ========== 续接对话 ==========
 elBtnChatSend.addEventListener('click', async () => {
-    const reply=elChatInput.value.trim();if(!reply||!conversationMessages)return;elBtnChatSend.disabled=true;elChatInput.disabled=true;showLoading('正在等待 Agent 回复（约需 4-6 分钟）...');analysisInProgress=true;
+    const reply=elChatInput.value.trim();if(!reply||!conversationMessages)return;elBtnChatSend.disabled=true;elChatInput.disabled=true;showLoading('验盘通过，正在进行深度分析（约需 4-6 分钟，请耐心等待）...');analysisInProgress=true;
     try{
         const pw = getPassword();
         const r = await fetch('/api/analyze/continue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:conversationMessages,reply:reply, password:pw})});
         const d = await r.json();
         if (!d.success) { if (d.need_password) { clearPassword(); showError(d.error); return; } showError(d.error||'续接失败'); return; }
         conversationMessages.push({role:'user',content:reply});conversationMessages.push({role:'assistant',content:d.analysis});
-        elAnalysisContent.innerHTML+='<hr style="margin:20px 0"><div class="chat-reply">'+formatMarkdown(d.analysis)+'</div>';elChatInput.value='';elAnalysisContent.scrollIntoView({behavior:'smooth',block:'end'});}
+        // 累积完整分析文本（验盘 + 所有续接回复），供打印报告用
+        analysisText = (analysisText||'') + '\n\n---\n\n**💬 ' + reply + '**\n\n' + d.analysis;
+        localStorage.setItem('bazi_analysis', analysisText);
+        const replyDiv = document.createElement('div'); replyDiv.className='chat-reply'; replyDiv.innerHTML = formatMarkdown(d.analysis); injectGlossary(replyDiv);
+        elAnalysisContent.append(document.createElement('hr'), replyDiv);
+        elChatInput.value='';elAnalysisContent.scrollIntoView({behavior:'smooth',block:'end'});}
     catch(e){showError('网络错误');}finally{hideLoading();elBtnChatSend.disabled=false;elChatInput.disabled=false;analysisInProgress=false;}
 });
 
@@ -610,6 +1035,7 @@ document.addEventListener('visibilitychange', () => {
                 elResultSection.classList.remove('hidden');
                 elBtnPdf.disabled = false; elBtnAnalyze.disabled = false;
                 elAnalysisContent.innerHTML = formatMarkdown(analysisText);
+                injectGlossary(elAnalysisContent);
                 elAnalysisSection.classList.remove('hidden');
                 elBtnAnalysisPdf.disabled = false;
             } else {
@@ -660,9 +1086,57 @@ $('btn-clear').addEventListener('click', () => {
     hideError(); autoFillNow();
 });
 
+// ========== 八字学堂 ==========
+function renderXuetang(){
+    const catOrder = ['基础','调候','格局','旺衰','病药','十神','地支','大运','神煞'];
+    const catTerms = {
+        '基础': ['日主','月令','四柱','真太阳时','纳音','胎元命宫身宫'],
+        '调候': ['调候'],
+        '格局': ['格局','用神','喜神','忌神','闲神','成格','破格'],
+        '旺衰': ['旺衰','身强','身弱','得令','得根','得气','得地','得势'],
+        '病药': ['病药'],
+        '十神': ['十神','正官','七杀','正财','偏财','正印','偏印','食神','伤官','比肩','劫财','透出','虚透','藏而不透'],
+        '地支': ['刑冲合害','拱','夹','暗合','墓库','开库','星宫同参','截脚','盖头'],
+        '大运': ['大运','流年','引动','伏吟','反吟','空亡'],
+        '神煞': ['天乙贵人','文昌','桃花','驿马','羊刃','华盖']
+    };
+    // 扩展词条内容：含出处
+    const extra = {
+        '天乙贵人': '主贵人提携、逢凶化吉。\"甲戊庚牛羊，乙己鼠猴乡\"——以日干/年干查神煞',
+        '文昌': '主学业文采、考试运。文昌入命者学习能力强',
+        '桃花': '主异性缘、人缘、社交魅力。子午卯酉为四桃花',
+        '驿马': '主奔波、迁徙、出国、变动。寅申巳亥为四驿马',
+        '羊刃': '主刚强暴烈、竞争意识。\"羊刃重重又见禄，富贵荣华享不足\"——过旺则反噬',
+        '华盖': '主孤高清高、才情、宗教玄学缘分。\"华盖逢空，偏宜僧道\"',
+        '纳音': '每组干支对应的五行音律属性——如乙酉纳音\"泉中水\"。共30组纳音',
+        '胎元命宫身宫': '胎元=受胎月份（月柱天干+1，地支+3）；命宫=安命之宫；身宫=安身之宫。三者辅助参考',
+        '真太阳时': '根据出生地经度校正后的真实太阳时间。东莞(113.75°E)比北京时间晚约25分钟，时辰临近边界时校正可能换时柱',
+    };
+    const cats = {}; catOrder.forEach(c => cats[c] = []);
+    Object.entries(GLOSSARY).forEach(([term, desc]) => {
+        let found = false;
+        for(const [cat, terms] of Object.entries(catTerms)){
+            if(terms.includes(term)){ cats[cat].push({term, desc: extra[term] ? desc + '。' + extra[term] : desc}); found = true; break; }
+        }
+        if(!found) cats['基础'].push({term, desc}); // fallback
+    });
+    let html = '';
+    catOrder.forEach(cat => {
+        if(!cats[cat].length) return;
+        html += `<div class="xuetang-cat"><h4 class="xuetang-cat-title">${cat}</h4><div class="xuetang-terms">`;
+        cats[cat].forEach(({term,desc}) => {
+             html += `<div class="xuetang-term"><span class="glossary-term" style="font-weight:700;margin-right:4px;">${term}</span><span class="xuetang-desc">${desc}</span></div>`;
+        });
+        html += '</div></div>';
+    });
+    $('xuetang-grid').innerHTML = html;
+}
+
 // ========== 初始化 ==========
-loadForm(); autoFillNow();
+loadForm(); autoFillNow(); renderHistory(); renderXuetang();
 document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key==='Enter')elBtnPaipan.click();});
+$('btn-clear-history').addEventListener('click', ()=>{ saveHistory([]); renderHistory(); });
+$('history-count').textContent = loadHistory().length;
 
 // ========== 滚动揭示（IntersectionObserver，受 Species in Pieces 启发）==========
 function setupScrollReveal() {

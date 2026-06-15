@@ -26,20 +26,59 @@ except ImportError:
     sxtwl = None
     _USE_SXTWL = False
     from datetime import date as _fd, timedelta as _ft
-    try:
-        import ephem as _ep
-        _HAS_EPHEM = True
-    except ImportError:
-        _ep = None
-        _HAS_EPHEM = False
+    import math as _math
     try:
         from zhdate import ZhDate
     except ImportError:
         ZhDate = None
 
-    _EC = [(i * 15 + 270) % 360 for i in range(24)]
     _RD = _fd(2000, 1, 1)
     _RG, _RZ = 4, 6
+
+    # 节索引（小寒=1, 立春=3, 惊蛰=5, ... 大雪=23）→ 月支（寅=2）
+    _JIE_TO_MONTH = {1:12, 3:1, 5:2, 7:3, 9:4, 11:5, 13:6, 15:7, 17:8, 19:9, 21:10, 23:11}
+    # 月数→地支：寅=2, 卯=3, ..., 子=0, 丑=1
+    _MONTH_ZHI = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1]
+
+    # ---- 纯数学节气计算（Meeus 天文算法简化 + 缓存） ----
+    _ST_CACHE = {}  # (year, idx) → JD，预计算后缓存
+
+    def _sun_lon(jd: float) -> float:
+        """太阳视黄经 (degrees)，含章动修正，精度 ~0.001°"""
+        T = (jd - 2451545.0) / 36525.0
+        L0 = (280.46646 + 36000.76983 * T + 0.0003032 * T * T) % 360
+        M = (357.52911 + 35999.05029 * T - 0.0001537 * T * T) % 360
+        Mr = _math.radians(M)
+        C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * _math.sin(Mr) \
+            + (0.019993 - 0.000101 * T) * _math.sin(2 * Mr) \
+            + 0.000289 * _math.sin(3 * Mr)
+        # 章动近似（经度项，~0.004°）
+        omega = _math.radians(125.04 - 1934.136 * T)
+        nutation = 0.0041 * _math.sin(omega)
+        return (L0 + C + nutation) % 360
+
+    def _st_jd(year: int, idx: int) -> float:
+        """计算第 idx 个节气的 Julian Day。先查缓存，未命中再计算。"""
+        key = (year, idx)
+        if key in _ST_CACHE:
+            return _ST_CACHE[key]
+        target = (idx * 15 + 270) % 360
+        winter_jd_2000 = 2451900.6
+        guess = winter_jd_2000 + (year - 2000) * 365.2422 + idx * 15.2184
+        for _ in range(10):
+            lon = _sun_lon(guess)
+            diff = (target - lon + 180.0) % 360.0 - 180.0
+            if abs(diff) < 0.00001:
+                break
+            guess += diff / 0.9856
+        _ST_CACHE[key] = guess
+        return guess
+
+    def _preload_terms(years: set):
+        """预加载指定年份的全部 24 个节气（并行填充缓存）"""
+        for y in years:
+            for i in range(24):
+                _st_jd(y, i)
 
     class _GZ:
         __slots__ = ('tg', 'dz')
@@ -51,8 +90,32 @@ except ImportError:
             s._dt = _fd(y, m, d)
             o = (y - 4) % 60; yg = o % 10
             s._ygz = _GZ(yg, o % 12)
+
+            # 预加载三年节气缓存（首次排盘时一次性计算，后续全部命中）
+            _preload_terms({y - 1, y, y + 1})
+
+            # 月柱：根据节气确定（精确）
+            # 查找出生日期之前最近的"节"
+            jd0 = 2451545.0 + (s._dt - _fd(2000, 1, 1)).days
+            prev_jie = 1  # 默认小寒
+            best_jd = None
+            for idx in _JIE_TO_MONTH:
+                jd = _st_jd(y, idx)
+                if jd <= jd0 and (best_jd is None or jd > best_jd):
+                    best_jd = jd
+                    prev_jie = idx
+                # 也检查上一年的大雪(23)
+                jd_prev = _st_jd(y - 1, idx)
+                if jd_prev <= jd0 and (best_jd is None or jd_prev > best_jd):
+                    best_jd = jd_prev
+                    prev_jie = idx
+            month_num = _JIE_TO_MONTH.get(prev_jie, 2)
+            mz = _MONTH_ZHI[month_num]
+
+            # 月干：五虎遁（甲己之年丙作首）
             b = {0: 2, 5: 2, 1: 4, 6: 4, 2: 6, 7: 6, 3: 8, 8: 8, 4: 0, 9: 0}
-            s._mgz = _GZ((b[yg] + (m - 1)) % 10, (m + 1) % 12)
+            s._mgz = _GZ((b[yg] + month_num - 1) % 10, mz)
+
             dl = (s._dt - _RD).days
             s._dgz = _GZ((_RG + dl) % 10, (_RZ + dl) % 12)
             s._ly = s._lm = s._ld = 0; s._lp = False
@@ -73,37 +136,33 @@ except ImportError:
         def getLunarDay(s): return s._ld
         def isLunarLeap(s): return s._lp
 
-        def _st_jd(s, idx):
-            if not _HAS_EPHEM:
-                return 0.0
-            t = _EC[idx]; d = _ep.Date(f'{s.year}/1/1') + idx * 15.218
-            for _ in range(25):
-                sun = _ep.Sun(d); lon = float(sun.hlon) * 57.29578
-                df = (t - lon + 180) % 360 - 180
-                if abs(df) < 1e-5: break
-                d = _ep.Date(d + df * 0.4)
-            return float(d) + 2415020.0
-
         def _jd(s): return 2451545.0 + (s._dt - _fd(2000, 1, 1)).days
 
-        def hasJieQi(s):
-            if not _HAS_EPHEM: return False
+        def _find_jieqi_jd(s) -> float | None:
+            """返回当天节气的 JD，无则返回 None。找最近节气（前后 12 小时内）。"""
+            j0 = s._jd()
             for y in (s.year - 1, s.year, s.year + 1):
                 for i in range(24):
-                    jd = s._st_jd(y, i)
-                    if jd and _fd(2000,1,1) + _ft(days=jd - 2451545.0) == s._dt:
-                        return True
-            return False
+                    jd = _st_jd(y, i)
+                    if abs(jd - j0) < 0.5:
+                        return jd
+            return None
+
+        def hasJieQi(s):
+            return s._find_jieqi_jd() is not None
 
         def getJieQiJD(s):
-            if not _HAS_EPHEM: return s._jd()
+            found = s._find_jieqi_jd()
+            if found is not None:
+                return found
+            # 回退：找最近的下一个节气
             j0 = s._jd(); best = None; bd = float('inf')
             for y in (s.year - 1, s.year, s.year + 1):
                 for i in range(24):
-                    j = s._st_jd(y, i)
-                    if j:
-                        df = j - j0
-                        if 0 < df < bd: bd = df; best = j
+                    j = _st_jd(y, i)
+                    df = j - j0
+                    if df > 0 and df < bd:
+                        bd = df; best = j
             return best or j0
 
         def after(s, days):
@@ -116,6 +175,11 @@ except ImportError:
 
     def _fromSolar_fallback(y, m, d):
         return _Day(y, m, d)
+
+# sxtwl 可用时 _fromSolar_fallback 未定义，提供一个空实现
+if _USE_SXTWL:
+    def _fromSolar_fallback(y, m, d):
+        return None
 
 # ============================================================
 # 常量表
@@ -193,18 +257,9 @@ NAYIN_TABLE = {
     '壬戌': '大海水', '癸亥': '大海水',
 }
 
-# 十二长生表: 按天干五行阴阳查找
-# 阳干顺行: 甲丙戊庚壬
-# 阴干逆行: 乙丁己辛癸
 CHANG_SHENG_ORDER = ['长生', '沐浴', '冠带', '临官', '帝旺', '衰', '病', '死', '墓', '绝', '胎', '养']
-# 阳干长生起点 (亥→午→寅→巳→申)
-CHANG_SHENG_YANG_START = {'甲': 9, '丙': 2, '戊': 2, '庚': 6, '壬': 8}  # 甲长生在亥(9), 丙戊长生在寅(2), 庚长生在巳(5), 壬长生在申(8)
-# 阴干逆行
-CHANG_SHENG_YIN_START = {'乙': 3, '丁': 7, '己': 7, '辛': 0, '癸': 4}  # 乙长生在午(6→反向)...  No, let me redo this.
 
-# 十二长生: 以日干为主, 查各支
-# 阳干: 从长生位顺时针
-# 阴干: 从长生位逆时针 (即阳干的死位)
+# 阳干长生位: 甲亥, 丙寅, 戊寅, 庚巳, 壬申
 # 阳干长生位: 甲亥, 丙寅, 戊寅, 庚巳, 壬申
 YANG_CHANGSHENG = {
     '甲': 11,  # 亥 (甲木长生在亥)
@@ -472,8 +527,12 @@ def calc_qiyun(birth_dt: datetime, is_yang_year: bool, is_male: bool,
     else:
         forward = not is_male  # 阴年女顺, 阴年男逆
 
-    # 出生时刻 JD
-    birth_utc = birth_dt.astimezone(timezone.utc)
+    # 出生时刻 JD（北京时区 UTC+8）
+    if birth_dt.tzinfo is None:
+        birth_dt_beijing = birth_dt.replace(tzinfo=timezone(timedelta(hours=8)))
+    else:
+        birth_dt_beijing = birth_dt
+    birth_utc = birth_dt_beijing.astimezone(timezone.utc)
     birth_jd = _to_jd(birth_utc)
 
     # 找到相邻节气
