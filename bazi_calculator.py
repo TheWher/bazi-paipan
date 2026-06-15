@@ -835,9 +835,19 @@ class BaziPlate:
 
 def paipan(year: int, month: int, day: int, hour: int, minute: int = 0,
            gender: str = '男', longitude: float = 113.75,
-           location: str = '') -> BaziPlate:
-    """排盘入口"""
+           location: str = '', apply_solar_correction: bool = True) -> BaziPlate:
+    """排盘入口
+
+    Args:
+        apply_solar_correction: 是否自动应用真太阳时校正到四柱计算。
+            默认 True — 直接调用（测试/PDF/独立使用）时自动校正。
+            Flask 路由传 False — 路由层已通过用户参数手动校正。
+    """
     dt = datetime(year, month, day, hour, minute)
+    if apply_solar_correction:
+        # 真太阳时：经度每差 1° → 4 分钟。北京时间基准经度 120°E
+        correction = (longitude - 120.0) * 4.0
+        dt = dt + timedelta(minutes=correction)
     plate = BaziPlate(
         birth_dt=dt,
         gender=gender,

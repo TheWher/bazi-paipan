@@ -505,7 +505,8 @@ def api_paipan():
         return jsonify({"error": "参数格式错误"}), 400
 
     try:
-        plate = paipan(year, month, day, hour, minute, gender, longitude, location)
+        plate = paipan(year, month, day, hour, minute, gender, longitude, location,
+                       apply_solar_correction=False)
         result = plate_to_dict(plate)
         return jsonify(result)
     except Exception as e:
@@ -535,7 +536,8 @@ def api_pdf():
         gender = data["gender"]
         location = data.get("location", "")
 
-        plate = paipan(year, month, day, hour, minute, gender, longitude, location)
+        plate = paipan(year, month, day, hour, minute, gender, longitude, location,
+                       apply_solar_correction=False)
 
         # 可选：含分析文本的 PDF
         analysis = data.get("analysis", "").strip()
@@ -670,7 +672,8 @@ def api_analyze():
             return jsonify({"error": "参数格式错误"}), 400
 
         try:
-            plate = paipan(year, month, day, hour, minute, gender, longitude, location)
+            plate = paipan(year, month, day, hour, minute, gender, longitude, location,
+                           apply_solar_correction=False)
             plate_dict = plate_to_dict(plate)
         except Exception as e:
             return jsonify({"error": f"排盘计算失败: {str(e)}"}), 500
