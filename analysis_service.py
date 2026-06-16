@@ -235,6 +235,7 @@ def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
         "model": API_CONFIG["model"],
         "max_tokens": 24576,
         "temperature": 0.3,
+        "thinking": {"type": "disabled"},
         "system": system_prompt,
         "messages": [
             {"role": "user", "content": user_message},
@@ -330,6 +331,7 @@ def continue_analysis(messages: list[dict], user_reply: str, timeout: int = 600)
         "model": API_CONFIG["model"],
         "max_tokens": 16384,
         "temperature": 0.3,
+        "thinking": {"type": "disabled"},
         "system": system_msg["content"] if system_msg else "",
         "messages": api_messages,
     }
