@@ -107,7 +107,12 @@ def _build_user_message(plate_dict: dict) -> str:
     msg_parts.append(f"- 农历：{lunar.get('year', '?')}年{lunar.get('month', '?')}月{lunar.get('day', '?')}日")
     msg_parts.append(f"- 性别：{info.get('gender', '?')}")
     msg_parts.append(f"- 出生地：{info.get('location', '?')}（经度 {info.get('longitude', '?')}°E）")
-    msg_parts.append(f"- 真太阳时校正：{solar.get('correction_minutes', 0)}分钟")
+    if solar.get("applied"):
+        msg_parts.append("- 真太阳时：**已应用**（排盘时辰已是校正后的真太阳时，不应再手动调整）")
+    elif solar.get("correction_minutes", 0) != 0:
+        msg_parts.append(f"- 真太阳时校正：{solar.get('correction_minutes', 0)}分钟（**未应用**，若需校正需手动调整）")
+    else:
+        msg_parts.append("- 真太阳时：无需校正（经度≈120°E）")
     msg_parts.append(f"- 年柱阴阳：{p.get('year_type', '?')}")
     msg_parts.append(f"- 时辰：{p.get('shichen', '?')}")
     msg_parts.append("")

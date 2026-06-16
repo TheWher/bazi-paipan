@@ -152,7 +152,7 @@ TEST_CASES = [
         "gender": "男", "longitude": 75.99, "location": "喀什",
         "apply_solar_correction": True,  # 默认：自动应用真太阳时
         "expected": {
-            "correction_minutes_range": (-190, -160),
+            "solar_applied": True,
             "shichen_zhi": "辰",  # 10:00 - 176min ≈ 7:04 → 辰时(7-9)
         },
     },
@@ -163,8 +163,7 @@ TEST_CASES = [
         "year": 2005, "month": 8, "day": 19, "hour": 12, "minute": 0,
         "gender": "女", "longitude": 139.69, "location": "东京",
         "expected": {
-            # 经度差 = 139.69 - 120 = 19.69°，校正 = +78.8 分钟 ≈ +1.31 小时
-            "correction_minutes_range": (70, 90),
+            "solar_applied": True,
         },
     },
 
@@ -358,7 +357,7 @@ def resolve_expected(plate, key):
         "qiyun_age_range": lambda: qy["qiyun_age"],
         "dayun_1_gz": lambda: plate.dayun[0]["gz"] if plate.dayun else "",
         "month_zhi": lambda: s["month"]["zhi"],
-        "correction_minutes_range": lambda: solar["correction_minutes"],
+        "solar_applied": lambda: solar.get("applied", False),
         "lunar_month": lambda: lunar["month"],
         "month_canggan_contains": None,
         "hour_canggan_zhi": lambda: s["hour"]["zhi"],
@@ -434,11 +433,10 @@ def run_test(case, verbose=False):
                 failures.append(f"{key}: expected {low}-{high}, got {actual}")
             continue
 
-        if key == "correction_minutes_range":
-            low, high = expected_val
-            actual = plate.solar_adjusted["correction_minutes"]
-            if not (low <= actual <= high):
-                failures.append(f"{key}: expected {low}-{high}, got {actual}")
+        if key == "solar_applied":
+            actual = plate.solar_adjusted.get("applied", False)
+            if actual != expected_val:
+                failures.append(f"{key}: expected {expected_val}, got {actual}")
             continue
 
         if key == "lunar_month":

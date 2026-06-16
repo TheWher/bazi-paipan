@@ -741,8 +741,9 @@ class BaziPlate:
         if solar_pre_applied != 0.0:
             # 校正已由 paipan() 应用，solar_adjusted 直接反映已校时间
             self.solar_adjusted = {
-                'correction_minutes': round(solar_pre_applied, 1),
-                'adjusted_hour': h + mi / 60,  # 已是真太阳时，不再叠加
+                'correction_minutes': 0.0,  # 已在排盘中应用，Agent 无需再次计算
+                'adjusted_hour': h + mi / 60,  # 已是真太阳时
+                'applied': True,
             }
         else:
             utc_hour = h - 8 + mi / 60  # 北京时→UTC

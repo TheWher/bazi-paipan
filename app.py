@@ -354,6 +354,7 @@ def plate_to_dict(plate) -> dict:
         "solar": {
             "correction_minutes": plate.solar_adjusted["correction_minutes"],
             "adjusted_hour": round(plate.solar_adjusted["adjusted_hour"], 2),
+            "applied": plate.solar_adjusted.get("applied", False),
         },
         "lunar": {
             "year": lunar["year"],
