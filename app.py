@@ -482,13 +482,8 @@ def api_paipan():
             except ImportError:
                 return jsonify({"error": "农历转换需要 zhdate 库，请用公历输入"}), 400
 
-        # 应用客户端真太阳时校正
-        solar_correction_minutes = int(data.get("solar_correction", 0))
-        if solar_correction_minutes != 0:
-            total_minutes = hour * 60 + minute + solar_correction_minutes
-            total_minutes = total_minutes % 1440  # wrap around day
-            hour = total_minutes // 60
-            minute = total_minutes % 60
+        # 是否启用真太阳时校正（由 paipan 内部处理，不再手动调 hour）
+        use_solar = bool(data.get("solar_correction", 0))
 
         if gender not in ("男", "女"):
             return jsonify({"error": "性别必须为 '男' 或 '女'"}), 400
@@ -506,7 +501,7 @@ def api_paipan():
 
     try:
         plate = paipan(year, month, day, hour, minute, gender, longitude, location,
-                       apply_solar_correction=False)
+                       apply_solar_correction=use_solar)
         result = plate_to_dict(plate)
         return jsonify(result)
     except Exception as e:
@@ -537,7 +532,7 @@ def api_pdf():
         location = data.get("location", "")
 
         plate = paipan(year, month, day, hour, minute, gender, longitude, location,
-                       apply_solar_correction=False)
+                       apply_solar_correction=bool(data.get("solar_correction", 0)))
 
         # 可选：含分析文本的 PDF
         analysis = data.get("analysis", "").strip()
@@ -676,7 +671,7 @@ def api_analyze():
 
         try:
             plate = paipan(year, month, day, hour, minute, gender, longitude, location,
-                           apply_solar_correction=False)
+                           apply_solar_correction=bool(data.get("solar_correction", 0)))
             plate_dict = plate_to_dict(plate)
         except Exception as e:
             return jsonify({"error": f"排盘计算失败: {str(e)}"}), 500
