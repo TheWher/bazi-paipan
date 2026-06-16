@@ -41,6 +41,9 @@
                 <div class="form-group"><label>日期</label><input type="number" id="day" placeholder="19" min="1" max="31"></div>
                 <div class="form-group"><label>时</label><input type="number" id="hour" placeholder="1" min="0" max="23"></div>
                 <div class="form-group"><label>分</label><input type="number" id="minute" placeholder="35" min="0" max="59"></div>
+                <div class="form-group form-wide" id="shichen-warning" style="display:none">
+                    <span style="color:#e65100;font-size:0.78em">⚠️ 出生时间接近时辰分界线（±15分钟），时辰可能因记录偏差或真太阳时校正而改变，建议确认准确度</span>
+                </div>
                 <div class="form-group">
                     <label>性别</label>
                     <div class="radio-group">
@@ -385,6 +388,18 @@ function loadForm() {
     } catch(e) {}
 }
 [elYear,elMonth,elDay,elHour,elMinute,elLocation,elLongitude].forEach(el => el.addEventListener('change', saveForm));
+// 时辰边界提醒
+[elHour,elMinute].forEach(el => el.addEventListener('change', checkShichenBoundary));
+function checkShichenBoundary() {
+    const h = parseInt(elHour.value), m = parseInt(elMinute.value) || 0;
+    if (isNaN(h)) return;
+    const totalMin = h * 60 + m;
+    // 时辰边界（子0, 丑2, 寅4, 卯6, 辰8, 巳10, 午12, 未14, 申16, 酉18, 戌20, 亥22）×60
+    const boundaries = [0, 120, 240, 360, 480, 600, 720, 840, 960, 1080, 1200, 1320];
+    const near = boundaries.some(b => Math.abs(totalMin - b) <= 15 || Math.abs(totalMin - b - 1440) <= 15);
+    const warning = $('shichen-warning');
+    if (warning) warning.style.display = near ? '' : 'none';
+}
 elUseTrueSolar.addEventListener('change', () => { elLngLat.style.display = elUseTrueSolar.checked ? '' : 'none'; saveForm(); });
 document.querySelectorAll('input[name="gender"],input[name="calendar"]').forEach(el => el.addEventListener('change', saveForm));
 
