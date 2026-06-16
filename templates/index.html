@@ -115,7 +115,7 @@
             <div class="charts-bento">
                 <div class="bento-card"><h3 class="card-title">🎨 五行分布</h3><div id="chart-wuxing" class="chart-box"></div></div>
                 <div class="bento-card"><h3 class="card-title">🔄 十二长生</h3><div id="chart-changsheng" class="chart-box"></div></div>
-                <div class="bento-card span-full"><h3 class="card-title">⭕ 大运环图</h3><div id="chart-dayun-ring" class="chart-box" style="max-width:520px;margin:0 auto;"></div></div>
+                <div class="bento-card span-full"><h3 class="card-title">⭕ 大运环图</h3><div id="chart-dayun-ring" class="chart-box"></div></div>
                 <div class="bento-card span-full"><h3 class="card-title">🔗 干支生克关系</h3><div id="chart-shengke" class="chart-box"></div><div style="text-align:center;font-size:0.75em;color:#999;margin-top:4px;">白圈灰线黑字 · 上区天干相克 · 下区地支合冲刑害</div></div>
             </div>
         </section>
@@ -548,7 +548,7 @@ function renderShengkeChart(data){
     const el = document.getElementById('chart-shengke');
     if(!el||!data||!data.pillars) return;
 
-    const V = 800;
+    const V = 960;
     const cx = V/2;
     const tag = (n,a,i) => `<${n} ${Object.entries(a).map(([k,v])=>`${k}="${v}"`).join(' ')}>${i||''}</${n}>`;
     const wxColor = {'甲':'#2e7d32','乙':'#388e3c','丙':'#c62828','丁':'#d32f2f','戊':'#e65100','己':'#ef6c00','庚':'#b8860b','辛':'#c7940a','壬':'#1565c0','癸':'#1976d2',
@@ -558,7 +558,7 @@ function renderShengkeChart(data){
     const labels = ['年柱','月柱','日柱','时柱'];
     const gans = cols.map(c=>data.pillars[c]?.gan||'');
     const zhis = cols.map(c=>data.pillars[c]?.zhi||'');
-    const colW = 165, startX = cx - colW*1.5;
+    const colW = 190, startX = cx - colW*1.5;
     const ganY = 170, zhiY = 245, H = 560;
 
     let parts = [];
@@ -631,7 +631,7 @@ function renderShengkeChart(data){
         parts.push(tag('text',{x:(x1+x2)/2,y:y-12,fill:'#888','font-size':'10','text-anchor':'middle'},r.text));
     });
 
-    el.innerHTML = tag('svg',{viewBox:`0 0 ${V} ${H}`,xmlns:'http://www.w3.org/2000/svg',style:'width:100%;max-width:680px;display:block;margin:0 auto;'},parts.join(''));
+    el.innerHTML = tag('svg',{viewBox:`0 0 ${V} ${H}`,xmlns:'http://www.w3.org/2000/svg',style:'width:100%;display:block;margin:0 auto;'},parts.join(''));
 }
 
 // ========== 工具函数 ==========

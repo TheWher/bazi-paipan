@@ -8,7 +8,7 @@ WX_COLORS = {'木': '#7cb342', '火': '#e53935', '土': '#fb8c00', '金': '#fdd8
 WX_ORDER = ['木', '火', '土', '金', '水']
 
 
-def changsheng_wheel(pillars: dict, day_gan: str, size: int = 540) -> str:
+def changsheng_wheel(pillars: dict, day_gan: str, size: int = 420) -> str:
     """日主十二长生轮盘 — 外圈12宫 + 内圈日主 + 四柱标记点 + 底部图例"""
     order = ['长生', '沐浴', '冠带', '临官', '帝旺', '衰', '病', '死', '墓', '绝', '胎', '养']
     pname = {'year': '年', 'month': '月', 'day': '日', 'hour': '时'}
@@ -103,7 +103,7 @@ def changsheng_wheel(pillars: dict, day_gan: str, size: int = 540) -> str:
     return svg
 
 
-def wuxing_pie(data: dict[str, int], size: int = 500) -> str:
+def wuxing_pie(data: dict[str, int], size: int = 380) -> str:
     """五行分布环图"""
     cx, cy = size / 2, size / 2
     r_outer = size * 0.38
@@ -145,7 +145,7 @@ def wuxing_pie(data: dict[str, int], size: int = 500) -> str:
     return svg
 
 
-def dayun_line(dayun: list[dict], ri_gan: str = '', width: int = 900, height: int = 340) -> str:
+def dayun_line(dayun: list[dict], ri_gan: str = '', width: int = 960, height: int = 340) -> str:
     """大运时间轴 — 纯信息展示，不评分不预测。每步显示干支/年龄/年份"""
     n = len(dayun)
     row_h = 50
@@ -183,7 +183,7 @@ def dayun_line(dayun: list[dict], ri_gan: str = '', width: int = 900, height: in
 WX_RING_COLORS = {'木': '#7cb342', '火': '#e53935', '土': '#fb8c00', '金': '#d4a843', '水': '#1e88e5'}
 GAN_WUXING = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'}
 
-def dayun_ring(dayun: list[dict], ri_gan: str = '', size: int = 520) -> str:
+def dayun_ring(dayun: list[dict], ri_gan: str = '', size: int = 400) -> str:
     """大运环形图 — 8步大运绕圈排列，每步显示干支+年龄，配色按天干五行。
     受 Species in Pieces 环形碎片导航启发。"""
     n = len(dayun)

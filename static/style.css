@@ -377,7 +377,8 @@ a, button, input, select, textarea, .card, .form-section { transition: all 0.3s 
 .charts-row { display: flex; flex-direction: column; gap: 24px; }
 .chart-card { padding: 28px 32px; }
 .chart-box { width: 100%; display: flex; align-items: center; justify-content: center; padding: 12px 0; }
-.chart-box svg { max-width: 100%; height: auto; }
+.chart-box svg { max-width: 100%; max-height: 380px; height: auto; }
+.charts-bento .bento-card.span-full .chart-box svg { max-height: 480px; }
 
 /* ---- Analysis ---- */
 .analysis-content { font-size: 0.9rem; line-height: 1.85; color: var(--text); max-width: 75ch; }
