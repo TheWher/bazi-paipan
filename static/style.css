@@ -576,8 +576,9 @@ a, button, input, select, textarea, .card, .form-section { transition: all 0.3s 
 .verify-no { border: 1.5px solid rgba(244,67,54,.35); color: #ef5350; }
 .verify-no:hover { background: rgba(244,67,54,.1); border-color: #f44336; }
 .verify-no.selected { background: rgba(244,67,54,.2); border-color: #f44336; color: #f44336; font-weight: bold; }
-.verify-note { width: 100%; margin-top: 8px; padding: 6px 10px; font-size: 0.78em; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 6px; color: #ccc; resize: vertical; font-family: inherit; }
-.verify-note:focus { outline: none; border-color: rgba(212,168,67,.3); }
+.verify-note { width: 100%; margin-top: 8px; padding: 8px 12px; font-size: 0.82em; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.15); border-radius: 6px; color: #ddd; resize: vertical; font-family: inherit; }
+.verify-note::placeholder { color: #888; }
+.verify-note:focus { outline: none; border-color: #d4a843; background: rgba(255,255,255,.08); color: #fff; }
 .verify-actions { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
 .verify-status { font-size: 0.82em; color: #999; }
 
