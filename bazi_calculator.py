@@ -728,14 +728,25 @@ class BaziPlate:
     ri_zhu: str = ''
     year_type: str = ''  # '阳年' or '阴年'
 
-    def compute(self):
-        """执行所有计算"""
+    def compute(self, solar_pre_applied: float = 0.0):
+        """执行所有计算
+
+        Args:
+            solar_pre_applied: paipan() 已预先应用的校正（分钟）。0=未应用。
+        """
         y, m, d = self.birth_dt.year, self.birth_dt.month, self.birth_dt.day
         h, mi = self.birth_dt.hour, self.birth_dt.minute
 
         # 1. 真太阳时
-        utc_hour = h - 8 + mi / 60  # 北京时→UTC
-        self.solar_adjusted = calc_true_solar_time(utc_hour, self.longitude)
+        if solar_pre_applied != 0.0:
+            # 校正已由 paipan() 应用，solar_adjusted 直接反映已校时间
+            self.solar_adjusted = {
+                'correction_minutes': round(solar_pre_applied, 1),
+                'adjusted_hour': h + mi / 60,  # 已是真太阳时，不再叠加
+            }
+        else:
+            utc_hour = h - 8 + mi / 60  # 北京时→UTC
+            self.solar_adjusted = calc_true_solar_time(utc_hour, self.longitude)
 
         # 2. 四柱
         self.sizhu = calc_sizhu(y, m, d, h, mi)
@@ -843,18 +854,18 @@ def paipan(year: int, month: int, day: int, hour: int, minute: int = 0,
             默认 True — 直接调用（测试/PDF/独立使用）时自动校正。
             Flask 路由传 False — 路由层已通过用户参数手动校正。
     """
-    dt = datetime(year, month, day, hour, minute)
+    dt_original = datetime(year, month, day, hour, minute)
+    solar_correction_applied = 0.0
     if apply_solar_correction:
-        # 真太阳时：经度每差 1° → 4 分钟。北京时间基准经度 120°E
-        correction = (longitude - 120.0) * 4.0
-        dt = dt + timedelta(minutes=correction)
+        solar_correction_applied = (longitude - 120.0) * 4.0
+        dt_original = dt_original + timedelta(minutes=solar_correction_applied)
     plate = BaziPlate(
-        birth_dt=dt,
+        birth_dt=dt_original,
         gender=gender,
         longitude=longitude,
         location=location or '未知',
     )
-    plate.compute()
+    plate.compute(solar_pre_applied=solar_correction_applied)
     return plate
 
 
