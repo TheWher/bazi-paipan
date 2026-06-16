@@ -256,7 +256,18 @@ def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
                     analysis_text += block["text"]
 
             if analysis_text:
-                break  # 成功，跳出重试循环
+                # 成功，直接返回
+                return {
+                    "success": True,
+                    "analysis": analysis_text,
+                    "model": data.get("model", API_CONFIG["model"]),
+                    "usage": data.get("usage", {}),
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message},
+                        {"role": "assistant", "content": analysis_text},
+                    ],
+                }
 
             if attempt == 0:
                 time.sleep(3)  # 等3秒再试
@@ -278,18 +289,6 @@ def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
                 time.sleep(3)
                 continue
             return {"success": False, "error": f"API 调用失败: {str(e)}"}
-
-        return {
-            "success": True,
-            "analysis": analysis_text,
-            "model": data.get("model", API_CONFIG["model"]),
-            "usage": data.get("usage", {}),
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-                {"role": "assistant", "content": analysis_text},
-            ],
-        }
 
     return {"success": False, "error": "API 调用失败：所有重试均未成功"}
 
