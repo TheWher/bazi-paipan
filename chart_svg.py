@@ -206,17 +206,15 @@ def dayun_ring(dayun: list[dict], ri_gan: str = '', size: int = 400, current_age
                 break
 
     svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + str(size) + ' ' + str(size) + '" width="100%" height="100%">'
-    svg += '<style>.rgz{font-size:15px;fill:#3a3226;font-weight:bold;text-anchor:middle;font-family:sans-serif}.rage{font-size:10px;fill:#999;text-anchor:middle;font-family:sans-serif}.rstep{font-size:8px;fill:#bbb;text-anchor:middle;font-family:sans-serif}'
-    svg += '@keyframes pulse-ring{0%,100%{r:' + str(r_item+8) + ';opacity:0.3}50%{r:' + str(r_item+14) + ';opacity:0.1}}'
-    svg += '</style>'
+    svg += '<style>.rgz{font-size:15px;fill:#3a3226;font-weight:bold;text-anchor:middle;font-family:sans-serif}.rage{font-size:10px;fill:#999;text-anchor:middle;font-family:sans-serif}.rstep{font-size:8px;fill:#bbb;text-anchor:middle;font-family:sans-serif}</style>'
 
-    svg += '<circle cx="' + str(int(cx)) + '" cy="' + str(int(cy)) + '" r="' + str(int(size*0.1)) + '" fill="#fdfaf3" stroke="#d4a843" stroke-width="1"/>'
-    svg += '<text x="' + str(int(cx)) + '" y="' + str(int(cy-6)) + '" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="bold" font-family="sans-serif">大运</text>'
+    svg += '<circle cx="' + '{:.1f}'.format(cx) + '" cy="' + '{:.1f}'.format(cy) + '" r="' + '{:.1f}'.format(size*0.1) + '" fill="#fdfaf3" stroke="#d4a843" stroke-width="1"/>'
+    svg += '<text x="' + '{:.0f}'.format(cx) + '" y="' + '{:.0f}'.format(cy-6) + '" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="bold" font-family="sans-serif">大运</text>'
     center_label = '8 步运程'
     if current_idx >= 0:
         d = dayun[current_idx]
         center_label = '当前：' + d['gz']
-    svg += '<text x="' + str(int(cx)) + '" y="' + str(int(cy+10)) + '" text-anchor="middle" fill="#999" font-size="10" font-family="sans-serif">' + center_label + '</text>'
+    svg += '<text x="' + '{:.0f}'.format(cx) + '" y="' + '{:.0f}'.format(cy+10) + '" text-anchor="middle" fill="#999" font-size="10" font-family="sans-serif">' + center_label + '</text>'
 
     angles = [(i / n * 360 - 90) for i in range(n)]
     for i in range(n):
@@ -225,7 +223,7 @@ def dayun_ring(dayun: list[dict], ri_gan: str = '', size: int = 400, current_age
         y1 = cy + r_ring * math.sin(math.radians(a1))
         x2 = cx + r_ring * math.cos(math.radians(a2))
         y2 = cy + r_ring * math.sin(math.radians(a2))
-        svg += '<line x1="' + str(int(x1)) + '" y1="' + str(int(y1)) + '" x2="' + str(int(x2)) + '" y2="' + str(int(y2)) + '" stroke="#e8e0d0" stroke-width="1" stroke-dasharray="4,3"/>'
+        svg += '<line x1="' + '{:.1f}'.format(x1) + '" y1="' + '{:.1f}'.format(y1) + '" x2="' + '{:.1f}'.format(x2) + '" y2="' + '{:.1f}'.format(y2) + '" stroke="#e8e0d0" stroke-width="1" stroke-dasharray="4,3"/>'
 
     for i, d in enumerate(dayun):
         a = angles[i]
@@ -236,26 +234,27 @@ def dayun_ring(dayun: list[dict], ri_gan: str = '', size: int = 400, current_age
         color = WX_RING_COLORS.get(wx, '#999')
         is_current = (i == current_idx)
 
+        r_outer = r_item + 8
+        r_glow = r_item + 16
+
         if is_current:
             # 脉冲光晕
-            svg += '<circle cx="' + str(int(ix)) + '" cy="' + str(int(iy)) + '" r="' + str(int(r_item+6)) + '" fill="' + color + '" opacity="0.25">'
-            svg += '<animate attributeName="r" values="' + str(int(r_item+6)) + ';' + str(int(r_item+14)) + ';' + str(int(r_item+6)) + '" dur="2s" repeatCount="indefinite"/>'
+            svg += '<circle cx="' + '{:.1f}'.format(ix) + '" cy="' + '{:.1f}'.format(iy) + '" r="' + '{:.1f}'.format(r_outer) + '" fill="' + color + '" opacity="0.25">'
+            svg += '<animate attributeName="r" values="' + '{:.1f}'.format(r_outer) + ';' + '{:.1f}'.format(r_glow) + ';' + '{:.1f}'.format(r_outer) + '" dur="2s" repeatCount="indefinite"/>'
             svg += '<animate attributeName="opacity" values="0.25;0.08;0.25" dur="2s" repeatCount="indefinite"/>'
             svg += '</circle>'
-            svg += '<circle cx="' + str(int(ix)) + '" cy="' + str(int(iy)) + '" r="' + str(int(r_item)) + '" fill="#fff" stroke="' + color + '" stroke-width="3"/>'
-            # 金色角标
-            svg += '<rect x="' + str(int(ix-16)) + '" y="' + str(int(iy-36)) + '" width="32" height="14" rx="7" fill="#d4a843"/>'
-            svg += '<text x="' + str(int(ix)) + '" y="' + str(int(iy-26)) + '" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold" font-family="sans-serif">当前</text>'
+            svg += '<circle cx="' + '{:.1f}'.format(ix) + '" cy="' + '{:.1f}'.format(iy) + '" r="' + '{:.1f}'.format(r_item) + '" fill="#fff" stroke="' + color + '" stroke-width="3"/>'
+            svg += '<rect x="' + '{:.0f}'.format(ix-16) + '" y="' + '{:.0f}'.format(iy-r_item-14) + '" width="32" height="15" rx="7" fill="#d4a843"/>'
+            svg += '<text x="' + '{:.0f}'.format(ix) + '" y="' + '{:.0f}'.format(iy-r_item-3) + '" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold" font-family="sans-serif">当前</text>'
         else:
-            svg += '<circle cx="' + str(int(ix)) + '" cy="' + str(int(iy)) + '" r="' + str(int(r_item+6)) + '" fill="' + color + '" opacity="0.1"/>'
-            svg += '<circle cx="' + str(int(ix)) + '" cy="' + str(int(iy)) + '" r="' + str(int(r_item)) + '" fill="#fff" stroke="' + color + '" stroke-width="2.5"/>'
+            svg += '<circle cx="' + '{:.1f}'.format(ix) + '" cy="' + '{:.1f}'.format(iy) + '" r="' + '{:.1f}'.format(r_outer) + '" fill="' + color + '" opacity="0.1"/>'
+            svg += '<circle cx="' + '{:.1f}'.format(ix) + '" cy="' + '{:.1f}'.format(iy) + '" r="' + '{:.1f}'.format(r_item) + '" fill="#fff" stroke="' + color + '" stroke-width="2"/>'
 
-        svg += '<title>第' + str(d["step"]) + '步：' + d["gz"] + '（' + str(int(d["start_age"])) + '-' + str(int(d["end_age"])) + '岁）' + (' ← 当前' if is_current else '') + '</title>'
-        gz_size = '17' if is_current else '15'
-        gz_weight = '800' if is_current else 'bold'
-        svg += '<text x="' + str(int(ix)) + '" y="' + str(int(iy-3)) + '" font-size="' + gz_size + '" fill="#3a3226" font-weight="' + gz_weight + '" text-anchor="middle" font-family="sans-serif">' + d["gz"] + '</text>'
-        svg += '<text x="' + str(int(ix)) + '" y="' + str(int(iy+12)) + '" font-size="10" fill="#999" text-anchor="middle" font-family="sans-serif">' + str(int(d["start_age"])) + '-' + str(int(d["end_age"])) + '岁</text>'
-        svg += '<text x="' + str(int(ix)) + '" y="' + str(int(iy+22)) + '" font-size="8" fill="#bbb" text-anchor="middle" font-family="sans-serif">第' + str(d["step"]) + '步</text>'
+        svg += '<title>第' + str(d["step"]) + '步：' + d["gz"] + '（' + '{:.0f}'.format(d["start_age"]) + '-' + '{:.0f}'.format(d["end_age"]) + '岁）' + (' ← 当前' if is_current else '') + '</title>'
+        fs_gz = '17' if is_current else '14'
+        svg += '<text x="' + '{:.0f}'.format(ix) + '" y="' + '{:.0f}'.format(iy-3) + '" font-size="' + fs_gz + '" fill="#3a3226" font-weight="800" text-anchor="middle" font-family="sans-serif">' + d["gz"] + '</text>'
+        svg += '<text x="' + '{:.0f}'.format(ix) + '" y="' + '{:.0f}'.format(iy+12) + '" font-size="10" fill="#999" text-anchor="middle" font-family="sans-serif">' + '{:.0f}'.format(d["start_age"]) + '-' + '{:.0f}'.format(d["end_age"]) + '岁</text>'
+        svg += '<text x="' + '{:.0f}'.format(ix) + '" y="' + '{:.0f}'.format(iy+22) + '" font-size="8" fill="#bbb" text-anchor="middle" font-family="sans-serif">第' + str(d["step"]) + '步</text>'
 
     svg += '</svg>'
     return svg
