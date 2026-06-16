@@ -535,7 +535,14 @@ async function renderCharts(data) {
         // 大运环形图
         const drDom = document.getElementById('chart-dayun-ring');
         if (drDom) {
-            const r = await fetch('/api/chart/dayun-ring', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({dayun:data.dayun,ri_gan:data.ri_zhu})});
+            // 计算当前年龄
+            const birthYr = parseInt(elYear.value) || 2005;
+            const now = new Date();
+            let currentAge = now.getFullYear() - birthYr;
+            if (now.getMonth() < parseInt(elMonth.value)-1 || (now.getMonth() === parseInt(elMonth.value)-1 && now.getDate() < parseInt(elDay.value))) {
+                currentAge -= 1;
+            }
+            const r = await fetch('/api/chart/dayun-ring', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({dayun:data.dayun,ri_gan:data.ri_zhu,current_age:currentAge})});
             if (r.ok) drDom.innerHTML = await r.text();
         }
     } catch(e) { console.warn('Chart load failed:', e); }

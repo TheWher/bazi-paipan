@@ -626,7 +626,10 @@ def api_chart_dayun_ring():
         return jsonify({"error": "请求格式错误"}), 400
     try:
         from chart_svg import dayun_ring
-        svg = dayun_ring(data.get("dayun", []), data.get("ri_gan", ""))
+        svg = dayun_ring(
+            data.get("dayun", []), data.get("ri_gan", ""),
+            current_age=data.get("current_age", -1),
+        )
         from flask import Response
         return Response(svg, mimetype="image/svg+xml")
     except Exception as e:

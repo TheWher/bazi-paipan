@@ -183,20 +183,38 @@ def dayun_line(dayun: list[dict], ri_gan: str = '', width: int = 960, height: in
 WX_RING_COLORS = {'木': '#7cb342', '火': '#e53935', '土': '#fb8c00', '金': '#d4a843', '水': '#1e88e5'}
 GAN_WUXING = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'}
 
-def dayun_ring(dayun: list[dict], ri_gan: str = '', size: int = 400) -> str:
+def dayun_ring(dayun: list[dict], ri_gan: str = '', size: int = 400, current_age: float = -1) -> str:
     """大运环形图 — 8步大运绕圈排列，每步显示干支+年龄，配色按天干五行。
-    受 Species in Pieces 环形碎片导航启发。"""
+    受 Species in Pieces 环形碎片导航启发。
+
+    Args:
+        current_age: 当前年龄，用于高亮当前所在大运。负数则不高亮。
+    """
     n = len(dayun)
     cx, cy = size / 2, size / 2
     r_ring = size * 0.35
     r_item = size * 0.09
 
+    # 找当前大运
+    current_idx = -1
+    if current_age >= 0:
+        for i, d in enumerate(dayun):
+            if d['start_age'] <= current_age < d['end_age']:
+                current_idx = i
+                break
+
     svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}" width="100%" height="100%">'
-    svg += '<style>.rgz{font-size:15px;fill:#3a3226;font-weight:bold;text-anchor:middle;font-family:sans-serif}.rage{font-size:10px;fill:#999;text-anchor:middle;font-family:sans-serif}.rstep{font-size:8px;fill:#bbb;text-anchor:middle;font-family:sans-serif}</style>'
+    svg += '<style>.rgz{font-size:15px;fill:#3a3226;font-weight:bold;text-anchor:middle;font-family:sans-serif}.rage{font-size:10px;fill:#999;text-anchor:middle;font-family:sans-serif}.rstep{font-size:8px;fill:#bbb;text-anchor:middle;font-family:sans-serif}'
+    svg += '@keyframes pulse-ring{0%,100%{r:' + str(r_item+10) + ';opacity:0.35}50%{r:' + str(r_item+16) + ';opacity:0.12}}'
+    svg += '</style>'
 
     svg += f'<circle cx="{cx:.0f}" cy="{cy:.0f}" r="{size*0.1:.0f}" fill="#fdfaf3" stroke="#d4a843" stroke-width="1"/>'
     svg += f'<text x="{cx:.0f}" y="{cy-6:.0f}" text-anchor="middle" fill="#8b6914" font-size="13" font-weight="bold" font-family="sans-serif">大运</text>'
-    svg += f'<text x="{cx:.0f}" y="{cy+10:.0f}" text-anchor="middle" fill="#999" font-size="10" font-family="sans-serif">8 步运程</text>'
+    center_label = '8 步运程'
+    if current_idx >= 0:
+        d = dayun[current_idx]
+        center_label = f'当前：{d["gz"]}'
+    svg += f'<text x="{cx:.0f}" y="{cy+10:.0f}" text-anchor="middle" fill="#999" font-size="10" font-family="sans-serif">{center_label}</text>'
 
     angles = [(i / n * 360 - 90) for i in range(n)]
     for i in range(n):
@@ -214,11 +232,27 @@ def dayun_ring(dayun: list[dict], ri_gan: str = '', size: int = 400) -> str:
         iy = cy + r_ring * math.sin(ra)
         wx = GAN_WUXING.get(d['gan'], '土')
         color = WX_RING_COLORS.get(wx, '#999')
+        is_current = (i == current_idx)
 
-        svg += f'<circle cx="{ix:.0f}" cy="{iy:.0f}" r="{r_item+6:.0f}" fill="{color}" opacity="0.1"/>'
-        svg += f'<circle cx="{ix:.0f}" cy="{iy:.0f}" r="{r_item:.0f}" fill="#fff" stroke="{color}" stroke-width="2.5"/>'
-        svg += f'<title>第{d["step"]}步：{d["gz"]}（{d["start_age"]:.0f}-{d["end_age"]:.0f}岁）</title>'
-        svg += f'<text x="{ix:.0f}" y="{iy-3:.0f}" class="rgz">{d["gz"]}</text>'
+        # 当前大运：大光晕 + 脉冲动画 + 加粗边框
+        if is_current:
+            svg += f'<circle cx="{ix:.0f}" cy="{iy:.0f}" r="{r_item+6:.0f}" fill="{color}" opacity="0.25">'
+            svg += f'<animate attributeName="r" values="{r_item+6};{r_item+14};{r_item+6}" dur="2s" repeatCount="indefinite"/>'
+            svg += f'<animate attributeName="opacity" values="0.25;0.08;0.25" dur="2s" repeatCount="indefinite"/>'
+            svg += '</circle>'
+            svg += f'<circle cx="{ix:.0f}" cy="{iy:.0f}" r="{r_item:.0f}" fill="#fff" stroke="{color}" stroke-width="3.5"/>'
+            # "当前"标签
+            svg += f'<rect x="{ix-18:.0f}" y="{iy-38:.0f}" width="36" height="16" rx="8" fill="#d4a843"/>'
+            svg += f'<text x="{ix:.0f}" y="{iy-26:.0f}" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="sans-serif">当前</text>'
+        else:
+            svg += f'<circle cx="{ix:.0f}" cy="{iy:.0f}" r="{r_item+6:.0f}" fill="{color}" opacity="0.1"/>'
+            svg += f'<circle cx="{ix:.0f}" cy="{iy:.0f}" r="{r_item:.0f}" fill="#fff" stroke="{color}" stroke-width="2.5"/>'
+
+        svg += f'<title>第{d["step"]}步：{d["gz"]}（{d["start_age"]:.0f}-{d["end_age"]:.0f}岁）{" ← 当前" if is_current else ""}</title>'
+        # 当前步的干支更大更粗
+        gz_size = '17' if is_current else '15'
+        gz_weight = '800' if is_current else 'bold'
+        svg += f'<text x="{ix:.0f}" y="{iy-3:.0f}" class="rgz" font-size="{gz_size}" font-weight="{gz_weight}">{d["gz"]}</text>'
         svg += f'<text x="{ix:.0f}" y="{iy+12:.0f}" class="rage">{d["start_age"]:.0f}-{d["end_age"]:.0f}岁</text>'
         svg += f'<text x="{ix:.0f}" y="{iy+22:.0f}" class="rstep">第{d["step"]}步</text>'
 
