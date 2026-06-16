@@ -731,7 +731,7 @@ def api_analyze_continue():
         return jsonify({"error": "缺少参数: messages 或 reply"}), 400
 
     from analysis_service import continue_analysis
-    result = continue_analysis(data["messages"], data["reply"], timeout=180)
+    result = continue_analysis(data["messages"], data["reply"], timeout=600)
 
     if result["success"]:
         # 组装完整对话 + 保存反馈日志

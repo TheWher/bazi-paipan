@@ -274,7 +274,7 @@ def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
         return {"success": False, "error": f"API 调用失败: {str(e)}"}
 
 
-def continue_analysis(messages: list[dict], user_reply: str, timeout: int = 180) -> dict:
+def continue_analysis(messages: list[dict], user_reply: str, timeout: int = 600) -> dict:
     """续接分析对话
 
     Args:
