@@ -17,7 +17,7 @@ def changsheng_wheel(pillars: dict, day_gan: str, size: int = 420) -> str:
           '病':'#b0bec5','死':'#90a4ae','墓':'#bcaaa4','绝':'#8d6e63','胎':'#c5cae9','养':'#b2dfdb'}
 
     wheel_h = size
-    legend_h = 195
+    legend_h = 105  # 3行×28px + 边距
     total_h = wheel_h + legend_h
     cx, cy = size / 2, size / 2
     r_out = size * 0.40
@@ -79,25 +79,27 @@ def changsheng_wheel(pillars: dict, day_gan: str, size: int = 420) -> str:
     svg += f'<text x="{cx:.0f}" y="{cy-2:.0f}" text-anchor="middle" fill="#fff" font-size="18" font-weight="bold" font-family="sans-serif">{day_gan}</text>'
     svg += f'<text x="{cx:.0f}" y="{cy+14:.0f}" text-anchor="middle" fill="#fff" font-size="12" font-family="sans-serif">日主</text>'
 
-    # ---- 图例面板：每宫解释 + 标记四柱所在 ----
-    legend_y = cy + r_out + 65
-    cols, rows = 3, 4
-    item_w = 175
-    legend_x0 = cx - (cols * item_w) / 2
+    # ---- 图例面板：宫名 + 四柱标记，悬停看解释 ----
+    legend_y = cy + r_out + 55
+    cols, rows = 4, 3  # 4列3行，更紧凑
+    item_w = size / cols
+    legend_x0 = (size - cols * item_w) / 2
     for i, name in enumerate(order):
         col, row = i % cols, i // cols
-        lx = legend_x0 + col * item_w
-        ly = legend_y + row * 42
-        svg += f'<rect x="{lx}" y="{ly}" width="11" height="11" rx="2" fill="{sc[name]}"/>'
+        lx = legend_x0 + col * item_w + 8
+        ly = legend_y + row * 28
+        svg += f'<rect x="{lx}" y="{ly+2}" width="10" height="10" rx="2" fill="{sc[name]}"/>'
         hl = ''
         for pk in ['year','month','day','hour']:
             if pillars[pk]['changsheng'] == name:
-                hl += f' {pname[pk]}柱'
-        label = f'{name}{hl}'
-        txt_color = '#000' if hl else '#999'
+                hl += ' ' + pname[pk] + '柱'
+        label = name + hl
+        txt_color = '#000' if hl else '#888'
         txt_weight = 'bold' if hl else 'normal'
-        svg += f'<text x="{lx+15}" y="{ly+10:.0f}" font-size="10" fill="{txt_color}" font-weight="{txt_weight}" font-family="sans-serif">{label}</text>'
-        svg += f'<text x="{lx+15}" y="{ly+23:.0f}" font-size="9" fill="#bbb" font-family="sans-serif">{meanings[name][:12]}</text>'
+        txt_size = '12' if hl else '11'
+        meaning = meanings.get(name, '')
+        svg += '<g><title>' + name + '：' + meaning + '</title>'
+        svg += '<text x="' + str(lx+14) + '" y="' + str(ly+12) + '" font-size="' + txt_size + '" fill="' + txt_color + '" font-weight="' + txt_weight + '" font-family="sans-serif">' + label + '</text></g>'
 
     svg += '</svg>'
     return svg
@@ -234,16 +236,27 @@ def dayun_ring(dayun: list[dict], ri_gan: str = '', size: int = 400, current_age
         color = WX_RING_COLORS.get(wx, '#999')
         is_current = (i == current_idx)
 
-        # 当前大运：大光晕 + 脉冲动画 + 加粗边框
+        # 当前大运：大光晕 + 脉冲动画 + 加粗边框 + 外部指示箭头
         if is_current:
             svg += f'<circle cx="{ix:.0f}" cy="{iy:.0f}" r="{r_item+6:.0f}" fill="{color}" opacity="0.25">'
             svg += f'<animate attributeName="r" values="{r_item+6};{r_item+14};{r_item+6}" dur="2s" repeatCount="indefinite"/>'
             svg += f'<animate attributeName="opacity" values="0.25;0.08;0.25" dur="2s" repeatCount="indefinite"/>'
             svg += '</circle>'
             svg += f'<circle cx="{ix:.0f}" cy="{iy:.0f}" r="{r_item:.0f}" fill="#fff" stroke="{color}" stroke-width="3.5"/>'
-            # "当前"标签
+            # "当前"标签在圈内
             svg += f'<rect x="{ix-18:.0f}" y="{iy-38:.0f}" width="36" height="16" rx="8" fill="#d4a843"/>'
             svg += f'<text x="{ix:.0f}" y="{iy-26:.0f}" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold" font-family="sans-serif">当前</text>'
+            # 外部指向箭头 + "你在这"
+            outer_r = r_ring + r_item + 30
+            ox = cx + outer_r * math.cos(ra)
+            oy = cy + outer_r * math.sin(ra)
+            # 背景气泡
+            svg += f'<rect x="{ox-38:.0f}" y="{oy-12:.0f}" width="76" height="24" rx="12" fill="#d4a843" opacity="0.9"/>'
+            svg += f'<text x="{ox:.0f}" y="{oy+4:.0f}" text-anchor="middle" fill="#fff" font-size="11" font-weight="bold" font-family="sans-serif">👆 你在这</text>'
+            # 连接线
+            lx = cx + (r_ring + r_item + 10) * math.cos(ra)
+            ly = cy + (r_ring + r_item + 10) * math.sin(ra)
+            svg += f'<line x1="{lx:.0f}" y1="{ly:.0f}" x2="{ox:.0f}" y2="{oy-10:.0f}" stroke="#d4a843" stroke-width="1.5" stroke-dasharray="3,2"/>'
         else:
             svg += f'<circle cx="{ix:.0f}" cy="{iy:.0f}" r="{r_item+6:.0f}" fill="{color}" opacity="0.1"/>'
             svg += f'<circle cx="{ix:.0f}" cy="{iy:.0f}" r="{r_item:.0f}" fill="#fff" stroke="{color}" stroke-width="2.5"/>'
