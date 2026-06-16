@@ -346,7 +346,7 @@ def plate_to_dict(plate) -> dict:
 
     return {
         "input": {
-            "birth_datetime": plate.birth_dt.strftime("%Y-%m-%d %H:%M"),
+            "birth_datetime": plate.birth_dt_original.strftime("%Y-%m-%d %H:%M") if plate.birth_dt_original else plate.birth_dt.strftime("%Y-%m-%d %H:%M"),
             "gender": plate.gender,
             "longitude": plate.longitude,
             "location": plate.location,
@@ -731,7 +731,7 @@ def api_analyze_continue():
         return jsonify({"error": "缺少参数: messages 或 reply"}), 400
 
     from analysis_service import continue_analysis
-    result = continue_analysis(data["messages"], data["reply"], timeout=600)
+    result = continue_analysis(data["messages"], data["reply"], timeout=280)
 
     if result["success"]:
         # 组装完整对话 + 保存反馈日志

@@ -708,6 +708,7 @@ class BaziPlate:
     gender: str  # '男' or '女'
     longitude: float = 120.0
     location: str = ''
+    birth_dt_original: datetime = None  # 用户输入的原始时间（未校正）
 
     # 计算后的数据
     solar_adjusted: dict = field(default_factory=dict)
@@ -739,10 +740,10 @@ class BaziPlate:
 
         # 1. 真太阳时
         if solar_pre_applied != 0.0:
-            # 校正已由 paipan() 应用，solar_adjusted 直接反映已校时间
+            # 校正已由 paipan() 应用，存实际校正值用于展示
             self.solar_adjusted = {
-                'correction_minutes': 0.0,  # 已在排盘中应用，Agent 无需再次计算
-                'adjusted_hour': h + mi / 60,  # 已是真太阳时
+                'correction_minutes': solar_pre_applied,
+                'adjusted_hour': h + mi / 60,
                 'applied': True,
             }
         else:
@@ -855,13 +856,16 @@ def paipan(year: int, month: int, day: int, hour: int, minute: int = 0,
             默认 True — 直接调用（测试/PDF/独立使用）时自动校正。
             Flask 路由传 False — 路由层已通过用户参数手动校正。
     """
-    dt_original = datetime(year, month, day, hour, minute)
+    dt_user = datetime(year, month, day, hour, minute)  # 用户原始输入，不变
     solar_correction_applied = 0.0
     if apply_solar_correction:
         solar_correction_applied = (longitude - 120.0) * 4.0
-        dt_original = dt_original + timedelta(minutes=solar_correction_applied)
+        dt_calc = dt_user + timedelta(minutes=solar_correction_applied)
+    else:
+        dt_calc = dt_user
     plate = BaziPlate(
-        birth_dt=dt_original,
+        birth_dt=dt_calc,
+        birth_dt_original=dt_user,
         gender=gender,
         longitude=longitude,
         location=location or '未知',

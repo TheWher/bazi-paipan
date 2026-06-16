@@ -1053,19 +1053,42 @@ function escapeHtml(s) {
 // ========== 续接对话 ==========
 elBtnChatSend.addEventListener('click', async () => {
     const reply=elChatInput.value.trim();if(!reply||!conversationMessages)return;elBtnChatSend.disabled=true;elChatInput.disabled=true;showLoading('验盘通过，正在进行深度分析（约需 4-6 分钟，请耐心等待）...');analysisInProgress=true;
-    try{
-        const pw = getPassword();
-        const r = await fetch('/api/analyze/continue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:conversationMessages,reply:reply, password:pw})});
-        const d = await r.json();
-        if (!d.success) { if (d.need_password) { clearPassword(); showError(d.error); return; } showError(d.error||'续接失败'); return; }
-        conversationMessages.push({role:'user',content:reply});conversationMessages.push({role:'assistant',content:d.analysis});
-        // 累积完整分析文本（验盘 + 所有续接回复），供打印报告用
-        analysisText = (analysisText||'') + '\n\n---\n\n**💬 ' + reply + '**\n\n' + d.analysis;
-        localStorage.setItem('bazi_analysis', analysisText);
-        const replyDiv = document.createElement('div'); replyDiv.className='chat-reply'; replyDiv.innerHTML = formatMarkdown(d.analysis); injectGlossary(replyDiv);
-        elAnalysisContent.append(document.createElement('hr'), replyDiv);
-        elChatInput.value='';elAnalysisContent.scrollIntoView({behavior:'smooth',block:'end'});}
-    catch(e){showError('网络错误');}finally{hideLoading();elBtnChatSend.disabled=false;elChatInput.disabled=false;analysisInProgress=false;}
+    // 保存 pending（续接也能恢复）
+    savePendingAnalysis();
+    let lastError = '';
+    for (let attempt=0;attempt<2;attempt++) {
+        if (attempt>0) showLoading(`第 ${attempt+1} 次重试中...`);
+        const ctrl = new AbortController();
+        const timeoutId = setTimeout(() => ctrl.abort(), 10*60*1000); // 10分钟超时
+        try {
+            const pw = getPassword();
+            const r = await fetch('/api/analyze/continue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:conversationMessages,reply:reply, password:pw}), signal: ctrl.signal});
+            clearTimeout(timeoutId);
+            const d = await r.json();
+            if (!d.success) {
+                if (d.need_password) { clearPassword(); clearPendingAnalysis(); showError(d.error); hideLoading(); elBtnChatSend.disabled=false; elChatInput.disabled=false; analysisInProgress=false; return; }
+                lastError = d.error||'续接失败';
+                if (attempt===0) { await new Promise(r=>setTimeout(r,3000)); continue; }
+                showError(lastError); clearPendingAnalysis(); hideLoading(); elBtnChatSend.disabled=false; elChatInput.disabled=false; analysisInProgress=false; return;
+            }
+            // 成功
+            clearPendingAnalysis();
+            conversationMessages.push({role:'user',content:reply});conversationMessages.push({role:'assistant',content:d.analysis});
+            analysisText = (analysisText||'') + '\n\n---\n\n**💬 ' + reply + '**\n\n' + d.analysis;
+            localStorage.setItem('bazi_analysis', analysisText);
+            const replyDiv = document.createElement('div'); replyDiv.className='chat-reply'; replyDiv.innerHTML = formatMarkdown(d.analysis); injectGlossary(replyDiv);
+            elAnalysisContent.append(document.createElement('hr'), replyDiv);
+            elChatInput.value='';elAnalysisContent.scrollIntoView({behavior:'smooth',block:'end'});
+            hideLoading();elBtnChatSend.disabled=false;elChatInput.disabled=false;analysisInProgress=false;return;
+        } catch(e) {
+            clearTimeout(timeoutId);
+            lastError = e.name==='AbortError' ? '分析超时（超过10分钟），请重试或简化问题' : (e.message||'网络错误');
+            if (attempt===0) { await new Promise(r=>setTimeout(r,3000)); continue; }
+            clearPendingAnalysis();
+            showError(lastError);
+        }
+    }
+    hideLoading();elBtnChatSend.disabled=false;elChatInput.disabled=false;analysisInProgress=false;
 });
 
 // ========== 打印报告 ==========

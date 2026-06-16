@@ -108,9 +108,9 @@ def _build_user_message(plate_dict: dict) -> str:
     msg_parts.append(f"- 性别：{info.get('gender', '?')}")
     msg_parts.append(f"- 出生地：{info.get('location', '?')}（经度 {info.get('longitude', '?')}°E）")
     if solar.get("applied"):
-        msg_parts.append("- 真太阳时：**已应用**（排盘时辰已是校正后的真太阳时，不应再手动调整）")
+        msg_parts.append(f"- 真太阳时：**已应用**（原始输入 {info.get('birth_datetime', '?')}，经度 {info.get('longitude', '?')}°E 校正 {solar.get('correction_minutes', 0)} 分钟。排盘四柱已是校正后的时辰，你不需要再做任何时间加减）")
     elif solar.get("correction_minutes", 0) != 0:
-        msg_parts.append(f"- 真太阳时校正：{solar.get('correction_minutes', 0)}分钟（**未应用**，若需校正需手动调整）")
+        msg_parts.append(f"- 真太阳时校正：{solar.get('correction_minutes', 0)}分钟（**未应用**，四柱基于原始输入时间。若需校正请提醒用户勾选）")
     else:
         msg_parts.append("- 真太阳时：无需校正（经度≈120°E）")
     msg_parts.append(f"- 年柱阴阳：{p.get('year_type', '?')}")
@@ -358,10 +358,8 @@ def continue_analysis(messages: list[dict], user_reply: str, timeout: int = 600)
             return {"success": False, "error": f"API 返回空内容，已重试1次仍失败，请再试"}
 
         except requests.Timeout:
-            if attempt == 0:
-                time.sleep(3)
-                continue
-            return {"success": False, "error": f"API 调用超时（{timeout}秒），已重试仍失败"}
+            # 超时不重试——PA/Browser 网关也有超时，重试只会让总时间更长
+            return {"success": False, "error": f"API 调用超时（{timeout}秒），DeepSeek 生成可能卡住，请刷新重试"}
         except Exception as e:
             if attempt == 0:
                 time.sleep(3)
