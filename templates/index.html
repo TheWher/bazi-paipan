@@ -488,14 +488,14 @@ elBtnPaipan.addEventListener('click', async () => {
 // ========== 渲染 ==========
 function renderResult(data) {
     const info=data.input,solar=data.solar,lunar=data.lunar,qy=data.qiyun,pillars=data.pillars;
-    let solarInfo = solar.correction_minutes!==0 ? `校正 ${solar.correction_minutes}分钟，约 ${solar.adjusted_hour.toFixed(1)} 时` : '未使用校正';
+    let solarInfo = solar.applied ? null : (solar.correction_minutes!==0 ? `校正 ${solar.correction_minutes}分钟，约 ${solar.adjusted_hour.toFixed(1)} 时` : '未使用校正');
     $('basic-info').innerHTML = `
         <div><span class="info-label">公历</span><span class="info-value">${info.birth_datetime}</span></div>
         <div><span class="info-label">农历</span><span class="info-value">${lunar.year}年${lunar.month}月${lunar.day}日${lunar.is_leap?'（闰月）':''}</span></div>
         <div><span class="info-label">时辰</span><span class="info-value">${data.shichen}</span></div>
         <div><span class="info-label">性别</span><span class="info-value">${info.gender}</span></div>
         <div><span class="info-label">出生地</span><span class="info-value">${info.location}（${info.longitude}°E）</span></div>
-        <div><span class="info-label">真太阳时</span><span class="info-value">${solarInfo}</span></div>
+        ${solarInfo ? `<div><span class="info-label">真太阳时</span><span class="info-value">${solarInfo}</span></div>` : ''}
         <div><span class="info-label">日主</span><span class="info-value">${data.ri_zhu}（${data.year_type}）</span></div>`;
     const orders=['year','month','day','hour'],colNames=['年柱','月柱','日柱','时柱'];
     const ganRow=['<td class="row-label">干支</td>'],tianRow=['<td class="row-label">天干</td>'],zhiRow=['<td class="row-label">地支</td>'];
