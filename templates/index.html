@@ -7,10 +7,12 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="container">
+<div class="app-layout">
+    <!-- ====== 左侧边栏 ====== -->
+    <aside class="app-sidebar">
         <header class="app-header">
             <h1 style="cursor:pointer" onclick="window.scrollTo({top:0,behavior:'smooth'})">八字排盘</h1>
-            <p class="subtitle">输入出生信息，一键排出完整命盘并生成 PDF 报告</p>
+            <p class="subtitle">输入出生信息，一键排出完整命盘</p>
         </header>
 
         <section class="history-section" id="history-section">
@@ -22,13 +24,11 @@
         </section>
 
         <section class="form-section">
-            <!-- 快捷输入 -->
             <div class="quick-input-row">
-                <input type="text" id="quick-input" class="quick-input" maxlength="12" inputmode="numeric">
-                <span class="quick-hint">快捷输入 200508190135 → 自动填表（8位年月日/10位+时/12位+时分）</span>
+                <input type="text" id="quick-input" class="quick-input" maxlength="12" inputmode="numeric" placeholder="200508190135">
+                <span class="quick-hint">快捷输入 200508190135 → 自动填表</span>
             </div>
             <div class="form-grid">
-                <!-- 公历/农历切换 -->
                 <div class="form-group form-wide solar-lunar-toggle">
                     <label>历法</label>
                     <div class="radio-group">
@@ -36,13 +36,11 @@
                         <label class="radio-label"><input type="radio" name="calendar" value="lunar"> 农历</label>
                     </div>
                 </div>
-
                 <div class="form-group"><label>年份</label><input type="number" id="year" placeholder="2005" min="1900" max="2100"></div>
                 <div class="form-group"><label>月份</label><input type="number" id="month" placeholder="8" min="1" max="12"></div>
                 <div class="form-group"><label>日期</label><input type="number" id="day" placeholder="19" min="1" max="31"></div>
-                <div class="form-group"><label>时（24小时制）</label><input type="number" id="hour" placeholder="1" min="0" max="23"></div>
+                <div class="form-group"><label>时</label><input type="number" id="hour" placeholder="1" min="0" max="23"></div>
                 <div class="form-group"><label>分</label><input type="number" id="minute" placeholder="35" min="0" max="59"></div>
-
                 <div class="form-group">
                     <label>性别</label>
                     <div class="radio-group">
@@ -50,67 +48,90 @@
                         <label class="radio-label"><input type="radio" name="gender" value="女"> 女</label>
                     </div>
                 </div>
-
-                <!-- 真太阳时 -->
                 <div class="form-group form-wide">
-                    <label><input type="checkbox" id="use-true-solar"> 使用真太阳时校正</label>
+                    <label><input type="checkbox" id="use-true-solar"> 真太阳时校正</label>
                 </div>
                 <div class="form-group form-wide" id="lnglat" style="display:none">
-                    <label>出生经度（°E，如北京 116.4，东莞 113.75）</label>
-                    <div class="location-row">
-                        <input type="number" id="longitude" step="0.01" placeholder="120" min="70" max="140" value="120">
-                        <span class="lng-hint">东经为正，每差 1° 约差 4 分钟</span>
-                    </div>
+                    <label>经度</label>
+                    <input type="number" id="longitude" step="0.01" placeholder="120" min="70" max="140" value="120">
                 </div>
-
-                <!-- 出生地 -->
                 <div class="form-group form-wide">
-                    <label>出生地点（可选）</label>
+                    <label>出生地点</label>
                     <div class="location-row">
                         <div class="location-input-wrap">
                             <input type="text" id="location" placeholder="输入城市名，如：东莞" autocomplete="off">
                             <div id="city-suggestions" class="city-suggestions hidden"></div>
                         </div>
-                        <button id="btn-geocode" class="btn btn-secondary">🔍 查询</button>
+                        <button id="btn-geocode" class="btn btn-secondary btn-sm">🔍</button>
                     </div>
                     <div id="geocode-status" class="geocode-status hidden"></div>
                 </div>
             </div>
-
-            <div class="btn-row">
-                <button id="btn-paipan" class="btn btn-primary btn-lg">⚡ 开始排盘</button>
-                <button id="btn-analyze" class="btn btn-gold btn-lg" disabled>🧠 深度分析</button>
-                <button id="btn-pdf" class="btn btn-accent btn-lg" disabled>📄 打印报告</button>
-                <button id="btn-clear" class="btn btn-clear btn-sm">🗑️ 清空</button>
+            <!-- 粘性操作栏 -->
+            <div class="sticky-actions">
+                <button id="btn-paipan" class="btn btn-primary">⚡ 排盘</button>
+                <button id="btn-analyze" class="btn btn-gold" disabled>🧠 深度分析</button>
+                <button id="btn-clear" class="btn btn-clear btn-sm">🗑️</button>
             </div>
         </section>
+    </aside>
+
+    <!-- ====== 右侧主内容 ====== -->
+    <main class="app-main" id="app-main">
+        <!-- 骨架屏 -->
+        <div id="skeleton-loading" class="hidden">
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text short"></div>
+            <div class="skeleton skeleton-table"></div>
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text short"></div>
+        </div>
 
         <div id="loading" class="loading hidden"><div class="spinner"></div><p id="loading-text">计算中...</p></div>
         <div id="error-box" class="error-box hidden"></div>
 
+        <!-- 结果区 Bento Grid -->
         <section id="result-section" class="result-section hidden">
-            <div class="card"><h2 class="card-title">📋 基本信息</h2><div class="info-grid" id="basic-info"></div></div>
-            <div class="card"><h2 class="card-title">🏛️ 四柱命盘</h2><div class="table-scroll"><table class="bazi-table" id="pillars-table"><thead><tr><th></th><th>年柱</th><th>月柱</th><th>日柱</th><th>时柱</th></tr></thead><tbody><tr id="row-ganzhi"></tr><tr id="row-tiangan"></tr><tr id="row-dizhi"></tr><tr id="row-shishen"></tr><tr id="row-nayin"></tr><tr id="row-changsheng"></tr><tr id="row-canggan"></tr></tbody></table></div></div>
-            <div class="card"><h2 class="card-title">🔄 起运与大运</h2><div id="qiyun-info" class="info-grid"></div><div class="table-scroll"><table class="bazi-table" id="dayun-table"><thead><tr><th>步数</th><th>干支</th><th>年龄</th><th>年份</th></tr></thead><tbody id="dayun-tbody"></tbody></table></div></div>
-            <div class="card"><h2 class="card-title">🔮 神煞速览</h2><div id="shensha-info" class="info-grid"></div></div>
-        </section>
-
-        <section id="charts-section" class="result-section hidden">
-            <div class="charts-row">
-                <div class="card chart-card"><h2 class="card-title">🎨 五行分布</h2><div id="chart-wuxing" class="chart-box"></div></div>
-                <div class="card chart-card"><h2 class="card-title">🔄 十二长生</h2><div id="chart-changsheng" class="chart-box"></div></div>
+            <div class="floating-bar">
+                <span class="bar-title">📊 命盘结果</span>
+                <span class="bar-status" id="result-status"></span>
+                <button id="btn-pdf" class="btn btn-accent btn-sm" disabled style="margin-left:auto">📄 PDF</button>
             </div>
-            <div class="card chart-card"><h2 class="card-title">⭕ 大运环图</h2><div id="chart-dayun-ring" class="chart-box" style="max-width:520px;margin:0 auto;"></div></div>
-            <div class="card chart-card"><h2 class="card-title">🔗 干支生克关系</h2><div id="chart-shengke" class="chart-box" style="max-width:780px;margin:0 auto;"></div><div style="text-align:center;font-size:0.75em;color:#999;margin-top:4px;">白圈灰线黑字 · 上区天干相克 · 下区地支合冲刑害 · 长线在上</div></div>
+            <div class="bento-grid">
+                <div class="bento-card span-2"><h3 class="card-title">📋 基本信息</h3><div class="info-grid" id="basic-info"></div></div>
+                <div class="bento-card span-2"><h3 class="card-title">🔮 神煞速览</h3><div id="shensha-info" class="info-grid"></div></div>
+                <div class="bento-card span-4"><h3 class="card-title">🏛️ 四柱命盘</h3><div class="table-scroll"><table class="bazi-table" id="pillars-table"><thead><tr><th></th><th>年柱</th><th>月柱</th><th>日柱</th><th>时柱</th></tr></thead><tbody><tr id="row-ganzhi"></tr><tr id="row-tiangan"></tr><tr id="row-dizhi"></tr><tr id="row-shishen"></tr><tr id="row-nayin"></tr><tr id="row-changsheng"></tr><tr id="row-canggan"></tr></tbody></table></div></div>
+                <div class="bento-card span-4"><h3 class="card-title">🔄 起运与大运</h3><div id="qiyun-info" class="info-grid"></div><div class="table-scroll"><table class="bazi-table" id="dayun-table"><thead><tr><th>步数</th><th>干支</th><th>年龄</th><th>年份</th></tr></thead><tbody id="dayun-tbody"></tbody></table></div></div>
+            </div>
         </section>
 
+        <!-- 图表区 -->
+        <section id="charts-section" class="result-section hidden">
+            <div class="floating-bar">
+                <span class="bar-title">📈 可视化图表</span>
+            </div>
+            <div class="charts-bento">
+                <div class="bento-card"><h3 class="card-title">🎨 五行分布</h3><div id="chart-wuxing" class="chart-box"></div></div>
+                <div class="bento-card"><h3 class="card-title">🔄 十二长生</h3><div id="chart-changsheng" class="chart-box"></div></div>
+                <div class="bento-card span-full"><h3 class="card-title">⭕ 大运环图</h3><div id="chart-dayun-ring" class="chart-box" style="max-width:520px;margin:0 auto;"></div></div>
+                <div class="bento-card span-full"><h3 class="card-title">🔗 干支生克关系</h3><div id="chart-shengke" class="chart-box"></div><div style="text-align:center;font-size:0.75em;color:#999;margin-top:4px;">白圈灰线黑字 · 上区天干相克 · 下区地支合冲刑害</div></div>
+            </div>
+        </section>
+
+        <!-- 分析区 -->
         <section id="analysis-section" class="result-section hidden">
-            <div class="card"><h2 class="card-title">🧠 Agent 深度分析</h2><div id="analysis-content" class="analysis-content"></div><div id="analysis-chat" class="analysis-chat hidden"><div class="chat-divider">💬 回复 Agent 继续分析</div><textarea id="chat-input" class="chat-input" rows="3" placeholder="例如：小学成绩确实一般，中学后进步明显..."></textarea><div class="chat-btns"><button id="btn-chat-send" class="btn btn-primary">发送回复，继续批断</button><span class="chat-hint">Agent 在验盘阶段需要你确认过去几件事，确认后才会继续深入分析</span></div></div></div>
-            <!-- 验盘反馈面板 -->
+            <div class="floating-bar">
+                <span class="bar-title">🧠 Agent 深度分析</span>
+                <button id="btn-analysis-pdf" class="btn btn-accent btn-sm" disabled style="margin-left:auto">📄 打印报告</button>
+            </div>
+            <div class="bento-card span-4"><div id="analysis-content" class="analysis-content"></div>
+            <div id="analysis-chat" class="analysis-chat hidden"><div class="chat-divider">💬 回复 Agent 继续分析</div><textarea id="chat-input" class="chat-input" rows="3" placeholder="例如：小学成绩确实一般，中学后进步明显..."></textarea><div class="chat-btns"><button id="btn-chat-send" class="btn btn-primary">发送回复，继续批断</button><span class="chat-hint">Agent 在验盘阶段需要你确认过去几件事，确认后才会继续深入分析</span></div></div></div>
             <div id="verify-panel" class="verify-panel hidden">
-                <div class="card">
-                    <h2 class="card-title">✅ 验盘确认</h2>
-                    <p class="verify-intro">请对照 Agent 的预测，逐条确认是否符合你的实际情况。反馈数据将用于持续优化分析准确率。</p>
+                <div class="bento-card span-4">
+                    <h3 class="card-title">✅ 验盘确认</h3>
+                    <p class="verify-intro">对照预测逐条确认，反馈数据用于优化准确率。</p>
                     <div id="verify-predictions" class="verify-predictions"></div>
                     <div class="verify-actions">
                         <button id="btn-verify-submit" class="btn btn-gold">📤 提交反馈</button>
@@ -118,14 +139,13 @@
                     </div>
                 </div>
             </div>
-            <div class="btn-row"><button id="btn-analysis-pdf" class="btn btn-accent btn-lg">📄 打印完整报告</button></div>
         </section>
 
         <section class="xuetang-section" id="xuetang-section">
-            <div class="card">
-                <h2 class="card-title" style="cursor:pointer" onclick="document.getElementById('xuetang-body').classList.toggle('hidden')">📚 八字学堂 · 42 个核心术语详解 <span style="font-size:0.7em;color:#999">（点击展开/收起）</span></h2>
+            <div class="bento-card span-4">
+                <h3 class="card-title" style="cursor:pointer" onclick="document.getElementById('xuetang-body').classList.toggle('hidden')">📚 八字学堂 · 42 个核心术语详解 <span style="font-size:0.7em;color:#999">（点击展开）</span></h3>
                 <div id="xuetang-body" class="hidden">
-                    <div class="xuetang-intro" style="margin-bottom:16px;color:#aaa;font-size:0.85em;line-height:1.6;">以下术语按分析逻辑分类排列，每个词条包含<strong style="color:#d4a843">白话解释</strong>和<strong style="color:#d4a843">经典出处</strong>。在分析报告中悬停任何术语也会弹出解释。</div>
+                    <div class="xuetang-intro" style="margin-bottom:16px;color:#aaa;font-size:0.85em">以下术语按分析逻辑分类排列，每个词条包含<strong style="color:#d4a843">白话解释</strong>和<strong style="color:#d4a843">经典出处</strong>。</div>
                     <div id="xuetang-grid" class="xuetang-grid"></div>
                 </div>
             </div>
@@ -135,7 +155,8 @@
             <div class="footer-access" id="footer-access"><div class="access-title">📱 手机 / 其他设备访问</div><div class="access-urls" id="access-urls"><span class="loading-text">检测中...</span></div><div class="access-qr" id="access-qr"></div><div class="access-hint" id="access-hint">加载中...</div></div>
             <hr class="footer-divider"><p>基于 <a href="https://github.com/yuangu/sxtwl" target="_blank">sxtwl 寿星天文历</a> 精确排盘</p><p>真太阳时校正 · 五鼠遁起时 · 节气定月 · 起运精确到天</p>
         </footer>
-    </div>
+    </main>
+</div>
 
     <!-- Password Modal -->
     <div id="pw-overlay" class="pw-overlay hidden">
@@ -243,7 +264,7 @@ function restoreHistory(id){
     if(e.analysis){ elAnalysisSection.classList.remove('hidden'); elAnalysisContent.innerHTML=formatMarkdown(e.analysis); injectGlossary(elAnalysisContent); elAnalysisChat.classList.remove('hidden'); }
     else elAnalysisSection.classList.add('hidden');
     elBtnAnalyze.disabled = false; elBtnPdf.disabled = false;
-    window.scrollTo({top:elResultSection.offsetTop-20,behavior:'smooth'});
+    $('app-main').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function renderHistory(){
@@ -444,6 +465,7 @@ elBtnPaipan.addEventListener('click', async () => {
         elAnalysisSection.classList.add('hidden'); elAnalysisContent.innerHTML=''; elAnalysisChat.classList.add('hidden');
         addToHistory(d, null);
         elResultSection.scrollIntoView({behavior:'smooth'});
+        $('app-main').scrollIntoView({behavior:'smooth',block:'start'});
     } catch(e) { showError('网络错误或服务未启动'); }
     finally { hideLoading(); elBtnPaipan.disabled=false; }
 });
@@ -613,8 +635,18 @@ function renderShengkeChart(data){
 }
 
 // ========== 工具函数 ==========
-function showLoading(t){elLoadingText.textContent=t;elLoading.classList.remove('hidden');elErrorBox.classList.add('hidden');}
-function hideLoading(){elLoading.classList.add('hidden');}
+function showLoading(t, useSkeleton=false){
+    if(useSkeleton){
+        $('skeleton-loading').classList.remove('hidden');
+        $('result-section').classList.add('hidden');
+        $('charts-section').classList.add('hidden');
+        $('analysis-section').classList.add('hidden');
+    }
+    elLoadingText.textContent=t;elLoading.classList.remove('hidden');elErrorBox.classList.add('hidden');
+}
+function hideLoading(){elLoading.classList.add('hidden');$('skeleton-loading').classList.add('hidden');}
+function showSkeleton(){ $('skeleton-loading').classList.remove('hidden'); }
+function hideSkeleton(){ $('skeleton-loading').classList.add('hidden'); }
 function showError(m){elErrorBox.textContent='❌ '+m;elErrorBox.classList.remove('hidden');hideLoading();}
 function hideError(){elErrorBox.classList.add('hidden');}
 function formatMarkdown(text){
@@ -690,6 +722,7 @@ async function doAnalyze(isRetry = false) {
     }
 
     showLoading(isRetry ? '正在重新连接 Agent...' : '正在验盘——反推过往事件验证时辰（约需 30 秒）...');
+    showSkeleton();  // 骨架屏占位
     analysisInProgress = true;
     _analysisStartTime = Date.now();
     elBtnAnalyze.disabled = true;
@@ -731,6 +764,7 @@ async function doAnalyze(isRetry = false) {
 
         // 成功：清除待处理状态，保存结果
         clearPendingAnalysis();
+        hideSkeleton();
         analysisText = d.analysis;
         _feedbackFile = d.feedback_file || '';
         if (d.messages) { conversationMessages = d.messages; elAnalysisChat.classList.remove('hidden'); }
@@ -741,7 +775,7 @@ async function doAnalyze(isRetry = false) {
         addToHistory(plateData, analysisText);
         elAnalysisSection.classList.remove('hidden');
         elBtnAnalysisPdf.disabled = false;
-        elAnalysisSection.scrollIntoView({behavior: 'smooth'});
+        $('app-main').scrollIntoView({behavior:'smooth',block:'start'});
 
         // 提取验盘预测并渲染验证面板
         if (d.messages && d.messages.length >= 3) {
@@ -812,6 +846,7 @@ async function doAnalyze(isRetry = false) {
         showError('网络错误或分析超时，请重试');
     } finally {
         hideLoading();
+        hideSkeleton();
         elBtnAnalyze.disabled = false;
         analysisInProgress = false;
         _analysisAbortController = null;

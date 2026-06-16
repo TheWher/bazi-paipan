@@ -60,6 +60,124 @@ a, button, input, select, textarea, .card, .form-section { transition: all 0.3s 
 /* ---- Container ---- */
 .container { max-width: 880px; margin: 0 auto; padding: 60px 24px 80px; }
 
+/* ========== 左右分栏布局 ========== */
+.app-layout { display: flex; gap: 0; min-height: 100vh; position: relative; z-index: 1; }
+.app-sidebar {
+    width: 400px; min-width: 400px; flex-shrink: 0;
+    background: linear-gradient(180deg, rgba(212,168,67,0.03) 0%, rgba(255,255,255,0) 40%);
+    border-right: 1px solid var(--border-light);
+    padding: 40px 32px 100px;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    display: flex; flex-direction: column;
+}
+.app-sidebar::-webkit-scrollbar { width: 4px; }
+.app-sidebar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+.app-main {
+    flex: 1; min-width: 0;
+    padding: 40px 48px 80px;
+    overflow-y: auto;
+}
+
+/* 侧边栏紧凑样式 */
+.app-sidebar .app-header { text-align: left; padding: 0 0 20px; }
+.app-sidebar .app-header h1 { font-size: 1.8rem; margin-bottom: 4px; }
+.app-sidebar .subtitle { font-size: 0.78em; color: #999; }
+.app-sidebar .history-section { margin-bottom: 20px; }
+.app-sidebar .history-section details { font-size: 0.82em; }
+.app-sidebar .form-section { background: none; border: none; padding: 0; box-shadow: none; margin-bottom: 0; }
+.app-sidebar .form-grid { grid-template-columns: repeat(2, 1fr); gap: 16px 20px; }
+.app-sidebar .form-group input, .app-sidebar .form-group select { padding: 10px 14px; font-size: 0.92em; }
+.app-sidebar .quick-input { min-width: 0; font-size: 1em; letter-spacing: 2px; padding: 10px 14px; }
+.app-sidebar .quick-hint { font-size: 0.65em; }
+.app-sidebar .btn-row { margin-top: 20px; gap: 10px; }
+.app-sidebar .btn-lg { padding: 12px 24px; font-size: 0.92em; }
+
+/* 粘性底部操作栏 */
+.sticky-actions {
+    position: sticky; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(0deg, #fff 70%, transparent);
+    padding: 20px 32px 16px; margin: auto -32px -40px;
+    display: flex; gap: 10px; flex-wrap: wrap;
+    border-top: 1px solid var(--border-light);
+}
+.sticky-actions .btn { flex: 1; justify-content: center; }
+.app-main .floating-bar {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(255,255,255,.92); backdrop-filter: blur(12px);
+    padding: 12px 20px; margin: -20px -28px 20px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex; gap: 12px; align-items: center;
+    flex-wrap: wrap;
+}
+.floating-bar .bar-title { font-weight: 600; color: #8b6914; }
+.floating-bar .bar-status { font-size: 0.8em; color: #999; margin-left: auto; }
+
+/* ========== Bento Grid 结果区 ========== */
+.bento-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+.bento-card {
+    background: var(--card-bg); border: 1px solid var(--border-light);
+    border-radius: var(--radius); padding: 20px 24px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+}
+.bento-card:hover { box-shadow: var(--shadow-lg); border-color: rgba(212,168,67,0.12); }
+.bento-card .card-title { font-size: 0.85em; font-weight: 600; color: #8b6914; margin-bottom: 12px; letter-spacing: 0.02em; }
+.bento-card.span-2 { grid-column: span 2; }
+.bento-card.span-3 { grid-column: span 3; }
+.bento-card.span-4 { grid-column: span 4; }
+
+/* 四柱表格在 bento 中的优化 */
+.bento-card .bazi-table { font-size: 0.88em; }
+.bento-card .bazi-table th { padding: 6px 8px; font-size: 0.78em; }
+.bento-card .bazi-table td { padding: 6px 8px; }
+.bento-card .info-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 16px; font-size: 0.85em; }
+
+/* 图表2x2网格 */
+.charts-bento {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.charts-bento .bento-card.span-full { grid-column: 1 / -1; }
+
+/* ========== 骨架屏 ========== */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+}
+@keyframes skeleton-shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+.skeleton-text { height: 14px; margin-bottom: 8px; width: 80%; }
+.skeleton-text.short { width: 50%; }
+.skeleton-title { height: 22px; width: 40%; margin-bottom: 16px; }
+.skeleton-card { height: 120px; margin-bottom: 16px; }
+.skeleton-table { height: 180px; margin-bottom: 16px; width: 100%; }
+
+/* ========== 响应式：移动端回退单列 ========== */
+@media (max-width: 860px) {
+    .app-layout { flex-direction: column; }
+    .app-sidebar {
+        width: 100%; min-width: 0; height: auto; position: relative;
+        border-right: none; border-bottom: 1px solid var(--border-light);
+        padding: 24px 20px 32px;
+    }
+    .app-sidebar .form-grid { grid-template-columns: repeat(2, 1fr); }
+    .app-main { padding: 24px 20px 60px; }
+    .bento-grid { grid-template-columns: 1fr; }
+    .bento-card.span-2, .bento-card.span-3, .bento-card.span-4 { grid-column: span 1; }
+    .charts-bento { grid-template-columns: 1fr; }
+    .floating-bar { margin: -12px -12px 16px; padding: 10px 16px; }
+    .container { max-width: 100%; padding: 0; }
+}
+
 /* ---- Header ---- */
 .app-header { text-align: center; padding: 40px 0 48px; }
 .app-header h1 {
