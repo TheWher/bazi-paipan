@@ -175,6 +175,15 @@
         </div>
     </div>
 
+    <!-- 全局 Toast 通知（屏幕正中，点击确认关闭） -->
+    <div id="toast-overlay" class="toast-overlay hidden">
+        <div class="toast-box" id="toast-box">
+            <div class="toast-icon" id="toast-icon"></div>
+            <div class="toast-msg" id="toast-msg"></div>
+            <button class="btn btn-primary" id="toast-dismiss">知道了</button>
+        </div>
+    </div>
+
 <script>
 // ========== DOM 引用 ==========
 const $ = id => document.getElementById(id);
@@ -669,8 +678,25 @@ function showLoading(t, useSkeleton=false){
 function hideLoading(){elLoading.classList.add('hidden');$('skeleton-loading').classList.add('hidden');}
 function showSkeleton(){ $('skeleton-loading').classList.remove('hidden'); }
 function hideSkeleton(){ $('skeleton-loading').classList.add('hidden'); }
-function showError(m){elErrorBox.textContent='❌ '+m;elErrorBox.classList.remove('hidden');hideLoading();}
-function hideError(){elErrorBox.classList.add('hidden');}
+function showError(m){ toast(m, 'error'); hideLoading(); }
+function hideError(){ $('toast-overlay').classList.add('hidden'); elErrorBox.classList.add('hidden'); }
+
+// ========== 全局 Toast（屏幕正中，点击确认关闭） ==========
+function toast(msg, type='info') {
+    const icons = { error: '❌', info: '💡', success: '✅', warn: '⚠️' };
+    $('toast-icon').textContent = icons[type] || icons.info;
+    $('toast-msg').textContent = msg;
+    $('toast-overlay').classList.remove('hidden');
+    $('toast-dismiss').focus();
+}
+$('toast-dismiss').addEventListener('click', () => $('toast-overlay').classList.add('hidden'));
+$('toast-overlay').addEventListener('click', e => { if(e.target === $('toast-overlay')) $('toast-overlay').classList.add('hidden'); });
+// 密码错误也走 toast
+const _origCheckPw = showError;
+showError = function(m) {
+    if (m && m.includes('密码')) { toast(m, 'warn'); hideLoading(); }
+    else { elErrorBox.textContent='❌ '+m; elErrorBox.classList.remove('hidden'); hideLoading(); }
+};
 function formatMarkdown(text){
     let h=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     h=h.replace(/^#### (.+)$/gm,'<h5>$1</h5>');h=h.replace(/^### (.+)$/gm,'<h4>$1</h4>');h=h.replace(/^## (.+)$/gm,'<h3>$1</h3>');h=h.replace(/^# (.+)$/gm,'<h2>$1</h2>');
@@ -744,6 +770,7 @@ async function doAnalyze(isRetry = false) {
     }
 
     showLoading(isRetry ? '正在重新连接 Agent...' : '正在验盘——反推过往事件验证时辰（约需 30 秒）...');
+    if (!isRetry) toast('验盘分析已开始\nAgent 正在反推过往事件验证时辰（约需 30 秒）', 'info');
     showSkeleton();  // 骨架屏占位
     analysisInProgress = true;
     _analysisStartTime = Date.now();
