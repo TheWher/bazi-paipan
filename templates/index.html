@@ -927,7 +927,7 @@ function extractVerificationPredictions(assistantText) {
         while ((m = pattern.exec(text)) !== null) {
             const numStr = m[1].trim();
             const idx = chineseNum[numStr] || parseInt(numStr) || preds.length + 1;
-            let body = m[2].trim().substring(0, 400); // 截断长文本
+            let body = m[2].trim().substring(0, 800); // 保留更多内容
             // 清理 markdown 格式
             body = body.replace(/\*\*/g, '').replace(/> /g, '').replace(/\n+/g, ' ').trim();
             if (body.length > 10) {

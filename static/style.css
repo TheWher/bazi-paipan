@@ -563,13 +563,19 @@ a, button, input, select, textarea, .card, .form-section { transition: all 0.3s 
 .verify-pred-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .verify-pred-num { background: rgba(212,168,67,.15); color: #d4a843; font-size: 0.75em; font-weight: bold; padding: 2px 8px; border-radius: 10px; }
 .verify-pred-title { font-size: 0.9em; font-weight: 600; color: #ddd; }
-.verify-pred-body { font-size: 0.82em; color: #aaa; line-height: 1.65; margin-bottom: 10px; max-height: 100px; overflow-y: auto; }
+.verify-pred-body { font-size: 0.82em; color: #aaa; line-height: 1.65; margin-bottom: 10px; max-height: 200px; overflow-y: auto; }
 .verify-pred-btns { display: flex; gap: 8px; flex-wrap: wrap; }
-.verify-btn { font-size: 0.78em; padding: 5px 14px; border: 1px solid rgba(255,255,255,.1); border-radius: 16px; background: transparent; color: #999; cursor: pointer; transition: all .2s; }
-.verify-btn:hover { border-color: rgba(255,255,255,.25); color: #ccc; }
-.verify-yes.selected { background: rgba(76,175,80,.2); border-color: #4caf50; color: #4caf50; }
-.verify-maybe.selected { background: rgba(255,152,0,.2); border-color: #ff9800; color: #ff9800; }
-.verify-no.selected { background: rgba(244,67,54,.2); border-color: #f44336; color: #f44336; }
+.verify-btn { font-size: 0.78em; padding: 5px 14px; border-radius: 16px; background: transparent; cursor: pointer; transition: all .2s; }
+.verify-btn:hover { transform: scale(1.05); }
+.verify-yes { border: 1.5px solid rgba(76,175,80,.35); color: #66bb6a; }
+.verify-yes:hover { background: rgba(76,175,80,.1); border-color: #4caf50; }
+.verify-yes.selected { background: rgba(76,175,80,.2); border-color: #4caf50; color: #4caf50; font-weight: bold; }
+.verify-maybe { border: 1.5px solid rgba(255,152,0,.35); color: #ffa726; }
+.verify-maybe:hover { background: rgba(255,152,0,.1); border-color: #ff9800; }
+.verify-maybe.selected { background: rgba(255,152,0,.2); border-color: #ff9800; color: #ff9800; font-weight: bold; }
+.verify-no { border: 1.5px solid rgba(244,67,54,.35); color: #ef5350; }
+.verify-no:hover { background: rgba(244,67,54,.1); border-color: #f44336; }
+.verify-no.selected { background: rgba(244,67,54,.2); border-color: #f44336; color: #f44336; font-weight: bold; }
 .verify-note { width: 100%; margin-top: 8px; padding: 6px 10px; font-size: 0.78em; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 6px; color: #ccc; resize: vertical; font-family: inherit; }
 .verify-note:focus { outline: none; border-color: rgba(212,168,67,.3); }
 .verify-actions { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
