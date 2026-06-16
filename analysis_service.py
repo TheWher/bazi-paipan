@@ -241,20 +241,42 @@ def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
         ],
     }
 
-    try:
-        resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
-        if resp.status_code != 200:
-            err_text = resp.text[:500]
-            return {"success": False, "error": f"API 返回错误 ({resp.status_code}): {err_text}"}
+    for attempt in range(2):  # 空内容自动重试一次
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
+            if resp.status_code != 200:
+                err_text = resp.text[:500]
+                return {"success": False, "error": f"API 返回错误 ({resp.status_code}): {err_text}"}
 
-        data = resp.json()
-        analysis_text = ""
-        for block in data.get("content", []):
-            if block.get("type") == "text":
-                analysis_text += block["text"]
+            data = resp.json()
+            analysis_text = ""
+            for block in data.get("content", []):
+                if block.get("type") == "text":
+                    analysis_text += block["text"]
 
-        if not analysis_text:
-            return {"success": False, "error": "API 返回了空内容"}
+            if analysis_text:
+                break  # 成功，跳出重试循环
+
+            if attempt == 0:
+                time.sleep(3)  # 等3秒再试
+                continue
+
+            usage = data.get("usage", {})
+            stop_reason = data.get("stop_reason", "unknown")
+            if usage.get("completion_tokens", 0) == 0:
+                return {"success": False, "error": f"模型未生成输出（stop={stop_reason}），已重试1次仍失败"}
+            return {"success": False, "error": f"API 返回空内容（stop={stop_reason}），已重试1次仍失败"}
+
+        except requests.Timeout:
+            if attempt == 0:
+                time.sleep(3)
+                continue
+            return {"success": False, "error": f"API 调用超时（{timeout}秒），已重试仍失败"}
+        except Exception as e:
+            if attempt == 0:
+                time.sleep(3)
+                continue
+            return {"success": False, "error": f"API 调用失败: {str(e)}"}
 
         return {
             "success": True,
@@ -268,10 +290,7 @@ def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
             ],
         }
 
-    except requests.Timeout:
-        return {"success": False, "error": f"API 调用超时（{timeout}秒），分析内容较长请重试"}
-    except Exception as e:
-        return {"success": False, "error": f"API 调用失败: {str(e)}"}
+    return {"success": False, "error": "API 调用失败：所有重试均未成功"}
 
 
 def continue_analysis(messages: list[dict], user_reply: str, timeout: int = 600) -> dict:
@@ -315,26 +334,40 @@ def continue_analysis(messages: list[dict], user_reply: str, timeout: int = 600)
         "messages": api_messages,
     }
 
-    try:
-        resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
-        if resp.status_code != 200:
-            return {"success": False, "error": f"API 返回错误 ({resp.status_code}): {resp.text[:300]}"}
+    for attempt in range(2):
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
+            if resp.status_code != 200:
+                return {"success": False, "error": f"API 返回错误 ({resp.status_code}): {resp.text[:300]}"}
 
-        data = resp.json()
-        analysis_text = ""
-        for block in data.get("content", []):
-            if block.get("type") == "text":
-                analysis_text += block["text"]
+            data = resp.json()
+            analysis_text = ""
+            for block in data.get("content", []):
+                if block.get("type") == "text":
+                    analysis_text += block["text"]
 
-        if not analysis_text:
-            return {"success": False, "error": "API 返回了空内容"}
+            if analysis_text:
+                return {"success": True, "analysis": analysis_text}
 
-        return {"success": True, "analysis": analysis_text}
+            if attempt == 0:
+                time.sleep(3)
+                continue
 
-    except requests.Timeout:
-        return {"success": False, "error": f"API 调用超时（{timeout}秒）"}
-    except Exception as e:
-        return {"success": False, "error": f"API 调用失败: {str(e)}"}
+            usage = data.get("usage", {})
+            return {"success": False, "error": f"API 返回空内容，已重试1次仍失败，请再试"}
+
+        except requests.Timeout:
+            if attempt == 0:
+                time.sleep(3)
+                continue
+            return {"success": False, "error": f"API 调用超时（{timeout}秒），已重试仍失败"}
+        except Exception as e:
+            if attempt == 0:
+                time.sleep(3)
+                continue
+            return {"success": False, "error": f"API 调用失败: {str(e)}"}
+
+    return {"success": False, "error": "API 调用失败：所有重试均未成功"}
 
 
 # ============================================================
