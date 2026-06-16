@@ -84,7 +84,7 @@ a, button, input, select, textarea, .card, .form-section { transition: all 0.3s 
 .app-sidebar .subtitle { font-size: 0.7em; color: #999; }
 .app-sidebar .history-section { margin-bottom: 14px; }
 .app-sidebar .history-section details { font-size: 0.76em; }
-.app-sidebar .form-section { background: none; border: none; padding: 0 0 10px; box-shadow: none; margin-bottom: 0; }
+.app-sidebar .form-section { background: none; border: none; padding: 0 0 40px; box-shadow: none; margin-bottom: 0; }
 .app-sidebar .form-grid { grid-template-columns: repeat(2, 1fr); gap: 10px 14px; }
 .app-sidebar .form-group label { font-size: 0.78em; }
 .app-sidebar .form-group input, .app-sidebar .form-group select { padding: 8px 10px; font-size: 0.82em; }
@@ -97,13 +97,13 @@ a, button, input, select, textarea, .card, .form-section { transition: all 0.3s 
 /* 粘性底部操作栏 */
 .sticky-actions {
     position: sticky; bottom: 0; left: 0; right: 0;
-    background: linear-gradient(0deg, #fff 80%, rgba(255,255,255,0.85) 100%);
-    padding: 24px 28px 20px; margin: auto -28px -60px;
-    display: flex; gap: 10px; flex-wrap: wrap;
+    background: linear-gradient(0deg, #fff 90%, rgba(255,255,255,0.9) 100%);
+    padding: 12px 28px 14px; margin: auto -28px -100px;
+    display: flex; gap: 8px; flex-wrap: wrap;
     border-top: 1px solid var(--border-light);
     z-index: 2;
 }
-.sticky-actions .btn { flex: 1; justify-content: center; font-size: 0.85em; }
+.sticky-actions .btn { flex: 1; justify-content: center; font-size: 0.82em; padding: 8px 14px; }
 .app-main .floating-bar {
     position: sticky; top: 0; z-index: 10;
     background: rgba(255,255,255,.92); backdrop-filter: blur(12px);
