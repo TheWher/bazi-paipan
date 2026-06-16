@@ -66,7 +66,7 @@ a, button, input, select, textarea, .card, .form-section { transition: all 0.3s 
     width: 400px; min-width: 400px; flex-shrink: 0;
     background: linear-gradient(180deg, rgba(212,168,67,0.03) 0%, rgba(255,255,255,0) 40%);
     border-right: 1px solid var(--border-light);
-    padding: 40px 32px 100px;
+    padding: 32px 28px 140px;
     position: sticky; top: 0; height: 100vh; overflow-y: auto;
     display: flex; flex-direction: column;
 }
@@ -79,28 +79,31 @@ a, button, input, select, textarea, .card, .form-section { transition: all 0.3s 
 }
 
 /* 侧边栏紧凑样式 */
-.app-sidebar .app-header { text-align: left; padding: 0 0 20px; }
-.app-sidebar .app-header h1 { font-size: 1.8rem; margin-bottom: 4px; }
-.app-sidebar .subtitle { font-size: 0.78em; color: #999; }
-.app-sidebar .history-section { margin-bottom: 20px; }
-.app-sidebar .history-section details { font-size: 0.82em; }
-.app-sidebar .form-section { background: none; border: none; padding: 0; box-shadow: none; margin-bottom: 0; }
-.app-sidebar .form-grid { grid-template-columns: repeat(2, 1fr); gap: 16px 20px; }
-.app-sidebar .form-group input, .app-sidebar .form-group select { padding: 10px 14px; font-size: 0.92em; }
-.app-sidebar .quick-input { min-width: 0; font-size: 1em; letter-spacing: 2px; padding: 10px 14px; }
-.app-sidebar .quick-hint { font-size: 0.65em; }
-.app-sidebar .btn-row { margin-top: 20px; gap: 10px; }
-.app-sidebar .btn-lg { padding: 12px 24px; font-size: 0.92em; }
+.app-sidebar .app-header { text-align: left; padding: 0 0 14px; }
+.app-sidebar .app-header h1 { font-size: 1.5rem; margin-bottom: 2px; }
+.app-sidebar .subtitle { font-size: 0.7em; color: #999; }
+.app-sidebar .history-section { margin-bottom: 14px; }
+.app-sidebar .history-section details { font-size: 0.76em; }
+.app-sidebar .form-section { background: none; border: none; padding: 0 0 10px; box-shadow: none; margin-bottom: 0; }
+.app-sidebar .form-grid { grid-template-columns: repeat(2, 1fr); gap: 10px 14px; }
+.app-sidebar .form-group label { font-size: 0.78em; }
+.app-sidebar .form-group input, .app-sidebar .form-group select { padding: 8px 10px; font-size: 0.82em; }
+.app-sidebar .radio-label { font-size: 0.82em; }
+.app-sidebar .quick-input { min-width: 0; font-size: 0.85em; letter-spacing: 2px; padding: 8px 10px; }
+.app-sidebar .quick-hint { font-size: 0.6em; }
+.app-sidebar .btn-row { margin-top: 14px; gap: 8px; }
+.app-sidebar .btn-lg { padding: 10px 20px; font-size: 0.85em; }
 
 /* 粘性底部操作栏 */
 .sticky-actions {
     position: sticky; bottom: 0; left: 0; right: 0;
-    background: linear-gradient(0deg, #fff 70%, transparent);
-    padding: 20px 32px 16px; margin: auto -32px -40px;
+    background: linear-gradient(0deg, #fff 80%, rgba(255,255,255,0.85) 100%);
+    padding: 24px 28px 20px; margin: auto -28px -60px;
     display: flex; gap: 10px; flex-wrap: wrap;
     border-top: 1px solid var(--border-light);
+    z-index: 2;
 }
-.sticky-actions .btn { flex: 1; justify-content: center; }
+.sticky-actions .btn { flex: 1; justify-content: center; font-size: 0.85em; }
 .app-main .floating-bar {
     position: sticky; top: 0; z-index: 10;
     background: rgba(255,255,255,.92); backdrop-filter: blur(12px);
