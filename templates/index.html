@@ -4,7 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>八字排盘</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <!-- 关键 CSS 内联 — 消除渲染阻塞，LCP 秒级 -->
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :root{--bg:#fff;--card-bg:#fff;--text:#000;--text-muted:#666;--accent:#000;--primary:#000;--primary-hover:#333;--border:#ccc;--border-light:#e5e5e5;--shadow-sm:0 0 0 1px rgba(0,0,0,.04);--shadow:0 0 0 1px rgba(0,0,0,.06);--shadow-lg:0 2px 16px rgba(0,0,0,.08);--gold:#000;--radius:18px;--radius-sm:12px}
+        html{font-size:16px;scroll-behavior:smooth}
+        body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;background:#fefefe;color:var(--text);line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased}
+        .hidden{display:none!important}
+        .app-layout{display:flex;gap:0;min-height:100vh;position:relative;z-index:1}
+        .app-sidebar{width:400px;min-width:400px;flex-shrink:0;background:linear-gradient(180deg,rgba(212,168,67,.03) 0%,rgba(255,255,255,0) 40%);border-right:1px solid var(--border-light);padding:32px 28px 80px;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+        .app-sidebar .app-header{text-align:left;padding:0 0 14px}
+        .app-sidebar .app-header h1{font-size:1.5rem;margin-bottom:2px}
+        .app-sidebar .subtitle{font-size:.7em;color:#999}
+        .app-main{flex:1;min-width:0;padding:40px 48px 80px;overflow-y:auto}
+        .app-sidebar .form-section{background:none;border:none;padding:0 0 40px;box-shadow:none;margin-bottom:0}
+        .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 14px}
+        .form-group{display:flex;flex-direction:column;gap:4px}
+        .form-group label{font-size:.78em;color:var(--text-muted);font-weight:500}
+        .form-group input,.form-group select{padding:8px 10px;font-size:.82em;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text)}
+        .form-group input:focus,.form-group select:focus{outline:none;border-color:#d4a843}
+        .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--border);border-radius:20px;background:var(--card-bg);color:var(--text);font-size:.82em;font-weight:500;cursor:pointer;white-space:nowrap}
+        .btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+        .btn-primary:hover{background:var(--primary-hover)}
+        .btn-gold{background:linear-gradient(135deg,#d4a843,#b8860b);color:#fff;border:none}
+        .btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+        .quick-input-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+        .quick-input{flex:1;min-width:240px;padding:10px 14px;border:1.5px dashed var(--border);border-radius:var(--radius-sm);background:var(--card-bg);color:var(--text);font-size:1.1em;font-family:'SF Mono','Consolas','Courier New',monospace;letter-spacing:3px;text-align:center}
+        .quick-input:focus{outline:none;border-color:#d4a843;border-style:solid}
+        .quick-hint{color:#666;font-size:.72em;white-space:nowrap}
+        .bento-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+        .bento-card{background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow-sm);transition:box-shadow .2s,border-color .2s}
+        .bento-card .card-title{font-size:.85em;font-weight:600;color:#8b6914;margin-bottom:12px}
+        .bento-card.span-2{grid-column:span 2}
+        .bento-card.span-3{grid-column:span 3}
+        .bento-card.span-4{grid-column:span 4}
+        .sticky-actions{position:fixed;bottom:0;left:0;width:400px;background:#fff;padding:12px 28px 14px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border-light);z-index:10;box-shadow:0 -4px 16px rgba(0,0,0,.06)}
+        .sticky-actions .btn{flex:1;justify-content:center;font-size:.82em;padding:8px 14px}
+        .radio-group{display:flex;gap:12px}
+        .radio-label{display:flex;align-items:center;gap:4px;font-size:.82em;cursor:pointer}
+        .analysis-content{font-size:.9rem;line-height:1.85;color:var(--text)}
+        @media(max-width:860px){.app-layout{flex-direction:column}.app-sidebar{width:100%;min-width:0;height:auto;position:static;border-right:none;padding:20px 16px 16px}.app-main{padding:20px 16px 80px}.sticky-actions{width:100%}.bento-grid{grid-template-columns:1fr}.bento-card.span-2,.bento-card.span-3,.bento-card.span-4{grid-column:span 1}}
+    </style>
+    <!-- 完整样式异步加载 — 不阻塞首屏渲染 -->
+    <link rel="preload" href="/static/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/static/style.css"></noscript>
 </head>
 <body>
 <div class="app-layout">
