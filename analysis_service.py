@@ -63,6 +63,35 @@ AGENT_PATH = os.path.join(
     ".claude", "agents", "traditional-bazi-master.md",
 )
 
+# 八字基础知识库（结构化 JSON — Agent 查表用）
+KB_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "knowledge_base", "bazi_basics.json",
+)
+
+
+def _load_knowledge_base() -> str:
+    """加载结构化知识库，注入为权威上下文"""
+    if not os.path.exists(KB_PATH):
+        return ""
+    import json
+    with open(KB_PATH, "r", encoding="utf-8") as f:
+        kb = json.load(f)
+    # 只注入核心查表数据（跳过 meta 和 验证用例）
+    sections = [
+        ("天干（五行/生克/五合/禄神）", "天干"),
+        ("地支（藏干/六冲/六合/三合/三刑/六害）", "地支"),
+        ("驿马（三合局对冲位）", "驿马"),
+        ("五行生克", "五行生克"),
+        ("十神（日干与他干关系）", "十神"),
+        ("十二长生（天干坐地支状态）", "十二长生"),
+    ]
+    parts = []
+    for label, key in sections:
+        if key in kb:
+            parts.append(f"### {label}\n{json.dumps(kb[key], ensure_ascii=False, indent=2)}")
+    return "\n\n## 📚 权威知识库（结构化数据 —— 所有干支判断的唯一依据）\n\n" + "\n\n".join(parts)
+
 
 def _load_system_prompt() -> str:
     """加载 Agent 系统提示词（去除 YAML frontmatter）"""
@@ -78,7 +107,10 @@ def _load_system_prompt() -> str:
         if end != -1:
             content = content[end + 3:].strip()
 
-    # 保留完整 Agent 定义（含 Memory 部分），与 CLI 完全一致
+    # 追加结构化知识库
+    kb = _load_knowledge_base()
+    if kb:
+        content += kb
 
     return content
 
