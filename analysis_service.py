@@ -203,28 +203,18 @@ def _build_user_message(plate_dict: dict) -> str:
     msg_parts.append("12. ## 婚姻感情（配偶特征、正缘窗口、婚姻质量、建议）")
     msg_parts.append("13. ## 健康养生（先天薄弱环节、养生方向）")
     msg_parts.append("")
-    msg_parts.append('要求：每个结论说明五行/十神/格局依据，引用经典出处。术语严格定义。不确定处标明【待验证】。四维交叉验证中如有维度间矛盾，必须如实呈现而非强行统一。')
+    msg_parts.append('**置信度标注要求**：每条关键结论标注置信度等级——绿强信号（>=3维度一致+经典有据）直接断言；黄弱信号（1-2维度支持+推理链长）标注`【置信度：中】`；红矛盾信号（维度间冲突）标注`【矛盾】`如实呈现。每次完整分析至少2处黄或红。')
+    msg_parts.append('')
+    msg_parts.append('**Gate Check 要求**：每个章节末尾自检5项——[ ]用神依据 [ ]格局定位 [ ]经典出处 [ ]置信度标注 [ ]与前章一致性。缺失则回退补全。')
+    msg_parts.append('')
+    msg_parts.append('**CoVe 自验证要求**：完整分析末尾追加 `## 自检验证` 段——审视全文，列出3条可能错误的断言，逐条修正或降级置信度。自检发现严重矛盾优先修正正文。')
 
     return "\n".join(msg_parts)
 
 
-def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
-    """对命盘进行深度分析
-
-    Args:
-        plate_dict: plate_to_dict() 的输出
-        timeout: API 调用超时秒数
-
-    Returns:
-        {"success": True, "analysis": "...", "model": "...", "usage": {...}}
-        或 {"success": False, "error": "..."}
-    """
-    if not API_CONFIG.get("api_key"):
-        return {"success": False, "error": "未配置 API Key，请检查 ~/.claude/settings.json"}
-
-    system_prompt = _load_system_prompt()
-    user_message = _build_user_message(plate_dict)
-
+def _call_api(system_prompt: str, messages: list[dict], max_tokens: int,
+             temperature: float, timeout: int) -> dict:
+    """单次 API 调用，含空内容重试"""
     url = f"{API_CONFIG['base_url']}/v1/messages"
     headers = {
         "Content-Type": "application/json",
@@ -233,16 +223,14 @@ def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
     }
     payload = {
         "model": API_CONFIG["model"],
-        "max_tokens": 24576,
-        "temperature": 0.3,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
         "thinking": {"type": "disabled"},
         "system": system_prompt,
-        "messages": [
-            {"role": "user", "content": user_message},
-        ],
+        "messages": messages,
     }
 
-    for attempt in range(2):  # 空内容自动重试一次
+    for attempt in range(2):
         try:
             resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
             if resp.status_code != 200:
@@ -250,33 +238,25 @@ def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
                 return {"success": False, "error": f"API 返回错误 ({resp.status_code}): {err_text}"}
 
             data = resp.json()
-            analysis_text = ""
+            text = ""
             for block in data.get("content", []):
                 if block.get("type") == "text":
-                    analysis_text += block["text"]
+                    text += block["text"]
 
-            if analysis_text:
-                # 成功，直接返回
+            if text:
                 return {
                     "success": True,
-                    "analysis": analysis_text,
+                    "text": text,
                     "model": data.get("model", API_CONFIG["model"]),
                     "usage": data.get("usage", {}),
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_message},
-                        {"role": "assistant", "content": analysis_text},
-                    ],
                 }
 
             if attempt == 0:
-                time.sleep(3)  # 等3秒再试
+                time.sleep(3)
                 continue
 
             usage = data.get("usage", {})
             stop_reason = data.get("stop_reason", "unknown")
-            if usage.get("completion_tokens", 0) == 0:
-                return {"success": False, "error": f"模型未生成输出（stop={stop_reason}），已重试1次仍失败"}
             return {"success": False, "error": f"API 返回空内容（stop={stop_reason}），已重试1次仍失败"}
 
         except requests.Timeout:
@@ -291,6 +271,69 @@ def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
             return {"success": False, "error": f"API 调用失败: {str(e)}"}
 
     return {"success": False, "error": "API 调用失败：所有重试均未成功"}
+
+
+def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
+    """对命盘进行深度分析（含验盘自一致性双采样）
+
+    Args:
+        plate_dict: plate_to_dict() 的输出
+        timeout: API 调用超时秒数
+
+    Returns:
+        {"success": True, "analysis": "...", "model": "...", "usage": {...}, "consistency": {...}}
+        或 {"success": False, "error": "..."}
+    """
+    if not API_CONFIG.get("api_key"):
+        return {"success": False, "error": "未配置 API Key，请检查 ~/.claude/settings.json"}
+
+    system_prompt = _load_system_prompt()
+    user_message = _build_user_message(plate_dict)
+    user_messages = [{"role": "user", "content": user_message}]
+
+    # Pass 1: 主验盘（temperature=0.3，保守）
+    result1 = _call_api(system_prompt, user_messages, 24576, 0.3, timeout)
+    if not result1["success"]:
+        return result1
+
+    # Pass 2: 自一致性采样（temperature=0.7，短输出）
+    # ponytail: 仅验盘阶段双采样，完整分析不重复（24K token太贵）
+    result2 = _call_api(system_prompt, user_messages, 4096, 0.7, timeout)
+
+    analysis_text = result1["text"]
+    consistency = None
+
+    if result2["success"]:
+        consistency = {
+            "pass2_text": result2["text"],
+            "pass1_tokens": result1["usage"].get("output_tokens", 0),
+            "pass2_tokens": result2["usage"].get("output_tokens", 0),
+        }
+        # 追加 Pass 2 结果，让用户和续接 Agent 对比
+        analysis_text += (
+            "\n\n---\n\n"
+            "## 🔄 自一致性检查（Pass 2, temperature=0.7）\n\n"
+            "以下为独立二次验盘（更高随机性），用于交叉验证：\n\n"
+            + result2["text"]
+            + "\n\n---\n"
+            "> 📌 对比两轮验盘：一致的预测置信度更高；不一致的请用户在反馈中澄清。"
+        )
+    else:
+        # Pass 2 失败不阻塞，降级为单次验盘
+        consistency = {"pass2_error": result2["error"]}
+
+    return {
+        "success": True,
+        "analysis": analysis_text,
+        "model": result1.get("model", API_CONFIG["model"]),
+        "usage": result1.get("usage", {}),
+        "consistency": consistency,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+            {"role": "assistant", "content": analysis_text},
+        ],
+    }
 
 
 def continue_analysis(messages: list[dict], user_reply: str, timeout: int = 600) -> dict:
