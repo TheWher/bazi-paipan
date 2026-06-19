@@ -170,6 +170,16 @@ def _build_user_message(plate_dict: dict) -> str:
             f"{d['start_age']}-{d['end_age']}岁 | "
             f"{d['start_year']}-{d['end_year']}年 |"
         )
+
+    # 确定最后一步已走过的大运（强制扫描锚点）
+    current_year = time.localtime().tm_year
+    last_completed_dayun = None
+    for d in dayun:
+        if d['end_year'] < current_year:
+            last_completed_dayun = d
+    if last_completed_dayun:
+        msg_parts.append("")
+        msg_parts.append(f"**⚠️ 强制锚点**：命主最后一步已走过的大运是 **第{last_completed_dayun['step']}步 {last_completed_dayun['gz']}（{last_completed_dayun['start_year']}-{last_completed_dayun['end_year']}年，{last_completed_dayun['start_age']}-{last_completed_dayun['end_age']}岁）**——验盘流年扫描**必须**逐年覆盖此大运的每一年，此步不可因任何原因跳过。")
     msg_parts.append("")
 
     # 分析要求
@@ -187,7 +197,7 @@ def _build_user_message(plate_dict: dict) -> str:
     msg_parts.append("")
     msg_parts.append("**验盘输出格式：** 先以\"在正式批断之前，我先根据当前排定的命盘，反推过去几件已发生的事，你帮我对照一下是否吻合——这一步是为了验证时辰是否准确\"开场。")
     msg_parts.append("")
-    msg_parts.append("**⚠️ 强制要求——验盘前先做流年全扫描**：扫描范围 = 命主已走过的**所有大运**（不只当前大运），逐年标注流年信号（S/A/B/C/D/E）。特别标注：禄神到位年、印星齐透年、大运交接年、天克地冲年——这几类即使信号等级非S/A也必须进候选。从全生命周期中选信号最强的3个作为验盘预测。禁止只扫当前大运——年长命主早年强信号会被漏掉。禁止不列表直接给预测。")
+    msg_parts.append("**⚠️ 强制要求——验盘前先做流年全扫描**：扫描范围 = 命主已走过的每一大运（不可漏步）。16-60岁逐年列出（不跳年），其余区间至少列S/A/B级。扫描必须到最后一步大运，不可提前截断。选3个预测时必须跨生命阶段分散（青年/中年/晚近各1），禁止全集中在同一阶段。特别标注：禄神、印星齐透、大运交接、天克地冲。禁止不列表直接给预测、禁止跳年、禁止提前截断扫描。")
     msg_parts.append("")
     msg_parts.append("然后逐条给出预测（如\"你XX岁前后学业表现应该是...你实际的学历情况如何？\"），待用户反馈后再进入正式批断。如果用户尚未反馈，验盘后先暂停，不要继续后面的章节。")
     msg_parts.append("")

@@ -613,7 +613,7 @@ def calc_dayun(yue_gan: str, yue_zhi: str, forward: bool,
             'step': step + 1,
             'start_age': round(start_age, 1),
             'end_age': round(end_age, 1),
-            'start_year': 2005 + start_age,  # FIXME: need actual birth year
+            'start_year': 0,  # placeholder, caller fills real year
         })
         current_age = end_age
 
@@ -806,12 +806,16 @@ class BaziPlate:
         self.qiyun = calc_qiyun(
             self.birth_dt, nian_is_yang, is_male, self.longitude)
 
-        # 12. 大运
+        # 12. 大运 — 覆盖到当前年份（至少8步）
+        import datetime
+        current_year = datetime.datetime.now().year
+        steps_needed = max(8, int((current_year - y - self.qiyun['qiyun_age']) / 10) + 2)
         self.dayun = calc_dayun(
             self.sizhu['month']['gan'],
             self.sizhu['month']['zhi'],
             self.qiyun['forward'],
             self.qiyun['qiyun_age'],
+            num_steps=steps_needed,
         )
         # 补全起运年份
         for du in self.dayun:
