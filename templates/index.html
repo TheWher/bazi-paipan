@@ -908,53 +908,56 @@ elBtnAnalyze.addEventListener('click', () => doAnalyze(false));
 /** 从 Agent 验盘输出中提取预测条目 */
 function extractVerificationPredictions(assistantText) {
     const preds = [];
-    // 匹配模式：第X条/第X件 + 任意内容直到下一个分割点
-    // Agent 验盘格式：### 第一件：... \n > **预测特征：** ... \n
-    const patterns = [
-        // 模式1: ### 第X件/条：标题
-        /(?:###|####)\s*第([一二三四五六七八九十\d]+)[件条][：:]\s*(.+?)(?=(?:\n(?:###|####)\s*第[一二三四五六七八九十\d]+[件条])|\n---|\n\*\*第|\n> \*\*预测|\n\n\*\*[^\*]+\*\*\n|$)/gs,
-        // 模式2: **第X条：**
-        /\*\*第([一二三四五六七八九十\d]+)条[：:]\*\*\s*(.+?)(?=\*\*第[一二三四五六七八九十\d]+条|\n---|$)/gs,
-    ];
-
     const chineseNum = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10};
+    const circledNum = {'①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9,'⑩':10};
+
+    // 匹配所有预测格式（支持新旧多种格式）
+    const patterns = [
+        // **预测①：...** 或 **预测一：...**
+        /\*\*预测([①②③④⑤⑥⑦⑧⑨⑩一二三四五六七八九十\d]+)[：:]\*\*\s*(.+?)(?=\*\*预测[①②③④⑤⑥⑦⑧⑨⑩一二三四五六七八九十\d]+[：:]|$)/gs,
+        // **第X条：...**
+        /\*\*第([一二三四五六七八九十\d]+)条[：:]\*\*\s*(.+?)(?=\*\*第[一二三四五六七八九十\d]+条|$)/gs,
+        // ### 第X件/条：标题
+        /(?:###|####)\s*第([一二三四五六七八九十\d]+)[件条][：:]\s*(.+?)(?=(?:\n(?:###|####)\s*第[一二三四五六七八九十\d]+[件条])|$)/gs,
+    ];
 
     for (const pattern of patterns) {
         let m;
-        const text = assistantText;
-        // Reset lastIndex
         pattern.lastIndex = 0;
-        while ((m = pattern.exec(text)) !== null) {
+        while ((m = pattern.exec(assistantText)) !== null) {
             const numStr = m[1].trim();
-            const idx = chineseNum[numStr] || parseInt(numStr) || preds.length + 1;
-            let body = m[2].trim().substring(0, 800); // 保留更多内容
-            // 清理 markdown 格式
+            const idx = circledNum[numStr] || chineseNum[numStr] || parseInt(numStr) || (preds.length + 1);
+            let body = m[2].trim().substring(0, 800);
             body = body.replace(/\*\*/g, '').replace(/> /g, '').replace(/\n+/g, ' ').trim();
-            if (body.length > 10) {
-                preds.push({index: idx - 1, title: `第${idx}条验证`, body: body});
+            if (body.length > 10 && !/流年全扫描|排盘确认|验盘前/.test(body)) {
+                preds.push({index: idx - 1, title: '验证项' + idx, body: body});
             }
         }
         if (preds.length > 0) break;
     }
 
-    // 如果没匹配到结构化格式，尝试提取包含"预测"关键词的段落
+    // Fallback：扫描"预测X："格式的行（X = 数字/中文/圈数）
     if (preds.length === 0) {
-        const lines = assistantText.split('\n');
-        let currentPred = '';
-        for (const line of lines) {
-            if (/预测|验证|对照|反推/.test(line) && line.length > 15) {
-                if (currentPred) preds.push({index: preds.length, title: `验证项${preds.length+1}`, body: currentPred.substring(0, 300)});
-                currentPred = line;
-            } else if (currentPred && line.trim()) {
-                currentPred += ' ' + line.trim();
-            }
+        const predHeader = /(?:预测|验证)([①②③④⑤⑥⑦⑧⑨⑩一二三四五六七八九十\d]+)[：:]/g;
+        const text = assistantText;
+        let m;
+        const starts = [];
+        while ((m = predHeader.exec(text)) !== null) {
+            const numStr = m[1];
+            const idx = circledNum[numStr] || chineseNum[numStr] || parseInt(numStr) || (starts.length + 1);
+            starts.push({idx: idx, pos: m.index, header: m[0]});
         }
-        if (currentPred && currentPred.length > 15) {
-            preds.push({index: preds.length, title: `验证项${preds.length+1}`, body: currentPred.substring(0, 300)});
+        for (let i = 0; i < starts.length; i++) {
+            const start = starts[i].pos;
+            const end = i + 1 < starts.length ? starts[i + 1].pos : Math.min(start + 500, text.length);
+            let body = text.substring(start, end).replace(/\n+/g, ' ').replace(/\*\*/g, '').trim();
+            if (body.length > 10) {
+                preds.push({index: starts[i].idx - 1, title: '验证项' + starts[i].idx, body: body});
+            }
         }
     }
 
-    return preds.slice(0, 5); // 最多 5 条
+    return preds.slice(0, 5);
 }
 
 /** 渲染验盘反馈面板 */
