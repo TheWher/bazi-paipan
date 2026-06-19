@@ -74,12 +74,16 @@ KB_EXTENDED_PATH = os.path.join(
 )
 
 
-def _load_knowledge_base() -> str:
-    """加载结构化知识库（基础+扩展），注入为权威上下文"""
+def _load_knowledge_base(include_extended: bool = False) -> str:
+    """加载结构化知识库，注入为权威上下文。
+
+    默认只加载核心防幻觉表（天干/地支/藏干/冲合/十神/十二长生），约6KB。
+    include_extended=True 时追加纳音/神煞/建除/星宿，约7KB额外。
+    """
     import json
 
     parts = []
-    # 基础库
+    # 基础库（核心防幻觉 — 永远加载）
     if os.path.exists(KB_PATH):
         with open(KB_PATH, "r", encoding="utf-8") as f:
             kb = json.load(f)
@@ -95,13 +99,12 @@ def _load_knowledge_base() -> str:
             if key in kb:
                 parts.append(f"### {label}\n{json.dumps(kb[key], ensure_ascii=False, indent=2)}")
 
-    # 扩展库
-    if os.path.exists(KB_EXTENDED_PATH):
+    # 扩展库（按需加载）
+    if include_extended and os.path.exists(KB_EXTENDED_PATH):
         with open(KB_EXTENDED_PATH, "r", encoding="utf-8") as f:
             kb2 = json.load(f)
         ext_sections = [
             ("六十甲子纳音（干支→纳音五行）", "六十甲子纳音"),
-            ("纳音五行速查（纳音名→五行）", "纳音五行速查"),
             ("神煞系统（天乙/文昌/桃花/羊刃/华盖/劫煞/孤辰寡宿/天月德/将星/天医/空亡）", "神煞"),
             ("建除十二神", "建除十二神"),
             ("二十八宿", "二十八宿"),
@@ -129,8 +132,8 @@ def _load_system_prompt() -> str:
         if end != -1:
             content = content[end + 3:].strip()
 
-    # 追加结构化知识库
-    kb = _load_knowledge_base()
+    # 追加核心知识库（防幻觉必须表，~6KB）
+    kb = _load_knowledge_base(include_extended=False)
     if kb:
         content += kb
 
