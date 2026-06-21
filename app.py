@@ -710,6 +710,133 @@ def api_analyze():
         return jsonify({"success": False, "error": result["error"]}), 500
 
 
+@app.route("/api/analyze/stream", methods=["POST"])
+def api_analyze_stream():
+    """三通道 SSE 流式验盘：analysis(隐藏) → commentary(进度事件) → final(验盘结果)
+
+    GPT-5.5 参考实现 — SSE 事件流推送分析进度，
+    前端通过 EventSource 或 fetch + ReadableStream 消费。
+    """
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求数据格式错误"}), 400
+
+    ip = request.remote_addr or 'unknown'
+    pw_err = check_password(ip, data)
+    if pw_err:
+        return jsonify({"error": pw_err, "need_password": True}), 403
+
+    # 提取/计算 plate_dict
+    if "plate" in data:
+        plate_dict = data["plate"]
+    else:
+        required = ["year", "month", "day", "hour", "gender", "longitude"]
+        for field in required:
+            if field not in data:
+                return jsonify({"error": f"缺少参数: {field}"}), 400
+        try:
+            year = int(data["year"]); month = int(data["month"]); day = int(data["day"])
+            hour = int(data["hour"]); minute = int(data.get("minute", 0))
+            longitude = float(data["longitude"]); gender = data["gender"]
+            location = data.get("location", "")
+            if gender not in ("男", "女"):
+                return jsonify({"error": "性别必须为 '男' 或 '女'"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"error": "参数格式错误"}), 400
+        try:
+            plate = paipan(year, month, day, hour, minute, gender, longitude, location,
+                           apply_solar_correction=bool(data.get("solar_correction", 0)))
+            plate_dict = plate_to_dict(plate)
+        except Exception as e:
+            return jsonify({"error": f"排盘计算失败: {str(e)}"}), 500
+
+    # 查缓存（缓存命中直接返回，不流式）
+    cache_key = _make_cache_key(plate_dict)
+    cached = _cache_get(cache_key)
+    if cached:
+        return jsonify({**cached, "cached": True})
+
+    if not check_rate_limit(ip, max_requests=3, window_minutes=60):
+        return jsonify({"error": "请求过于频繁，请稍后再试（每小时限 3 次）"}), 429
+
+    from three_channel import three_channel_analyze
+    import json as _json
+
+    # 收集所有 SSE 事件（generator 已 yield result 事件 + 进度事件）
+    events = list(three_channel_analyze(plate_dict))
+
+    # 提取 result 事件用于缓存+日志
+    result_data = None
+    for evt in events:
+        for line in evt.strip().split("\n"):
+            if line.startswith("data:") and '"event":"result"' in line:
+                try:
+                    result_data = _json.loads(line[5:].strip())
+                except Exception:
+                    pass
+
+    if result_data and result_data.get("success"):
+        msgs = result_data.get("messages", [])
+        fb = save_feedback_log(plate_dict, msgs, ip=ip, turn_type="initial")
+        result_data["feedback_file"] = fb or ""
+        if cache_key:
+            _cache_set(cache_key, result_data)
+
+    from flask import Response
+    return Response(
+        "".join(events),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.route("/api/analyze/stream/continue", methods=["POST"])
+def api_analyze_stream_continue():
+    """三通道 SSE 流式续接：analysis(隐藏推理) → commentary(进度) → final(13章报告)
+
+    用户确认验盘后调用。比 /api/analyze/continue 多了：
+    - 隐藏推理层（analysis channel 产出结构化决策，用户不可见）
+    - SSE 进度事件（14 个分析阶段逐个推送）
+    - 内部决策锚点注入（后续章节直接引用，不重复推理）
+    """
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求数据格式错误"}), 400
+
+    ip = request.remote_addr or 'unknown'
+    pw_err = check_password(ip, data)
+    if pw_err:
+        return jsonify({"error": pw_err, "need_password": True}), 403
+
+    if not check_rate_limit(ip, max_requests=5, window_minutes=60):
+        return jsonify({"error": "请求过于频繁，请稍后再试"}), 429
+
+    if "messages" not in data or "reply" not in data:
+        return jsonify({"error": "缺少参数: messages 或 reply"}), 400
+
+    from three_channel import three_channel_continue
+    import json as _json
+
+    # 收集所有 SSE 事件（generator 已 yield result 事件 + 进度事件）
+    events = list(three_channel_continue(data["messages"], data["reply"]))
+
+    from flask import Response
+    return Response(
+        "".join(events),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+
 @app.route("/api/analyze/continue", methods=["POST"])
 def api_analyze_continue():
     """续接分析：将之前的对话 + 用户回复发给 Agent 继续批断"""
