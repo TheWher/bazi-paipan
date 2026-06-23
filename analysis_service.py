@@ -207,6 +207,61 @@ def _evaluate_liunian_signal(liunian_ganzhi, ri_ganzhi, yue_zhi, nian_zhi, dayun
     return (None, None)
 
 
+def _build_year_lookup_table(plate, current_year):
+    """生成 流年干支-西历对照表（均衡命局验盘专用）"""
+    birth_year = plate.birth_dt.year
+    sizhu = plate.sizhu  # dict with year/month/day/hour keys
+    ri_ganzhi = sizhu['day']['gz']
+    yue_zhi = sizhu['month']['zhi']
+    nian_zhi = sizhu['year']['zhi']
+    dayun = plate.dayun  # list[dict] with gz/gan/zhi/start_year
+
+    tian_gan = '甲乙丙丁戊己庚辛壬癸'
+    di_zhi = '子丑寅卯辰巳午未申酉戌亥'
+
+    lines = []
+    lines.append('## 流年干支-西历对照表')
+    lines.append('')
+    lines.append(f'出生年：{birth_year}年 → 当前年：{current_year}年')
+    lines.append(f'日柱：{ri_ganzhi}')
+    lines.append('')
+    lines.append('### 逐年流年信号')
+    lines.append('')
+    lines.append('| 年份 | 干支 | 所属大运 | 信号等级 | 信号说明 |')
+    lines.append('|------|------|----------|----------|----------|')
+
+    for year in range(birth_year, current_year + 1):
+        stem_idx = (year - 4) % 10
+        branch_idx = (year - 4) % 12
+        ganzhi = tian_gan[stem_idx] + di_zhi[branch_idx]
+
+        # 找该年所属大运 + 状态
+        dayun_label = '—'
+        for d in dayun:
+            start_y = d['start_year']
+            end_y = start_y + 9
+            if start_y <= year <= end_y:
+                if current_year > end_y:
+                    status = '✅'
+                elif current_year < start_y:
+                    status = '⬜'
+                else:
+                    status = '🔵当前'
+                dayun_label = f"{d['gz']}({start_y}-{end_y}) {status}"
+                break
+
+        # 评估信号等级
+        signal_level, signal_desc = _evaluate_liunian_signal(
+            ganzhi, ri_ganzhi, yue_zhi, nian_zhi, dayun, year
+        )
+
+        level_str = signal_level if signal_level else '—'
+        desc_str = signal_desc if signal_desc else '—'
+        lines.append(f'| {year}年（{ganzhi}） | {ganzhi} | {dayun_label} | {level_str} | {desc_str} |')
+
+    return '\n'.join(lines)
+
+
 def _build_user_message(plate_dict: dict) -> str:
     """根据排盘数据构造用户分析请求"""
     p = plate_dict

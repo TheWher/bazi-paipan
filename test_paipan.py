@@ -574,5 +574,33 @@ def test_evaluate_liunian_signal():
     print("[PASS] test_evaluate_liunian_signal: 7/7 信号等级判定正确")
 
 
+def test_build_year_lookup_table():
+    """验证对照表生成格式"""
+    from analysis_service import _build_year_lookup_table
+    from bazi_calculator import paipan
+
+    plate = paipan(2005, 8, 19, 1, 35, '男', 113.75, '东莞')
+    table = _build_year_lookup_table(plate, 2010)
+
+    # 格式检查
+    assert '## 流年干支-西历对照表' in table, '缺少标题'
+    assert '出生年：2005年' in table, '缺少出生年'
+    assert '日柱：' in table, '缺少日柱'
+    assert '| 年份 | 干支 | 所属大运 | 信号等级 | 信号说明 |' in table, '缺少表头'
+    assert '2005' in table, '缺少出生年行'
+    assert '2010' in table, '缺少当前年行'
+    assert '🔵当前' in table, '缺少当前大运标记'
+
+    # 逐年行数 = (2010 - 2005 + 1) + 表头2行 + section header等
+    lines = table.strip().split('\n')
+    data_lines = [l for l in lines if l.startswith('| 20')]
+    assert len(data_lines) == 6, f'预期6年数据行，实际{len(data_lines)}'
+
+    # 格式：20XX年（干支）
+    assert '2005年（乙酉）' in table, '缺少出生年对照'
+
+    print("[PASS] test_build_year_lookup_table: 对照表格式正确")
+
+
 if __name__ == "__main__":
     sys.exit(main())
