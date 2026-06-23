@@ -244,6 +244,10 @@ const elChatInput=$('chat-input'),elBtnChatSend=$('btn-chat-send'),elBtnAnalysis
 const elPwOverlay=$('pw-overlay'),elPwInput=$('pw-input'),elPwError=$('pw-error'),elBtnPwConfirm=$('btn-pw-confirm'),elBtnPwCancel=$('btn-pw-cancel');
 
 let plateData=null, analysisText=null, analysisInProgress=false, conversationMessages=null, conversationId=null;
+const CONV_KEY='bazi_conversation', CONV_ID_KEY='bazi_conversation_id';
+function saveConversation(){ if(conversationMessages){ try { localStorage.setItem(CONV_KEY, JSON.stringify(conversationMessages)); }catch(e){} } if(conversationId){ try { localStorage.setItem(CONV_ID_KEY, conversationId); }catch(e){} } }
+function loadConversation(){ try { const m=JSON.parse(localStorage.getItem(CONV_KEY)); if(m&&Array.isArray(m)){ conversationMessages=m; conversationId=localStorage.getItem(CONV_ID_KEY)||null; return true; } }catch(e){} return false; }
+function clearConversation(){ conversationMessages=null; conversationId=null; localStorage.removeItem(CONV_KEY); localStorage.removeItem(CONV_ID_KEY); }
 // ========== 夜晚模式切换 ==========
 function toggleTheme(){const h=document.documentElement;const c=h.getAttribute('data-theme')==='dark'?'light':'dark';h.setAttribute('data-theme',c);localStorage.setItem('bazi_theme',c);updateThemeIcon(c);}
 function updateThemeIcon(t){const b=document.getElementById('btn-theme');if(b)b.textContent=t==='dark'?'☀️':'🌙';}
@@ -301,7 +305,7 @@ function addToHistory(plate, analysis){
     const existing = h.findIndex(e => e.label === key || e._autoLabel === key);
     // 已有分析条目则保留旧名字，仅更新数据
     const oldName = existing >= 0 ? h[existing].name : '';
-    const entry = {id:Date.now(), name: oldName, _autoLabel: key, gender:input.gender, birth:input.birth_datetime, rizhu:plate.ri_zhu, sizhu:plate.sizhu, plate, analysis, time:new Date().toLocaleString()};
+    const entry = {id:Date.now(), name: oldName, _autoLabel: key, gender:input.gender, birth:input.birth_datetime, rizhu:plate.ri_zhu, sizhu:plate.sizhu, plate, analysis, conversationMessages: conversationMessages ? conversationMessages.filter(m=>m.role!=='system') : undefined, time:new Date().toLocaleString()};
     if(existing >= 0){ h[existing] = entry; } else { h.unshift(entry); }
     if(h.length > 20) h.length = 20;
     saveHistory(h); renderHistory();
@@ -320,7 +324,11 @@ function restoreHistory(id){
     const e = loadHistory().find(e=>e.id===id); if(!e) return;
     plateData = e.plate; analysisText = e.analysis;
     if(e.analysis) {
-        conversationMessages = [{role:'system',content:''},{role:'user',content:''},{role:'assistant',content:e.analysis}];
+        if (e.conversationMessages && Array.isArray(e.conversationMessages)) {
+            conversationMessages = [{role:'system',content:''}, ...e.conversationMessages]; saveConversation();
+        } else {
+            conversationMessages = [{role:'system',content:''},{role:'user',content:''},{role:'assistant',content:e.analysis}];saveConversation();
+        }
     }
     elResultSection.classList.remove('hidden'); renderResult(e.plate);
     if(e.analysis){ elAnalysisSection.classList.remove('hidden'); elAnalysisContent.innerHTML=formatMarkdown(e.analysis); injectGlossary(elAnalysisContent); elAnalysisChat.classList.remove('hidden'); }
@@ -534,7 +542,7 @@ elBtnPaipan.addEventListener('click', async () => {
         const r = await fetch('/api/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
         const d = await r.json();
         if (d.error) { showError(d.error); return; }
-        plateData=d; analysisText=null; conversationMessages=null;
+        plateData=d; analysisText=null; clearConversation();
         localStorage.removeItem('bazi_analysis'); localStorage.removeItem('bazi_plate');
         saveForm();
         renderResult(d); elResultSection.classList.remove('hidden');
@@ -843,7 +851,7 @@ async function doAnalyze(isRetry = false) {
         savePendingAnalysis();
 
         // 生成对话 ID（整个对话期间不变）
-        if (!conversationId) conversationId = 'conv_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+        if (!conversationId) { conversationId = 'conv_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); try { localStorage.setItem(CONV_ID_KEY, conversationId); }catch(e){} }
 
         // 创建 AbortController（用于超时取消）
         _analysisAbortController = new AbortController();
@@ -872,7 +880,7 @@ async function doAnalyze(isRetry = false) {
         hideSkeleton();
         analysisText = d.analysis;
         _feedbackFile = d.feedback_file || '';
-        if (d.messages) { conversationMessages = d.messages; elAnalysisChat.classList.remove('hidden'); }
+        if (d.messages) { conversationMessages = d.messages; saveConversation(); elAnalysisChat.classList.remove('hidden'); }
         localStorage.setItem('bazi_plate', JSON.stringify(plateData));
         localStorage.setItem('bazi_analysis', analysisText);
         elAnalysisContent.innerHTML = formatMarkdown(analysisText);
@@ -1157,7 +1165,7 @@ elBtnChatSend.addEventListener('click', async () => {
             }
             // 成功
             clearPendingAnalysis();
-            conversationMessages.push({role:'user',content:reply});conversationMessages.push({role:'assistant',content:resultData.analysis});
+            conversationMessages.push({role:'user',content:reply});conversationMessages.push({role:'assistant',content:resultData.analysis});saveConversation();
             analysisText = (analysisText||'') + '\n\n---\n\n**💬 ' + reply + '**\n\n' + resultData.analysis;
             localStorage.setItem('bazi_analysis', analysisText);
             const replyDiv = document.createElement('div'); replyDiv.className='chat-reply'; replyDiv.innerHTML = formatMarkdown(resultData.analysis); injectGlossary(replyDiv);
@@ -1229,9 +1237,14 @@ document.addEventListener('visibilitychange', () => {
                 injectGlossary(elAnalysisContent);
                 elAnalysisSection.classList.remove('hidden');
                 elBtnAnalysisPdf.disabled = false;
+                // 恢复对话上下文（analysisText 已含全部聊天，只需恢复 messages 用于续接）
+                if (loadConversation()) {
+                    elAnalysisChat.classList.remove('hidden');
+                }
             } else {
                 localStorage.removeItem('bazi_analysis');
                 localStorage.removeItem('bazi_plate');
+                clearConversation();
             }
         } catch(e) {}
     }
@@ -1268,7 +1281,7 @@ $('btn-clear').addEventListener('click', () => {
     elLongitude.value = '120';
     elUseTrueSolar.checked = false; elLngLat.style.display = 'none';
     elGeocodeStatus.classList.add('hidden'); elSuggestions.classList.add('hidden');
-    plateData = null; analysisText = null; conversationMessages = null; conversationId = null;
+    plateData = null; analysisText = null; clearConversation();
     elResultSection.classList.add('hidden'); elAnalysisSection.classList.add('hidden');
     document.getElementById('charts-section').classList.add('hidden');
     elBtnPdf.disabled = true; elBtnAnalyze.disabled = true; elBtnAnalysisPdf.disabled = true;

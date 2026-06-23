@@ -163,8 +163,8 @@ def save_feedback_log(plate_dict: dict, messages: list[dict], ip: str = "", turn
         print(f"[Feedback] Saved: {filename}")
         return filename
 
-    except Exception:
-        pass  # 日志记录失败不影响主流程
+    except Exception as e:
+        print(f"[Feedback] ERROR saving log: {e}", flush=True)
     return None
 
 
@@ -843,6 +843,44 @@ def api_analyze_stream_continue():
 
     # 收集所有 SSE 事件（generator 已 yield result 事件 + 进度事件）
     events = list(three_channel_continue(data["messages"], data["reply"]))
+
+    # 提取 result 事件保存反馈日志
+    result_data = None
+    for evt in events:
+        for line in evt.strip().split("\n"):
+            if line.startswith("data:") and '"event":"result"' in line:
+                try:
+                    result_data = _json.loads(line[5:].strip())
+                except Exception:
+                    pass
+
+    if result_data and result_data.get("success"):
+        # 重建完整对话 messages
+        full_msgs = list(data["messages"])
+        full_msgs.append({"role": "user", "content": data["reply"]})
+        full_msgs.append({"role": "assistant", "content": result_data.get("analysis", "")})
+        # 从首条 user 消息提取排盘摘要
+        plate_summary = {}
+        for m in data["messages"]:
+            if m.get("role") == "user" and "命盘数据" in m.get("content", ""):
+                import re as _re
+                m_ri = _re.search(r"日主[：:]\s*(\S+)", m["content"])
+                m_g = _re.search(r"性别[：:]\s*(\S+)", m["content"])
+                m_b = _re.search(r"公历[：:]\s*(.+?)(?:\n|$)", m["content"])
+                plate_summary = {
+                    "birth": m_b.group(1).strip() if m_b else "?",
+                    "gender": m_g.group(1).strip() if m_g else "?",
+                    "ri_zhu": m_ri.group(1).strip() if m_ri else "?",
+                }
+                break
+        minimal_plate = {
+            "input": {"birth_datetime": plate_summary.get("birth", "?"), "gender": plate_summary.get("gender", "?"), "location": ""},
+            "ri_zhu": plate_summary.get("ri_zhu", "?"),
+            "year_type": "",
+            "pillars": {},
+            "qiyun": {"age": "?"},
+        }
+        save_feedback_log(minimal_plate, full_msgs, ip=ip, turn_type="continue")
 
     from flask import Response
     return Response(
