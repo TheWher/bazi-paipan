@@ -399,8 +399,14 @@ def plate_to_dict(plate) -> dict:
 
 
 @app.route("/")
+def landing():
+    """入口主页"""
+    return render_template("landing.html")
+
+
+@app.route("/app")
 def index():
-    """首页"""
+    """八字排盘主应用"""
     return render_template("index.html")
 
 
