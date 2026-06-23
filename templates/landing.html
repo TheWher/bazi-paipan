@@ -3,45 +3,115 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>八字排盘</title>
+<title>八字排盘 · AI命理分析</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
+:root{--gold:#c8a860;--gold-dim:#8a7040;--bg:#0a0a0a;--card:#111;--text:#c8bfb0;--muted:#666}
+*{margin:0;padding:0;box-sizing:border-box}
 body{
-  min-height:100vh;display:flex;align-items:center;justify-content:center;
-  background:#0f0f0f;color:#e0d5c0;font-family:"PingFang SC","Microsoft YaHei",sans-serif;
-  overflow:hidden;
+  min-height:100vh;background:var(--bg);color:var(--text);
+  font-family:"PingFang SC","Microsoft YaHei","Noto Serif SC",serif;
+  display:flex;flex-direction:column;align-items:center;
 }
-body::before{
-  content:'';position:fixed;inset:0;
-  background:radial-gradient(ellipse at 50% 0%, rgba(180,140,80,0.08) 0%, transparent 60%),
-             radial-gradient(ellipse at 80% 100%, rgba(120,80,40,0.05) 0%, transparent 50%);
-  pointer-events:none;
+/* 背景粒子 */
+.bg-particles{position:fixed;inset:0;pointer-events:none;z-index:0}
+.particle{position:absolute;border-radius:50%;background:var(--gold);animation:float 6s infinite ease-in-out;opacity:0}
+@keyframes float{0%,100%{transform:translateY(0) scale(1);opacity:0}20%{opacity:.08}80%{opacity:.02}100%{transform:translateY(-120vh) scale(.3);opacity:0}}
+/* 顶部光晕 */
+.aura{position:fixed;top:-30vh;left:50%;transform:translateX(-50%);width:80vw;height:60vh;
+  background:radial-gradient(ellipse,rgba(200,168,96,.06) 0%,transparent 70%);pointer-events:none;z-index:0}
+
+/* 主内容 */
+main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1;padding:2rem;width:100%;max-width:800px}
+
+/* Logo区 */
+.logo-area{text-align:center;margin-bottom:3rem}
+.logo-area h1{font-size:clamp(2.5rem,6vw,5rem);font-weight:300;letter-spacing:.2em;color:var(--gold);text-shadow:0 0 80px rgba(200,168,96,.15)}
+.logo-area .tagline{font-size:.95rem;color:var(--muted);letter-spacing:.4em;margin-top:.8rem}
+.logo-area .divider{width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--gold-dim),transparent);margin:1.2rem auto}
+
+/* 特性卡片 */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;width:100%;margin-bottom:2.5rem}
+.card{
+  background:var(--card);border:1px solid rgba(255,255,255,.04);border-radius:6px;
+  padding:1.5rem 1.2rem;text-align:center;transition:border-color .3s,transform .3s;cursor:default;
+  position:relative;overflow:hidden;
 }
-main{text-align:center;z-index:1;padding:2rem;}
-h1{font-size:clamp(3rem, 8vw, 6rem);font-weight:200;letter-spacing:.15em;color:#c8a860;margin-bottom:.25em;}
-.sub{font-size:clamp(.9rem, 2vw, 1.1rem);color:#888;letter-spacing:.3em;margin-bottom:3rem;}
+.card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(200,168,96,.04),transparent 70%);opacity:0;transition:opacity .3s}
+.card:hover{border-color:rgba(200,168,96,.2);transform:translateY(-2px)}
+.card:hover::before{opacity:1}
+.card .icon{font-size:1.8rem;margin-bottom:.6rem;opacity:.7}
+.card h3{font-size:.95rem;color:var(--gold);font-weight:400;letter-spacing:.1em;margin-bottom:.3rem}
+.card p{font-size:.75rem;color:var(--muted);line-height:1.6}
+
+/* 按钮 */
 .btn{
-  display:inline-block;padding:1rem 4rem;font-size:1.1rem;letter-spacing:.2em;
-  color:#0f0f0f;background:linear-gradient(135deg, #c8a860, #a08040);
-  border:none;border-radius:2px;cursor:pointer;text-decoration:none;
-  transition:transform .2s, box-shadow .2s;
+  display:inline-block;padding:1rem 5rem;font-size:1.05rem;letter-spacing:.25em;
+  color:var(--bg);background:linear-gradient(135deg,#c8a860,#9a7a30);
+  border:none;border-radius:3px;cursor:pointer;text-decoration:none;font-weight:500;
+  transition:all .3s;position:relative;overflow:hidden;
 }
-.btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(200,168,96,.3);}
-.footer{position:fixed;bottom:2rem;left:0;right:0;text-align:center;font-size:.75rem;color:#555;letter-spacing:.1em;}
-.trigrams{
-  position:fixed;inset:0;pointer-events:none;opacity:.03;
-  font-size:clamp(6rem, 12vw, 16rem);display:flex;align-items:center;justify-content:center;
-  font-family:serif;color:#c8a860;
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.1),transparent);opacity:0;transition:opacity .3s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(200,168,96,.25)}
+.btn:hover::after{opacity:1}
+.btn-sub{font-size:.7rem;color:var(--muted);margin-top:.8rem;letter-spacing:.1em}
+
+footer{padding:1.5rem;text-align:center;font-size:.7rem;color:#444;letter-spacing:.1em;z-index:1}
+
+@media(max-width:640px){
+  .cards{grid-template-columns:1fr;gap:.8rem}
+  .card{padding:1rem}
+  .btn{padding:.9rem 3rem}
 }
 </style>
 </head>
 <body>
-<div class="trigrams">☰ ☷ ☵ ☲ ☳ ☴ ☶ ☱</div>
+
+<!-- 浮动粒子 -->
+<div class="bg-particles" id="particles"></div>
+<div class="aura"></div>
+
 <main>
-  <h1>八字排盘</h1>
-  <p class="sub">— 推命 · 验盘 · 知运 —</p>
-  <a href="/app" class="btn">进 入</a>
+  <div class="logo-area">
+    <h1>八 字 排 盘</h1>
+    <div class="divider"></div>
+    <p class="tagline">推 命 · 验 盘 · 知 运</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="icon">🏛️</div>
+      <h3>符号计算引擎</h3>
+      <p>sxtwl高精度历算 + 纯Python回退<br>250+城市经纬度 · 真太阳时校正</p>
+    </div>
+    <div class="card">
+      <div class="icon">🧠</div>
+      <h3>DeepSeek 推理</h3>
+      <p>9级递进推理链 · 42核心概念<br>双通道自一致性 · 盲测83%命中</p>
+    </div>
+    <div class="card">
+      <div class="icon">📋</div>
+      <h3>验盘闭环</h3>
+      <p>先验盘后批断 · 用户反馈标注<br>流年信号S/B/C/D/E 6级精度</p>
+    </div>
+  </div>
+
+  <a href="/app" class="btn">进 入 命 盘</a>
+  <p class="btn-sub">基于梁湘润体系 · 调候优先 · 真实用户验盘驱动</p>
 </main>
-<footer class="footer">Powered by Destiny Agent · DeepSeek v4</footer>
+
+<footer>Destiny Agent · DeepSeek v4 · PythonAnywhere</footer>
+
+<script>
+(function(){
+  const c=document.getElementById('particles');
+  for(let i=0;i<18;i++){
+    const p=document.createElement('div');
+    p.className='particle';
+    const s=Math.random()*4+2;
+    p.style.cssText=`left:${Math.random()*100}%;top:${100+Math.random()*40}%;width:${s}px;height:${s}px;animation-delay:${Math.random()*6}s;animation-duration:${6+Math.random()*10}s`;
+    c.appendChild(p);
+  }
+})();
+</script>
 </body>
 </html>
