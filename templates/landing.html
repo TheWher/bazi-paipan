@@ -6,154 +6,218 @@
 <title>八字排盘 · AI命理分析</title>
 <style>
 :root{
-  --bg:#09090b;--surface:#111113;--border:#1f1f22;--border-hover:#2a2a30;
-  --text:#a1a1aa;--text-dim:#71717a;--gold:#d4a853;--gold-dim:#8b7355;
-  --radius:8px;
+  --bg:#050508;--surface:#0a0a10;--border:#1a1a25;--border-glow:#252535;
+  --text:#a5a5b5;--text-dim:#5a5a70;--gold:#d4a853;--gold-light:#e8c878;
+  --radius:10px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{
   background:var(--bg);color:var(--text);
   font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;
   min-height:100vh;display:flex;flex-direction:column;
-  -webkit-font-smoothing:antialiased;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
 }
 
-/* 背景光斑 */
-body::before{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:
-    radial-gradient(ellipse 600px 400px at 50% -20%,rgba(212,168,83,.04),transparent),
-    radial-gradient(ellipse 400px 300px at 20% 80%,rgba(139,115,85,.03),transparent),
-    radial-gradient(ellipse 300px 500px at 80% 30%,rgba(212,168,83,.02),transparent);
+/* ── Aurora 背景 ── */
+.aurora{position:fixed;inset:0;pointer-events:none;z-index:0}
+.aurora .orb{
+  position:absolute;border-radius:50%;filter:blur(100px);opacity:.15;
+  animation:orb-drift 20s ease-in-out infinite;
+}
+.aurora .orb:nth-child(1){
+  width:600px;height:600px;background:radial-gradient(circle,rgba(212,168,83,.8),transparent);
+  top:-20%;left:50%;animation-delay:0s;
+}
+.aurora .orb:nth-child(2){
+  width:500px;height:500px;background:radial-gradient(circle,rgba(180,140,80,.6),transparent);
+  bottom:-10%;left:10%;animation-delay:-7s;animation-duration:25s;
+}
+.aurora .orb:nth-child(3){
+  width:400px;height:400px;background:radial-gradient(circle,rgba(150,120,70,.5),transparent);
+  top:40%;right:-10%;animation-delay:-14s;animation-duration:30s;
+}
+@keyframes orb-drift{
+  0%,100%{transform:translate(0,0) scale(1)}
+  25%{transform:translate(80px,-60px) scale(1.15)}
+  50%{transform:translate(-40px,40px) scale(.9)}
+  75%{transform:translate(-80px,-30px) scale(1.1)}
 }
 
-/* 导航 */
+/* ── 网格纹理 ── */
+.grid-noise{
+  position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.03;
+  background-image:
+    linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+  background-size:60px 60px;
+}
+
+/* ── 导航 ── */
 nav{
   position:fixed;top:0;left:0;right:0;z-index:100;
   display:flex;align-items:center;justify-content:space-between;
-  padding:0 1.5rem;height:52px;
+  padding:0 2rem;height:52px;
   border-bottom:1px solid var(--border);
-  background:rgba(9,9,11,.8);backdrop-filter:blur(12px);
+  background:rgba(5,5,8,.75);backdrop-filter:blur(20px);
 }
-nav .logo{font-size:.85rem;font-weight:500;color:var(--gold);letter-spacing:.08em;text-decoration:none}
-nav .version{font-size:.7rem;color:var(--text-dim)}
-nav .gh-link{font-size:.75rem;color:var(--text-dim);text-decoration:none;transition:color .2s}
-nav .gh-link:hover{color:var(--text)}
+nav .logo{font-size:.82rem;font-weight:600;color:#e0e0e0;letter-spacing:.06em;text-decoration:none}
+nav .logo i{color:var(--gold);font-style:normal}
+nav .links{display:flex;gap:1.5rem;align-items:center}
+nav .links a{font-size:.73rem;color:var(--text-dim);text-decoration:none;transition:color .2s}
+nav .links a:hover{color:#d0d0d0}
+nav .badge{
+  font-size:.65rem;color:var(--gold);border:1px solid rgba(212,168,83,.25);
+  padding:.2rem .6rem;border-radius:99px
+}
 
-/* 主内容 */
+/* ── 主内容 ── */
 main{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:6rem 1.5rem 3rem;z-index:1;max-width:960px;margin:0 auto;width:100%;
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:7rem 2rem 4rem;z-index:1;max-width:1000px;margin:0 auto;width:100%;
 }
 
-/* Hero */
+/* ── Hero ── */
 .hero{text-align:center;margin-bottom:4rem}
-.hero .badge{
-  display:inline-block;padding:.25rem .8rem;font-size:.7rem;
-  border:1px solid var(--border);border-radius:99px;color:var(--text-dim);
-  letter-spacing:.05em;margin-bottom:1.5rem;
+.hero .pretitle{
+  font-size:.7rem;text-transform:uppercase;letter-spacing:.25em;
+  color:var(--gold);margin-bottom:1.2rem;
 }
-.hero .badge span{color:var(--gold)}
 .hero h1{
-  font-size:clamp(2.2rem,5vw,3.5rem);font-weight:600;letter-spacing:.04em;
-  color:#fafafa;line-height:1.15;margin-bottom:.75rem;
+  font-size:clamp(2.4rem,5.5vw,4rem);font-weight:700;letter-spacing:.02em;
+  line-height:1.1;margin-bottom:1rem;
+  background:linear-gradient(180deg,#f0e0c0 0%,#c8a860 40%,#8a6830 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
 }
-.hero h1 em{font-style:normal;color:var(--gold)}
-.hero .sub{
-  font-size:.95rem;color:var(--text-dim);line-height:1.6;max-width:480px;margin:0 auto;
+.hero p{
+  font-size:.95rem;color:var(--text-dim);max-width:460px;margin:0 auto;line-height:1.65;
 }
 
-/* 卡片网格 */
-.grid{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;width:100%;margin-bottom:2.5rem;
+/* ── Bento 网格 ── */
+.bento{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  grid-template-rows:auto auto;gap:.7rem;width:100%;margin-bottom:3rem;
 }
-.card{
+.bento .card{
   background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:1.25rem;transition:border-color .25s,background .25s;cursor:default;
-  text-decoration:none;display:block;color:inherit;
-  position:relative;overflow:hidden;
+  padding:1.5rem;cursor:default;text-decoration:none;color:inherit;
+  transition:all .3s;position:relative;overflow:hidden;
 }
-.card::before{
-  content:'';position:absolute;inset:0;opacity:0;transition:opacity .25s;
-  background:radial-gradient(300px circle at var(--mx,50%) var(--my,50%),rgba(212,168,83,.04),transparent);
+.bento .card::after{
+  content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;
+  background:radial-gradient(500px circle at var(--x,50%) var(--y,50%),rgba(212,168,83,.05),transparent 60%);
 }
-.card:hover{border-color:var(--border-hover);background:#141416}
-.card:hover::before{opacity:1}
-.card .icon{font-size:1.3rem;margin-bottom:.6rem;opacity:.8}
-.card h3{font-size:.85rem;font-weight:500;color:#e4e4e7;margin-bottom:.3rem;letter-spacing:.03em}
-.card p{font-size:.73rem;color:var(--text-dim);line-height:1.6}
+.bento .card:hover{transform:translateY(-2px);border-color:var(--border-glow)}
+.bento .card:hover::after{opacity:1}
+.bento .card.lg{grid-column:span 2}
+.bento .card .icon{font-size:1.4rem;margin-bottom:.7rem;opacity:.85}
+.bento .card h3{font-size:.88rem;font-weight:600;color:#e0d8c8;margin-bottom:.35rem}
+.bento .card p{font-size:.73rem;color:var(--text-dim);line-height:1.55}
 
-/* 按钮区 */
+/* 大卡特殊样式 */
+.bento .card.lg{
+  display:flex;flex-direction:column;justify-content:center;
+  background:linear-gradient(135deg,var(--surface),#0d0d18 60%);
+}
+.bento .card.lg h3{font-size:1rem}
+.bento .card.lg .highlight{font-size:2rem;font-weight:700;color:var(--gold);margin:.3rem 0}
+
+/* ── CTA ── */
 .cta{text-align:center}
 .btn{
-  display:inline-flex;align-items:center;gap:.5rem;
-  padding:.75rem 2.5rem;font-size:.88rem;font-weight:500;letter-spacing:.05em;
-  color:#09090b;background:var(--gold);border-radius:6px;text-decoration:none;
-  transition:all .2s;position:relative;
+  display:inline-flex;align-items:center;gap:.4rem;
+  padding:.8rem 2.8rem;font-size:.9rem;font-weight:600;letter-spacing:.04em;
+  color:#050508;background:linear-gradient(135deg,var(--gold-light),var(--gold));
+  border-radius:6px;text-decoration:none;transition:all .25s;
+  box-shadow:0 2px 12px rgba(212,168,83,.12);
 }
-.btn:hover{background:#e0b860;transform:translateY(-1px);box-shadow:0 8px 25px rgba(212,168,83,.2)}
-.btn-sub{font-size:.7rem;color:var(--text-dim);margin-top:.7rem;letter-spacing:.05em}
+.btn:hover{background:linear-gradient(135deg,#f0d080,#d8b060);transform:translateY(-1px);box-shadow:0 8px 30px rgba(212,168,83,.2)}
+.btn-arrow{font-size:1.1rem;transition:transform .2s}
+.btn:hover .btn-arrow{transform:translateX(3px)}
+.cta-hint{font-size:.7rem;color:var(--text-dim);margin-top:.7rem}
 
 footer{
-  padding:1rem;text-align:center;font-size:.68rem;color:#3f3f46;
-  border-top:1px solid var(--border);z-index:1;
+  padding:1rem 2rem;text-align:center;font-size:.68rem;color:#3a3a48;
+  border-top:1px solid var(--border);z-index:1;display:flex;justify-content:space-between;
 }
 
-/* 响应式 */
-@media(max-width:640px){
-  .grid{grid-template-columns:1fr;gap:.6rem}
-  .hero{margin-bottom:2.5rem}
+@media(max-width:700px){
+  .bento{grid-template-columns:1fr;grid-template-rows:auto}
+  .bento .card.lg{grid-column:span 1}
   .hero h1{font-size:1.8rem}
+  nav .links{display:none}
 }
 </style>
 </head>
 <body>
 
+<div class="aurora">
+  <div class="orb"></div><div class="orb"></div><div class="orb"></div>
+</div>
+<div class="grid-noise"></div>
+
 <nav>
-  <a href="/" class="logo">Destiny Agent</a>
-  <span class="version">v3 · DeepSeek</span>
+  <a href="/" class="logo"><i>☰</i> Destiny Agent</a>
+  <div class="links">
+    <a href="/app">排盘</a>
+    <span class="badge">DeepSeek v4</span>
+  </div>
 </nav>
 
 <main>
   <section class="hero">
-    <div class="badge"><span>✦</span> 梁湘润体系 · 调候优先</div>
-    <h1>AI <em>八字</em>命理分析</h1>
-    <p class="sub">符号计算引擎 + 大语言模型推理，9级递进链，先验盘后批断</p>
+    <div class="pretitle">八字命理 · AI 推理引擎</div>
+    <h1>推命 · 验盘 · 知运</h1>
+    <p>符号计算引擎 + 大语言模型推理，梁湘润体系9级递进链，先验盘后批断</p>
   </section>
 
-  <div class="grid">
-    <a href="/app" class="card" id="card1">
+  <div class="bento" id="bento">
+    <a href="/app" class="card lg">
       <div class="icon">☰</div>
       <h3>排盘引擎</h3>
-      <p>sxtwl高精度历算 · 纯Python回退 · 250+城市经纬度 · 真太阳时自动校正</p>
+      <span class="highlight">sxtwl + Python</span>
+      <p>高精度历算 · 纯Python双回退 · 250+城市经纬度 · 真太阳时自动校正 · 夜子时专用分支</p>
     </a>
-    <a href="/app" class="card" id="card2">
+    <a href="/app" class="card">
       <div class="icon">⚡</div>
-      <h3>三通道分析</h3>
-      <p>analysis→commentary→final 管道 · SSE流式推送 · 双采样自一致性验证</p>
+      <h3>三通道管道</h3>
+      <p>analysis→commentary→final · SSE流式推送 · 双采样自一致性 · 14阶段进度</p>
     </a>
-    <a href="/app" class="card" id="card3">
+    <a href="/app" class="card">
       <div class="icon">◎</div>
       <h3>验盘闭环</h3>
-      <p>先验盘后批断 · 用户反馈标注 · S/B/C/D/E 6级流年信号精度 · 盲测83%命中</p>
+      <p>用户反馈标注驱动 · S/B/C/D/E 6级流年精度 · 盲测83%命中率</p>
+    </a>
+    <a href="/app" class="card">
+      <div class="icon">⌘</div>
+      <h3>对话续接</h3>
+      <p>完整上下文持久化 · 关标签页不丢 · URL分享续接 · 多轮深度批断</p>
+    </a>
+    <a href="/app" class="card">
+      <div class="icon">◈</div>
+      <h3>图表系统</h3>
+      <p>五行环图 · 十二长生轮盘 · 大运环形图 · 干支关系图 · 词条弹窗</p>
     </a>
   </div>
 
   <div class="cta">
-    <a href="/app" class="btn">进入命盘 →</a>
-    <p class="btn-sub">输入生辰，开始推命</p>
+    <a href="/app" class="btn">进入命盘 <span class="btn-arrow">→</span></a>
+    <p class="cta-hint">输入生辰，开始推命分析</p>
   </div>
 </main>
 
-<footer>Destiny Agent · DeepSeek v4 · PythonAnywhere</footer>
+<footer>
+  <span>PythonAnywhere · Flask + DeepSeek</span>
+  <span>梁湘润体系 · 调候优先</span>
+</footer>
 
 <script>
 // 卡片鼠标跟随光效
-document.querySelectorAll('.card').forEach(card=>{
-  card.addEventListener('mousemove',e=>{
-    const r=card.getBoundingClientRect();
-    card.style.setProperty('--mx',(e.clientX-r.left)+'px');
-    card.style.setProperty('--my',(e.clientY-r.top)+'px');
+document.querySelectorAll('.card').forEach(c=>{
+  c.addEventListener('mousemove',e=>{
+    const r=c.getBoundingClientRect();
+    c.style.setProperty('--x',(e.clientX-r.left)+'px');
+    c.style.setProperty('--y',(e.clientY-r.top)+'px');
   });
 });
 </script>
