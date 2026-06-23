@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>八字排盘</title>
+    <script>// 防暗色模式闪烁：在 CSS 加载前立即设置 data-theme
+(function(){var t=localStorage.getItem('bazi_theme');if(t){document.documentElement.setAttribute('data-theme',t)}else if(window.matchMedia('(prefers-color-scheme:dark)').matches){document.documentElement.setAttribute('data-theme','dark')}})();</script>
     <!-- 关键 CSS 内联 — 消除渲染阻塞，LCP 秒级 -->
     <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         :root{--bg:#fff;--card-bg:#fff;--text:#000;--text-muted:#666;--accent:#000;--primary:#000;--primary-hover:#333;--border:#ccc;--border-light:#e5e5e5;--shadow-sm:0 0 0 1px rgba(0,0,0,.04);--shadow:0 0 0 1px rgba(0,0,0,.06);--shadow-lg:0 2px 16px rgba(0,0,0,.08);--gold:#000;--radius:18px;--radius-sm:12px}
+        [data-theme="dark"]{--bg:#1a1a2e;--card-bg:#16213e;--text:#e0e0e0;--text-muted:#999;--accent:#d4a843;--primary:#d4a843;--primary-hover:#e8c860;--border:#444;--border-light:#2a2a3e;--shadow-sm:0 0 0 1px rgba(255,255,255,.03);--shadow:0 0 0 1px rgba(255,255,255,.05);--shadow-lg:0 2px 16px rgba(0,0,0,.3);--gold:#d4a843}
         html{font-size:16px;scroll-behavior:smooth}
         body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;background:#fefefe;color:var(--text);line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased}
         .hidden{display:none!important}
@@ -54,7 +57,7 @@
     <!-- ====== 左侧边栏 ====== -->
     <aside class="app-sidebar">
         <header class="app-header">
-            <h1 style="cursor:pointer" onclick="window.scrollTo({top:0,behavior:'smooth'})">八字排盘</h1>
+            <h1 style="cursor:pointer" onclick="window.scrollTo({top:0,behavior:'smooth'})">八字排盘 <button id="btn-theme" onclick="toggleTheme()" title="切换日/夜模式" style="background:none;border:1px solid var(--border);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;line-height:1;vertical-align:middle;margin-left:4px">🌙</button></h1>
             <p class="subtitle">输入出生信息，一键排出完整命盘</p>
         </header>
 
@@ -240,7 +243,11 @@ const elAnalysisContent=$('analysis-content'),elAnalysisChat=$('analysis-chat');
 const elChatInput=$('chat-input'),elBtnChatSend=$('btn-chat-send'),elBtnAnalysisPdf=$('btn-analysis-pdf');
 const elPwOverlay=$('pw-overlay'),elPwInput=$('pw-input'),elPwError=$('pw-error'),elBtnPwConfirm=$('btn-pw-confirm'),elBtnPwCancel=$('btn-pw-cancel');
 
-let plateData=null, analysisText=null, analysisInProgress=false, conversationMessages=null;
+let plateData=null, analysisText=null, analysisInProgress=false, conversationMessages=null, conversationId=null;
+// ========== 夜晚模式切换 ==========
+function toggleTheme(){const h=document.documentElement;const c=h.getAttribute('data-theme')==='dark'?'light':'dark';h.setAttribute('data-theme',c);localStorage.setItem('bazi_theme',c);updateThemeIcon(c);}
+function updateThemeIcon(t){const b=document.getElementById('btn-theme');if(b)b.textContent=t==='dark'?'☀️':'🌙';}
+(function(){const t=document.documentElement.getAttribute('data-theme');updateThemeIcon(t||'light');})();
 let _pwResolve=null; // Promise resolver for password prompt
 let _analysisAbortController=null; // AbortController for cancelling in-flight analysis
 let _analysisStartTime=0; // timestamp when analysis started (for timeout detection)
@@ -409,7 +416,8 @@ function savePendingAnalysis() {
         plate: plateData,
         retries: existing ? existing.retries : 0,
         startedAt: existing ? existing.startedAt : Date.now(),
-        requestId: existing ? existing.requestId : (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36))
+        requestId: existing ? existing.requestId : (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)),
+        conversationId: existing ? existing.conversationId : conversationId
     }));
 }
 function loadPendingAnalysis() {
@@ -421,6 +429,8 @@ function loadPendingAnalysis() {
             localStorage.removeItem('bazi_analysis_pending');
             return null;
         }
+        // 恢复 conversationId
+        if (d.conversationId && !conversationId) conversationId = d.conversationId;
         return d;
     } catch(e) { return null; }
 }
@@ -832,6 +842,9 @@ async function doAnalyze(isRetry = false) {
         // 保存待处理状态（切标签页/关页面后可恢复）
         savePendingAnalysis();
 
+        // 生成对话 ID（整个对话期间不变）
+        if (!conversationId) conversationId = 'conv_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+
         // 创建 AbortController（用于超时取消）
         _analysisAbortController = new AbortController();
         // 8 分钟超时
@@ -840,7 +853,7 @@ async function doAnalyze(isRetry = false) {
         const r = await fetch('/api/analyze', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({plate: plateData, password: pw}),
+            body: JSON.stringify({plate: plateData, password: pw, conversation_id: conversationId}),
             signal: _analysisAbortController.signal
         });
         clearTimeout(timeoutId);
@@ -1108,7 +1121,7 @@ elBtnChatSend.addEventListener('click', async () => {
         const timeoutId = setTimeout(() => ctrl.abort(), 10*60*1000); // 10分钟超时
         try {
             const pw = getPassword();
-            const r = await fetch('/api/analyze/continue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:conversationMessages,reply:reply, password:pw}), signal: ctrl.signal});
+            const r = await fetch('/api/analyze/continue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:conversationMessages,reply:reply, password:pw, conversation_id: conversationId}), signal: ctrl.signal});
             clearTimeout(timeoutId);
             const d = await r.json();
             if (!d.success) {
@@ -1230,7 +1243,7 @@ $('btn-clear').addEventListener('click', () => {
     elLongitude.value = '120';
     elUseTrueSolar.checked = false; elLngLat.style.display = 'none';
     elGeocodeStatus.classList.add('hidden'); elSuggestions.classList.add('hidden');
-    plateData = null; analysisText = null; conversationMessages = null;
+    plateData = null; analysisText = null; conversationMessages = null; conversationId = null;
     elResultSection.classList.add('hidden'); elAnalysisSection.classList.add('hidden');
     document.getElementById('charts-section').classList.add('hidden');
     elBtnPdf.disabled = true; elBtnAnalyze.disabled = true; elBtnAnalysisPdf.disabled = true;

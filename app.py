@@ -168,13 +168,24 @@ def save_feedback_log(plate_dict: dict, messages: list[dict], ip: str = "", turn
     return None
 
 
-def check_rate_limit(ip: str, max_requests: int = 3, window_minutes: int = 60) -> bool:
+def check_rate_limit(key: str, max_requests: int = 3, window_minutes: int = 60) -> bool:
+    """简易限流。key 可以是 IP 或 IP:conv_id 组合。"""
     now = _time.time(); window = window_minutes * 60
-    _rate_limit_store[ip] = [t for t in _rate_limit_store[ip] if now - t < window]
-    if len(_rate_limit_store[ip]) >= max_requests:
+    _rate_limit_store[key] = [t for t in _rate_limit_store[key] if now - t < window]
+    if len(_rate_limit_store[key]) >= max_requests:
         return False
-    _rate_limit_store[ip].append(now)
+    _rate_limit_store[key].append(now)
     return True
+
+
+def check_conv_rate_limit(ip: str, conv_id: str, max_requests: int = 30, window_minutes: int = 60) -> bool:
+    """按对话粒度限流。同一 IP 不同对话互不影响。"""
+    return check_rate_limit(f"{ip}:conv:{conv_id}", max_requests, window_minutes)
+
+
+def check_global_ip_limit(ip: str, max_requests: int = 100, window_minutes: int = 60) -> bool:
+    """IP 全局兜底 —— 防止单 IP 无限开对话绕开限流。"""
+    return check_rate_limit(f"{ip}:global", max_requests, window_minutes)
 
 # ============================================================
 # 地理编码：内置数据库优先，Nominatim 为后备
@@ -813,8 +824,16 @@ def api_analyze_stream_continue():
     if pw_err:
         return jsonify({"error": pw_err, "need_password": True}), 403
 
-    if not check_rate_limit(ip, max_requests=5, window_minutes=60):
+    if not check_rate_limit(ip, max_requests=30, window_minutes=60):
         return jsonify({"error": "请求过于频繁，请稍后再试"}), 429
+
+    # 对话粒度限流 + IP 全局兜底
+    conv_id = data.get("conversation_id", "")
+    if conv_id:
+        if not check_conv_rate_limit(ip, conv_id, max_requests=30):
+            return jsonify({"error": "该对话请求过于频繁，请稍后再试"}), 429
+        if not check_global_ip_limit(ip, max_requests=100):
+            return jsonify({"error": "全局请求过于频繁，请稍后再试"}), 429
 
     if "messages" not in data or "reply" not in data:
         return jsonify({"error": "缺少参数: messages 或 reply"}), 400
@@ -851,8 +870,16 @@ def api_analyze_continue():
     if pw_err:
         return jsonify({"error": pw_err, "need_password": True}), 403
 
-    if not check_rate_limit(ip, max_requests=5, window_minutes=60):
+    if not check_rate_limit(ip, max_requests=30, window_minutes=60):
         return jsonify({"error": "请求过于频繁，请稍后再试"}), 429
+
+    # 对话粒度限流 + IP 全局兜底
+    conv_id = data.get("conversation_id", "")
+    if conv_id:
+        if not check_conv_rate_limit(ip, conv_id, max_requests=30):
+            return jsonify({"error": "该对话请求过于频繁，请稍后再试"}), 429
+        if not check_global_ip_limit(ip, max_requests=100):
+            return jsonify({"error": "全局请求过于频繁，请稍后再试"}), 429
 
     if "messages" not in data or "reply" not in data:
         return jsonify({"error": "缺少参数: messages 或 reply"}), 400
