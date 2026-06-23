@@ -140,6 +140,73 @@ def _load_system_prompt() -> str:
     return content
 
 
+def _evaluate_liunian_signal(liunian_ganzhi, ri_ganzhi, yue_zhi, nian_zhi, dayun, year):
+    """
+    评估流年信号等级，返回 (等级, 说明)。
+    规则与 Agent 定义六级表一致。
+    """
+    ri_gan = ri_ganzhi[0]
+    ri_zhi = ri_ganzhi[1]
+    ln_gan = liunian_ganzhi[0]
+    ln_zhi = liunian_ganzhi[1]
+
+    # 五行相克表
+    wuxing = {'甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
+              '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水'}
+    ke_chain = {'木': '土', '土': '水', '水': '火', '火': '金', '金': '木'}
+
+    # 地支六冲
+    chong_pairs = {('子', '午'), ('丑', '未'), ('寅', '申'), ('卯', '酉'),
+                   ('辰', '戌'), ('巳', '亥')}
+
+    # S级：天克地冲（流年与日柱同时干克+支冲）
+    gan_ke = ke_chain.get(wuxing.get(ln_gan, ''), '') == wuxing.get(ri_gan, '')
+    zhi_chong = (ln_zhi, ri_zhi) in chong_pairs or (ri_zhi, ln_zhi) in chong_pairs
+    if gan_ke and zhi_chong:
+        return ('S', f'天克地冲日柱（{liunian_ganzhi} vs {ri_ganzhi}）')
+
+    # A级：日柱伏吟
+    if liunian_ganzhi == ri_ganzhi:
+        return ('A', '日柱伏吟')
+
+    # B级：六冲日/月/年支
+    for label, target_zhi in [('日支', ri_zhi), ('月支', yue_zhi), ('年支', nian_zhi)]:
+        if (ln_zhi, target_zhi) in chong_pairs or (target_zhi, ln_zhi) in chong_pairs:
+            return ('B', f'冲{label}（{ln_zhi}冲{target_zhi}）')
+
+    # C级：三合/六合日支/月支
+    sanhe_trios = [('申', '子', '辰'), ('亥', '卯', '未'), ('寅', '午', '戌'), ('巳', '酉', '丑')]
+    liuhe = {('子', '丑'), ('寅', '亥'), ('卯', '戌'), ('辰', '酉'), ('巳', '申'), ('午', '未')}
+    for label, target in [('日支', ri_zhi), ('月支', yue_zhi)]:
+        for trio in sanhe_trios:
+            if ln_zhi in trio and target in trio and ln_zhi != target:
+                return ('C', f'三合{label}（{ln_zhi}入{trio}局）')
+        if (ln_zhi, target) in liuhe or (target, ln_zhi) in liuhe:
+            return ('C', f'六合{label}（{ln_zhi}合{target}）')
+
+    # D级：驿马/大运重现
+    yima_map = {'申': '寅', '子': '寅', '辰': '寅', '寅': '申', '午': '申', '戌': '申',
+                '巳': '亥', '酉': '亥', '丑': '亥', '亥': '巳', '卯': '巳', '未': '巳'}
+    if yima_map.get(ri_zhi) == ln_zhi:
+        for d in dayun:
+            if d['start_year'] <= year <= d['start_year'] + 9:
+                dz_zhi = d['zhi']
+                if (ln_zhi, dz_zhi) in chong_pairs or (dz_zhi, ln_zhi) in chong_pairs:
+                    return ('D', '驿马到位（流年冲大运驿马）')
+        return ('D', '驿马到位')
+
+    for d in dayun:
+        if d['start_year'] <= year <= d['start_year'] + 9 and liunian_ganzhi == d['gz']:
+            return ('D', '大运干支重现')
+
+    # E级：墓库开闭
+    muku = {'辰', '戌', '丑', '未'}
+    if ln_zhi in muku and (ln_zhi == ri_zhi or (ln_zhi, ri_zhi) in chong_pairs or (ri_zhi, ln_zhi) in chong_pairs):
+        return ('E', '墓库引动')
+
+    return (None, None)
+
+
 def _build_user_message(plate_dict: dict) -> str:
     """根据排盘数据构造用户分析请求"""
     p = plate_dict

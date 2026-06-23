@@ -532,5 +532,47 @@ def main():
     return 0 if failed == 0 and errors == 0 else 1
 
 
+def test_evaluate_liunian_signal():
+    """验证六级流年信号判定逻辑"""
+    from analysis_service import _evaluate_liunian_signal
+
+    # Mock dayun: 2018-2027 戊戌
+    dayun = [{'gz': '戊戌', 'gan': '戊', 'zhi': '戌', 'start_year': 2018, 'start_age': 14.0, 'end_age': 24.0, 'step': 1}]
+
+    # 各测试用例使用独立参数，避免信号冲突
+    # S级：天克地冲（庚克甲 + 午冲子）
+    level, desc = _evaluate_liunian_signal('庚午', '甲子', '申', '辰', dayun, 2026)
+    assert level == 'S', f"Expected S, got {level}"
+    assert '天克地冲' in desc
+
+    # A级：日柱伏吟
+    level, desc = _evaluate_liunian_signal('甲子', '甲子', '申', '辰', dayun, 2020)
+    assert level == 'A', f"Expected A, got {level}"
+
+    # B级：冲日支
+    level, desc = _evaluate_liunian_signal('丙午', '甲子', '申', '辰', dayun, 2026)
+    assert level == 'B', f"Expected B, got {level}"
+    assert '午冲子' in desc
+
+    # C级：六合日支
+    level, desc = _evaluate_liunian_signal('己丑', '甲子', '申', '辰', dayun, 2009)
+    assert level == 'C', f"Expected C, got {level}"
+    assert '丑合子' in desc or '六合' in desc
+
+    # D级：驿马（日支子→驿马在寅；avoid 寅-申 chong, avoid 寅-亥 liuhe）
+    level, desc = _evaluate_liunian_signal('甲寅', '甲子', '丑', '酉', dayun, 2010)
+    assert level == 'D', f"Expected D for 驿马, got {level}"
+
+    # E级：墓库（日支戌是墓库，流年同支戌但非伏吟）
+    level, desc = _evaluate_liunian_signal('庚戌', '甲戌', '子', '寅', dayun, 2012)
+    assert level == 'E', f"Expected E for 墓库, got {level}"
+
+    # —：无信号
+    level, desc = _evaluate_liunian_signal('己亥', '甲子', '申', '辰', dayun, 2019)
+    assert level is None, f"Expected None, got {level}"
+
+    print("[PASS] test_evaluate_liunian_signal: 7/7 信号等级判定正确")
+
+
 if __name__ == "__main__":
     sys.exit(main())
