@@ -207,14 +207,17 @@ def _evaluate_liunian_signal(liunian_ganzhi, ri_ganzhi, yue_zhi, nian_zhi, dayun
     return (None, None)
 
 
-def _build_year_lookup_table(plate, current_year):
+def _build_year_lookup_table(plate_dict, current_year):
     """生成 流年干支-西历对照表（均衡命局验盘专用）"""
-    birth_year = plate.birth_dt.year
-    sizhu = plate.sizhu  # dict with year/month/day/hour keys
-    ri_ganzhi = sizhu['day']['gz']
-    yue_zhi = sizhu['month']['zhi']
-    nian_zhi = sizhu['year']['zhi']
-    dayun = plate.dayun  # list[dict] with gz/gan/zhi/start_year
+    p = plate_dict
+    info = p.get("input", {})
+    birth_dt_str = info.get("birth_datetime", "2000-01-01 00:00")
+    birth_year = int(birth_dt_str[:4])
+    pillars = p.get("pillars", {})
+    ri_ganzhi = pillars.get("day", {}).get("gz", "")
+    yue_zhi = pillars.get("month", {}).get("zhi", "")
+    nian_zhi = pillars.get("year", {}).get("zhi", "")
+    dayun = p.get("dayun", [])  # list[dict] with gz/gan/zhi/start_year
 
     tian_gan = '甲乙丙丁戊己庚辛壬癸'
     di_zhi = '子丑寅卯辰巳午未申酉戌亥'
@@ -359,6 +362,11 @@ def _build_user_message(plate_dict: dict) -> str:
     if last_completed_dayun:
         msg_parts.append("")
         msg_parts.append(f"**⚠️ 强制锚点**：命主最后一步已走过的大运是 **第{last_completed_dayun['step']}步 {last_completed_dayun['gz']}（{last_completed_dayun['start_year']}-{last_completed_dayun['end_year']}年，{last_completed_dayun['start_age']}-{last_completed_dayun['end_age']}岁）**——验盘流年扫描**必须**逐年覆盖此大运的每一年，此步不可因任何原因跳过。")
+    msg_parts.append("")
+
+    # 流年干支-西历对照表（均衡命局验盘专用——Agent禁止心算，必须从此表引用）
+    lookup_table = _build_year_lookup_table(plate_dict, current_year)
+    msg_parts.append(lookup_table)
     msg_parts.append("")
 
     # 分析要求
