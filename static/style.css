@@ -646,7 +646,15 @@ a, button, input, select, textarea, .card, .form-section { transition: all 0.3s 
 .xuetang-intro { margin-bottom: 16px; }
 
 /* ========== 验盘反馈面板 ========== */
-.verify-panel { margin-top: 20px; }
+.verify-panel {
+  position: fixed; bottom: 0; left: 400px; right: 0; z-index: 50;
+  background: rgba(255,255,255,.95); backdrop-filter: blur(12px);
+  border-top: 2px solid #d4a843; padding: 14px 28px 18px;
+  box-shadow: 0 -4px 24px rgba(0,0,0,.08);
+  max-height: 45vh; overflow-y: auto; margin-top: 0;
+}
+[data-theme="dark"] .verify-panel{ background: rgba(26,26,46,.95); border-top-color: #b8860b; }
+@media(max-width:860px){ .verify-panel{ left: 0; } }
 .verify-panel .card { border-color: rgba(212,168,67,.15); }
 .verify-intro { font-size: 0.85em; color: #999; margin-bottom: 16px; line-height: 1.6; }
 .verify-predictions { display: flex; flex-direction: column; gap: 12px; }

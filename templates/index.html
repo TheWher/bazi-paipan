@@ -178,7 +178,8 @@
             <div class="bento-card span-4"><div id="analysis-content" class="analysis-content"></div>
             <div id="analysis-chat" class="analysis-chat hidden"><div class="chat-divider">💬 回复 Agent 继续分析</div><textarea id="chat-input" class="chat-input" rows="3" placeholder="例如：小学成绩确实一般，中学后进步明显..."></textarea><div class="chat-btns"><button id="btn-chat-send" class="btn btn-primary">发送回复，继续批断</button><span class="chat-hint">Agent 在验盘阶段需要你确认过去几件事，确认后才会继续深入分析</span></div></div></div>
             <div id="verify-panel" class="verify-panel hidden">
-                <div class="bento-card span-4">
+                <div class="bento-card span-4" style="position:relative">
+                    <button onclick="document.getElementById('verify-panel').classList.add('hidden');$('app-main').style.paddingBottom=''" style="position:absolute;top:8px;right:12px;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-muted);padding:4px 8px">&times;</button>
                     <h3 class="card-title">✅ 验盘确认</h3>
                     <p class="verify-intro">对照预测逐条确认，反馈数据用于优化准确率。</p>
                     <div id="verify-predictions" class="verify-predictions"></div>
@@ -972,52 +973,46 @@ elBtnAnalyze.addEventListener('click', () => doAnalyze(false));
 /** 从 Agent 验盘输出中提取预测条目 */
 function extractVerificationPredictions(assistantText) {
     const preds = [];
-    const chineseNum = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10};
-    const circledNum = {'①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9,'⑩':10};
+    const text = assistantText;
 
-    // 匹配所有预测格式（支持新旧多种格式）
-    const patterns = [
-        // **预测①：...** 或 **预测一：...**
-        /\*\*预测([①②③④⑤⑥⑦⑧⑨⑩一二三四五六七八九十\d]+)[：:]\*\*\s*(.+?)(?=\*\*预测[①②③④⑤⑥⑦⑧⑨⑩一二三四五六七八九十\d]+[：:]|$)/gs,
-        // **第X条：...**
-        /\*\*第([一二三四五六七八九十\d]+)条[：:]\*\*\s*(.+?)(?=\*\*第[一二三四五六七八九十\d]+条|$)/gs,
-        // ### 第X件/条：标题
-        /(?:###|####)\s*第([一二三四五六七八九十\d]+)[件条][：:]\s*(.+?)(?=(?:\n(?:###|####)\s*第[一二三四五六七八九十\d]+[件条])|$)/gs,
-    ];
+    // 匹配 Agent 实际输出的验证格式：
+    // **【A级验证】标题** / **【B级验证】标题** / **【验证项1】标题** 等
+    const verificationBlock = /\*\*【([^】]+)】\s*(.+?)\*\*\s*\n+(.+?)(?=\n\*\*【|$)/gs;
+    let m;
+    while ((m = verificationBlock.exec(text)) !== null) {
+        const level = m[1].trim();   // "A级验证" / "B级验证" / "C级验证"
+        const title = m[2].trim();   // "学历情况" / "家庭变故"
+        const body = m[3].trim().substring(0, 800).replace(/\n+/g, ' ');
+        if (body.length > 15 && !/流年全扫描|排盘确认|验盘前/.test(title + body)) {
+            preds.push({index: preds.length, title: title, body: body});
+        }
+    }
 
-    for (const pattern of patterns) {
-        let m;
-        pattern.lastIndex = 0;
-        while ((m = pattern.exec(assistantText)) !== null) {
+    // 兜底1：**预测①：...** / **预测一：...** 等旧格式
+    if (preds.length === 0) {
+        const chineseNum = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10};
+        const circledNum = {'①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9,'⑩':10};
+        const oldPattern = /\*\*预测([①②③④⑤⑥⑦⑧⑨⑩一二三四五六七八九十\d]+)[：:]\*\*\s*(.+?)(?=\*\*预测[①②③④⑤⑥⑦⑧⑨⑩一二三四五六七八九十\d]+[：:]|$)/gs;
+        while ((m = oldPattern.exec(text)) !== null) {
             const numStr = m[1].trim();
             const idx = circledNum[numStr] || chineseNum[numStr] || parseInt(numStr) || (preds.length + 1);
-            let body = m[2].trim().substring(0, 800);
-            body = body.replace(/\*\*/g, '').replace(/> /g, '').replace(/\n+/g, ' ').trim();
-            if (body.length > 10 && !/流年全扫描|排盘确认|验盘前/.test(body)) {
+            let body = m[2].trim().substring(0, 800).replace(/\*\*/g, '').replace(/\n+/g, ' ').trim();
+            if (body.length > 10 && !/流年全扫描|排盘确认/.test(body)) {
                 preds.push({index: idx - 1, title: '验证项' + idx, body: body});
             }
         }
-        if (preds.length > 0) break;
     }
 
-    // Fallback：扫描"预测X："格式的行（X = 数字/中文/圈数）
+    // 兜底2：从"验盘——"到"格局分析"之间的大段文本，按空行分块
     if (preds.length === 0) {
-        const predHeader = /(?:预测|验证)([①②③④⑤⑥⑦⑧⑨⑩一二三四五六七八九十\d]+)[：:]/g;
-        const text = assistantText;
-        let m;
-        const starts = [];
-        while ((m = predHeader.exec(text)) !== null) {
-            const numStr = m[1];
-            const idx = circledNum[numStr] || chineseNum[numStr] || parseInt(numStr) || (starts.length + 1);
-            starts.push({idx: idx, pos: m.index, header: m[0]});
-        }
-        for (let i = 0; i < starts.length; i++) {
-            const start = starts[i].pos;
-            const end = i + 1 < starts.length ? starts[i + 1].pos : Math.min(start + 500, text.length);
-            let body = text.substring(start, end).replace(/\n+/g, ' ').replace(/\*\*/g, '').trim();
-            if (body.length > 10) {
-                preds.push({index: starts[i].idx - 1, title: '验证项' + starts[i].idx, body: body});
-            }
+        const verifySection = text.match(/验盘[—\-]+.*?\n([\s\S]+?)(?=##\s*格局|##\s*旺衰|##\s*调候)/);
+        if (verifySection) {
+            const blocks = verifySection[1].split(/\n\n+/).filter(b => b.trim().length > 30 && !/^>/.test(b.trim()));
+            blocks.forEach((b, i) => {
+                const lines = b.trim().split('\n');
+                let title = lines[0].replace(/\*\*/g, '').replace(/^#+\s*/, '').substring(0, 40);
+                preds.push({index: i, title: title, body: b.replace(/\n+/g, ' ').substring(0, 800)});
+            });
         }
     }
 
@@ -1050,6 +1045,7 @@ function renderVerificationPanel(predictions) {
     });
 
     panel.classList.remove('hidden');
+    $('app-main').style.paddingBottom = '220px';
     $('verify-status').textContent = '';
     $('btn-verify-submit').disabled = false;
 }
@@ -1100,6 +1096,8 @@ async function submitVerification() {
             document.querySelectorAll('.verify-btn').forEach(b => b.disabled = true);
             document.querySelectorAll('.verify-note').forEach(t => t.disabled = true);
             $('btn-verify-submit').disabled = true;
+            // 2秒后自动隐藏面板
+            setTimeout(() => {$('verify-panel').classList.add('hidden');$('app-main').style.paddingBottom=''}, 2000);
         } else {
             $('verify-status').textContent = '❌ ' + (d.error || '提交失败');
             $('btn-verify-submit').disabled = false;
