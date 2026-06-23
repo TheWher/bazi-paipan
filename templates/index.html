@@ -41,7 +41,30 @@
         .bento-card.span-2{grid-column:span 2}
         .bento-card.span-3{grid-column:span 3}
         .bento-card.span-4{grid-column:span 4}
-        .sticky-actions{position:fixed;bottom:0;left:0;width:400px;background:#fff;padding:12px 28px 14px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border-light);z-index:10;box-shadow:0 -4px 16px rgba(0,0,0,.06)}
+        .sticky-actions{position:fixed;bottom:0;left:0;width:400px;background:#fff;padding:12px 28px 14px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border-light);z-index:10;box-shadow:0 -4px 16px rgba(0,0,0,.06);transition:transform .3s,width .3s,left .3s}
+        .app-sidebar.collapsed{width:0;min-width:0;padding:0;overflow:hidden;border-right:none}
+        .app-sidebar.collapsed .sticky-actions{display:none}
+        /* 导航栏 */
+        .top-nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;height:48px;border-bottom:1px solid var(--border-light);background:rgba(255,255,255,.85);backdrop-filter:blur(12px)}
+        [data-theme="dark"] .top-nav{background:rgba(26,26,46,.85);border-bottom-color:var(--border)}
+        .top-nav .nav-logo{font-size:.85rem;font-weight:600;color:var(--text);letter-spacing:.06em;text-decoration:none}
+        .top-nav .nav-logo i{color:var(--gold);font-style:normal}
+        .top-nav .nav-badge{font-size:.65rem;color:var(--gold);border:1px solid rgba(212,168,67,.3);padding:.15rem .55rem;border-radius:99px}
+        .top-nav .nav-btn{font-size:.75rem;background:none;border:1px solid var(--border);border-radius:6px;padding:.3rem .7rem;cursor:pointer;color:var(--text-muted);transition:all .2s}
+        .top-nav .nav-btn:hover{color:var(--text);border-color:var(--text-muted)}
+        /* Landing 封面 */
+        #landing-cover{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 48px);padding:2rem}
+        .landing-hero{text-align:center;max-width:500px}
+        .landing-pretitle{font-size:.7rem;text-transform:uppercase;letter-spacing:.25em;color:var(--gold);margin-bottom:1rem}
+        .landing-title{font-size:clamp(2rem,4vw,3rem);font-weight:700;letter-spacing:.04em;line-height:1.15;margin-bottom:.8rem;background:linear-gradient(180deg,#e8d5a8 0%,#c8a860 40%,#8a6830 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .landing-desc{font-size:.88rem;color:var(--text-muted);line-height:1.6;margin-bottom:2rem}
+        .landing-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.75rem 2.5rem;font-size:.9rem;font-weight:600;letter-spacing:.04em;color:#fff;background:linear-gradient(135deg,#d4a843,#b8860b);border:none;border-radius:6px;cursor:pointer;transition:all .25s;box-shadow:0 2px 12px rgba(180,130,40,.15)}
+        .landing-btn:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(180,130,40,.25)}
+        .landing-btn.done{display:none}
+        #landing-cover.hidden{display:none}
+        /* Aurora 背景 - 仅封面可见时 */
+        #landing-cover::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;background:radial-gradient(ellipse 600px 400px at 50% -10%,rgba(212,168,83,.08),transparent),radial-gradient(ellipse 400px 300px at 80% 60%,rgba(180,140,80,.05),transparent);opacity:0;transition:opacity .5s}
+        #landing-cover:not(.hidden)::before{opacity:1}
         .sticky-actions .btn{flex:1;justify-content:center;font-size:.82em;padding:8px 14px}
         .radio-group{display:flex;gap:12px}
         .radio-label{display:flex;align-items:center;gap:4px;font-size:.82em;cursor:pointer}
@@ -53,11 +76,18 @@
     <noscript><link rel="stylesheet" href="/static/style.css"></noscript>
 </head>
 <body>
+<nav class="top-nav">
+    <span class="nav-logo"><i>☰</i> Destiny Agent</span>
+    <div style="display:flex;align-items:center;gap:.8rem">
+        <button id="btn-theme" onclick="toggleTheme()" title="切换日/夜模式" style="background:none;border:1px solid var(--border);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;line-height:1">🌙</button>
+        <button id="btn-toggle-sidebar" class="nav-btn" onclick="toggleSidebar()" title="隐藏/显示输入面板">☰ 面板</button>
+        <span class="nav-badge">DeepSeek</span>
+    </div>
+</nav>
 <div class="app-layout">
     <!-- ====== 左侧边栏 ====== -->
-    <aside class="app-sidebar">
+    <aside class="app-sidebar collapsed" id="app-sidebar">
         <header class="app-header">
-            <h1 style="cursor:pointer" onclick="window.scrollTo({top:0,behavior:'smooth'})">八字排盘 <button id="btn-theme" onclick="toggleTheme()" title="切换日/夜模式" style="background:none;border:1px solid var(--border);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;line-height:1;vertical-align:middle;margin-left:4px">🌙</button></h1>
             <p class="subtitle">输入出生信息，一键排出完整命盘</p>
         </header>
 
@@ -127,6 +157,15 @@
 
     <!-- ====== 右侧主内容 ====== -->
     <main class="app-main" id="app-main">
+        <!-- Landing 封面（首次访问显示） -->
+        <div id="landing-cover">
+            <div class="landing-hero">
+                <p class="landing-pretitle">八字命理 · AI 推理引擎</p>
+                <h2 class="landing-title">推命 · 验盘 · 知运</h2>
+                <p class="landing-desc">符号计算引擎 + 大语言模型推理，梁湘润体系9级递进链，先验盘后批断</p>
+                <button class="landing-btn" onclick="enterApp()">进入命盘 →</button>
+            </div>
+        </div>
         <!-- 骨架屏 -->
         <div id="skeleton-loading" class="hidden">
             <div class="skeleton skeleton-card"></div>
@@ -250,6 +289,8 @@ function loadConversation(){ try { const m=JSON.parse(localStorage.getItem(CONV_
 function clearConversation(){ conversationMessages=null; conversationId=null; localStorage.removeItem(CONV_KEY); localStorage.removeItem(CONV_ID_KEY); }
 // ========== 夜晚模式切换 ==========
 function toggleTheme(){const h=document.documentElement;const c=h.getAttribute('data-theme')==='dark'?'light':'dark';h.setAttribute('data-theme',c);localStorage.setItem('bazi_theme',c);updateThemeIcon(c);}
+function toggleSidebar(){const s=document.getElementById('app-sidebar');s.classList.toggle('collapsed');}
+function enterApp(){document.getElementById('landing-cover').classList.add('hidden');document.getElementById('app-sidebar').classList.remove('collapsed');}
 function updateThemeIcon(t){const b=document.getElementById('btn-theme');if(b)b.textContent=t==='dark'?'☀️':'🌙';}
 (function(){const t=document.documentElement.getAttribute('data-theme');updateThemeIcon(t||'light');})();
 let _pwResolve=null; // Promise resolver for password prompt
@@ -1223,6 +1264,11 @@ document.addEventListener('visibilitychange', () => {
 
 // ========== 恢复分析（页面加载时） ==========
 (function restoreAnalysis(){
+    // 0) 无保存数据 → 保留封面
+    const hasSaved = localStorage.getItem('bazi_analysis') || localStorage.getItem('bazi_plate');
+    const pending = loadPendingAnalysis();
+    if (!hasSaved && !pending) return;
+    enterApp();
     // 1) 优先恢复已完成的完整分析
     const saved = localStorage.getItem('bazi_analysis'), savedPlate = localStorage.getItem('bazi_plate');
     if (saved && savedPlate) {
