@@ -18,39 +18,8 @@ body{
   -webkit-font-smoothing:antialiased;overflow-x:hidden;
 }
 
-/* ── Aurora 背景 ── */
-.aurora{position:fixed;inset:0;pointer-events:none;z-index:0}
-.aurora .orb{
-  position:absolute;border-radius:50%;filter:blur(100px);opacity:.15;
-  animation:orb-drift 20s ease-in-out infinite;
-}
-.aurora .orb:nth-child(1){
-  width:600px;height:600px;background:radial-gradient(circle,rgba(212,168,83,.8),transparent);
-  top:-20%;left:50%;animation-delay:0s;
-}
-.aurora .orb:nth-child(2){
-  width:500px;height:500px;background:radial-gradient(circle,rgba(180,140,80,.6),transparent);
-  bottom:-10%;left:10%;animation-delay:-7s;animation-duration:25s;
-}
-.aurora .orb:nth-child(3){
-  width:400px;height:400px;background:radial-gradient(circle,rgba(150,120,70,.5),transparent);
-  top:40%;right:-10%;animation-delay:-14s;animation-duration:30s;
-}
-@keyframes orb-drift{
-  0%,100%{transform:translate(0,0) scale(1)}
-  25%{transform:translate(80px,-60px) scale(1.15)}
-  50%{transform:translate(-40px,40px) scale(.9)}
-  75%{transform:translate(-80px,-30px) scale(1.1)}
-}
-
-/* ── 网格纹理 ── */
-.grid-noise{
-  position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.03;
-  background-image:
-    linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
-  background-size:60px 60px;
-}
+/* ── 动态粒子背景 ── */
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
 
 /* ── 导航 ── */
 nav{
@@ -151,10 +120,7 @@ footer{
 </head>
 <body>
 
-<div class="aurora">
-  <div class="orb"></div><div class="orb"></div><div class="orb"></div>
-</div>
-<div class="grid-noise"></div>
+<canvas id="bg-canvas"></canvas>
 
 <nav>
   <a href="/" class="logo"><i>☰</i> Destiny Agent</a>
@@ -212,14 +178,69 @@ footer{
 </footer>
 
 <script>
-// 卡片鼠标跟随光效
-document.querySelectorAll('.card').forEach(c=>{
-  c.addEventListener('mousemove',e=>{
-    const r=c.getBoundingClientRect();
-    c.style.setProperty('--x',(e.clientX-r.left)+'px');
-    c.style.setProperty('--y',(e.clientY-r.top)+'px');
+// ── 粒子引擎 ──
+(function(){
+  const c=document.getElementById('bg-canvas'),ctx=c.getContext('2d');
+  let W,H,particles=[],mouse={x:-999,y:-999};
+  const N=80,D=120,COLOR='212,168,83';
+
+  function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight}
+  resize();window.addEventListener('resize',resize);
+
+  class P{
+    constructor(){this.reset(true)}
+    reset(init){
+      this.x=Math.random()*W;this.y=init?Math.random()*H:H+20;
+      this.vx=(Math.random()-.5)*.3;this.vy=-(Math.random()*.3+.15);
+      this.r=Math.random()*1.5+.5;this.a=Math.random()*.5+.2;
+    }
+    update(){
+      this.x+=this.vx;this.y+=this.vy;
+      // 鼠标微斥
+      const dx=this.x-mouse.x,dy=this.y-mouse.y,dd=Math.sqrt(dx*dx+dy*dy);
+      if(dd<150){const f=(1-dd/150)*.5;this.vx+=dx/dd*f*.02;this.vy+=dy/dd*f*.02}
+      // 阻尼
+      this.vx*=.999;this.vy*=.999;
+      if(this.y<-20||this.x<-20||this.x>W+20)this.reset(false);
+    }
+    draw(){
+      ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${COLOR},${this.a})`;ctx.fill();
+    }
+  }
+
+  for(let i=0;i<N;i++)particles.push(new P());
+
+  function loop(){
+    ctx.clearRect(0,0,W,H);
+    // 连线
+    for(let i=0;i<N;i++){
+      for(let j=i+1;j<N;j++){
+        const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y;
+        const dd=Math.sqrt(dx*dx+dy*dy);
+        if(dd<D){
+          ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);
+          ctx.strokeStyle=`rgba(${COLOR},${.06*(1-dd/D)})`;ctx.lineWidth=.5;ctx.stroke();
+        }
+      }
+    }
+    particles.forEach(p=>{p.update();p.draw()});
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  document.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
+  document.addEventListener('mouseleave',()=>{mouse.x=-999;mouse.y=-999});
+
+  // 卡片光效
+  document.querySelectorAll('.card').forEach(card=>{
+    card.addEventListener('mousemove',e=>{
+      const r=card.getBoundingClientRect();
+      card.style.setProperty('--x',(e.clientX-r.left)+'px');
+      card.style.setProperty('--y',(e.clientY-r.top)+'px');
+    });
   });
-});
+})();
 </script>
 </body>
 </html>
