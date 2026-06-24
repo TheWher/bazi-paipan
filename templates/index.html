@@ -974,23 +974,45 @@ elBtnAnalyze.addEventListener('click', () => doAnalyze(false));
 function extractVerificationPredictions(assistantText) {
     const preds = [];
     const text = assistantText;
+    const chineseNum = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10};
 
-    // 匹配 Agent 实际输出的验证格式：
-    // **【A级验证】标题** / **【B级验证】标题** / **【验证项1】标题** 等
-    const verificationBlock = /\*\*【([^】]+)】\s*(.+?)\*\*\s*\n+(.+?)(?=\n\*\*【|$)/gs;
+    // 主格式：### 第N件：title（Agent 实际输出格式，2026-06-24）
+    // 示例：### 第一件：学历 & 高考（2023 年, 18 岁）
+    const sectionPattern = /###\s*第([一二三四五六七八九十\d]+)件[：:]\s*([^\n]+)\n([\s\S]+?)(?=\n###\s*第[一二三四五六七八九十\d]+件[：:]|\n---\s*\n>|$)/g;
     let m;
-    while ((m = verificationBlock.exec(text)) !== null) {
-        const level = m[1].trim();   // "A级验证" / "B级验证" / "C级验证"
-        const title = m[2].trim();   // "学历情况" / "家庭变故"
-        const body = m[3].trim().substring(0, 800).replace(/\n+/g, ' ');
+    while ((m = sectionPattern.exec(text)) !== null) {
+        const title = m[2].trim().replace(/\*+/g, '').substring(0, 80);
+        let body = m[3].trim();
+        // 去掉末尾的 --- 分隔线
+        body = body.replace(/\n*---\s*$/, '').trim();
+        // 优先取"预测特征"段，兜底取全部
+        const predMatch = body.match(/预测特征[：:][\s\S]*/);
+        if (predMatch) {
+            body = predMatch[0];
+        }
+        // 去掉末尾的提问句（**→ ...？**）
+        body = body.replace(/\*\*→[\s\S]*$/, '').trim();
+        // 去掉 blockquote 标记，合并换行
+        body = body.replace(/^>\s*/gm, '').replace(/\n+/g, ' ').substring(0, 800);
         if (body.length > 15 && !/流年全扫描|排盘确认|验盘前/.test(title + body)) {
             preds.push({index: preds.length, title: title, body: body});
         }
     }
 
-    // 兜底1：**预测①：...** / **预测一：...** 等旧格式
+    // 兜底1：**【A级验证】标题** / **【B级验证】标题** 等结构化格式
     if (preds.length === 0) {
-        const chineseNum = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10};
+        const verificationBlock = /\*\*【([^】]+)】\s*(.+?)\*\*\s*\n+(.+?)(?=\n\*\*【|$)/gs;
+        while ((m = verificationBlock.exec(text)) !== null) {
+            const title = m[2].trim();
+            const body = m[3].trim().substring(0, 800).replace(/\n+/g, ' ');
+            if (body.length > 15 && !/流年全扫描|排盘确认|验盘前/.test(title + body)) {
+                preds.push({index: preds.length, title: title, body: body});
+            }
+        }
+    }
+
+    // 兜底2：**预测①：...** / **预测一：...** 等旧格式
+    if (preds.length === 0) {
         const circledNum = {'①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9,'⑩':10};
         const oldPattern = /\*\*预测([①②③④⑤⑥⑦⑧⑨⑩一二三四五六七八九十\d]+)[：:]\*\*\s*(.+?)(?=\*\*预测[①②③④⑤⑥⑦⑧⑨⑩一二三四五六七八九十\d]+[：:]|$)/gs;
         while ((m = oldPattern.exec(text)) !== null) {
@@ -998,16 +1020,16 @@ function extractVerificationPredictions(assistantText) {
             const idx = circledNum[numStr] || chineseNum[numStr] || parseInt(numStr) || (preds.length + 1);
             let body = m[2].trim().substring(0, 800).replace(/\*\*/g, '').replace(/\n+/g, ' ').trim();
             if (body.length > 10 && !/流年全扫描|排盘确认/.test(body)) {
-                preds.push({index: idx - 1, title: '验证项' + idx, body: body});
+                preds.push({index: preds.length, title: '验证项' + idx, body: body});
             }
         }
     }
 
-    // 兜底2：从"验盘——"到"格局分析"之间的大段文本，按空行分块
+    // 兜底3：从验盘段落到下一章节之间，按 ### 标题分块
     if (preds.length === 0) {
-        const verifySection = text.match(/验盘[—\-]+.*?\n([\s\S]+?)(?=##\s*格局|##\s*旺衰|##\s*调候)/);
+        const verifySection = text.match(/验盘[：:\—\-]+.*?\n([\s\S]+?)(?=\n##\s|\n#\s|$)/);
         if (verifySection) {
-            const blocks = verifySection[1].split(/\n\n+/).filter(b => b.trim().length > 30 && !/^>/.test(b.trim()));
+            const blocks = verifySection[1].split(/\n###\s+/).filter(b => b.trim().length > 30 && !/^>/.test(b.trim()));
             blocks.forEach((b, i) => {
                 const lines = b.trim().split('\n');
                 let title = lines[0].replace(/\*\*/g, '').replace(/^#+\s*/, '').substring(0, 40);
