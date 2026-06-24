@@ -388,6 +388,8 @@ def _build_user_message(plate_dict: dict) -> str:
     msg_parts.append("")
     msg_parts.append("然后逐条给出预测（如\"你XX岁前后学业表现应该是...你实际的学历情况如何？\"），待用户反馈后再进入正式批断。如果用户尚未反馈，验盘后先暂停，不要继续后面的章节。")
     msg_parts.append("")
+    msg_parts.append("**⚠️ 验盘终止标记**：验盘输出完毕后，必须单独输出一行 **【验盘完毕】** 作为验盘结束标记。输出此标记后立即停止，禁止继续写任何批断章节。")
+    msg_parts.append("")
     msg_parts.append("验盘通过后，按以下章节顺序输出完整的命理分析报告。**注意排版美观**：")
     msg_parts.append("")
     msg_parts.append("1. ## 命盘综述（四柱确认、日主五行、格局初判）")
@@ -413,8 +415,110 @@ def _build_user_message(plate_dict: dict) -> str:
     return "\n".join(msg_parts)
 
 
+# 置信度标签 → 信号等级 映射
+_CONF_TO_LEVEL = {
+    '🔴高置信': {'S', 'A'},
+    '🟡中置信': {'B', 'C'},
+    '🔵低置信': {'D', 'E'},
+}
+_LEVEL_TO_CONF = {
+    'S': '🔴高置信', 'A': '🔴高置信',
+    'B': '🟡中置信', 'C': '🟡中置信',
+    'D': '🔵低置信', 'E': '🔵低置信',
+}
+
+
+def _verify_predictions(analysis_text: str, plate_dict: dict, current_year: int) -> str:
+    """后处理硬校验：提取Agent验盘预测中的年份→查对照表→输出信号等级对照
+
+    始终输出校验表（不管Agent是否标注置信度）。
+    置信度标签不匹配时追加 ⚠️ 警告行。
+    """
+    p = plate_dict
+    pillars = p.get("pillars", {})
+    ri_ganzhi = pillars.get("day", {}).get("gz", "")
+    yue_zhi = pillars.get("month", {}).get("zhi", "")
+    nian_zhi = pillars.get("year", {}).get("zhi", "")
+    dayun = p.get("dayun", [])
+
+    tian_gan = '甲乙丙丁戊己庚辛壬癸'
+    di_zhi = '子丑寅卯辰巳午未申酉戌亥'
+
+    rows = []       # 正常行
+    warnings = []   # 不匹配警告
+
+    seen_years = set()
+
+    # 逐条 ### 第N件：提取预测块
+    for sec in re.finditer(
+        r'###\s*第[一二三四五六七八九十\d]+件[：:]([^\n]*)\n([\s\S]+?)(?=\n###\s*第|\n---\s*\n>|$)',
+        analysis_text
+    ):
+        title = sec.group(1).strip()[:50]
+        body = sec.group(2)
+
+        # 提取置信度标签
+        agent_conf = None
+        conf_m = re.search(r'【([🔴🟡🔵][^】]+)】', body)
+        if conf_m:
+            agent_conf = conf_m.group(1).strip()
+
+        # 提取年份
+        for ym in re.finditer(r'(\d{4})\s*[年–—\-]', body):
+            y = int(ym.group(1))
+            if y > current_year or y in seen_years:
+                continue
+            seen_years.add(y)
+
+            stem_idx = (y - 4) % 10
+            branch_idx = (y - 4) % 12
+            ganzhi = tian_gan[stem_idx] + di_zhi[branch_idx]
+
+            actual_level, actual_desc = _evaluate_liunian_signal(
+                ganzhi, ri_ganzhi, yue_zhi, nian_zhi, dayun, y
+            )
+
+            level_str = actual_level if actual_level else '—'
+            desc_str = actual_desc if actual_desc else '无明显信号'
+            expected_conf = _LEVEL_TO_CONF.get(actual_level, '—')
+            agent_label = agent_conf if agent_conf else '未标'
+
+            rows.append(
+                '| {} | {}年（{}） | {} | {} | {} | {} |'.format(
+                    title, y, ganzhi, level_str, desc_str, expected_conf, agent_label
+                )
+            )
+
+            # 置信度标签不匹配
+            if agent_conf and expected_conf != '—' and agent_conf not in _CONF_TO_LEVEL.get(actual_level, set()):
+                warnings.append(
+                    '⚠️ "{}"中{}年实际信号={}级→应标`【{}】`，Agent标`【{}】`'.format(
+                        title, y, level_str, expected_conf, agent_conf
+                    )
+                )
+
+    if not rows:
+        return ''
+
+    header = (
+        '\n\n---\n\n'
+        '## 🔍 系统后处理校验（排盘引擎对照表）\n\n'
+        '| 预测项 | 年份 | 信号等级 | 信号说明 | 应标置信度 | Agent标注 |\n'
+        '|--------|------|----------|----------|------------|----------|\n'
+    )
+
+    report = header + '\n'.join(rows) + '\n'
+
+    if warnings:
+        report += '\n**⚠️ 置信度标签冲突：**\n\n' + '\n'.join(warnings) + '\n'
+
+    report += '\n> 📌 排盘引擎硬校验——以上信号等级由 Python 对照表计算，不依赖 LLM。如 Agent 标注与对照表不一致，以对照表为准。'
+
+    return report
+
+
 def _call_api(system_prompt: str, messages: list[dict], max_tokens: int,
-             temperature: float, timeout: int) -> dict:
+             temperature: float, timeout: int, stop_sequences: list = None) -> dict:
     """单次 API 调用，含空内容重试"""
     url = f"{API_CONFIG['base_url']}/v1/messages"
     headers = {
@@ -430,6 +534,8 @@ def _call_api(system_prompt: str, messages: list[dict], max_tokens: int,
         "system": system_prompt,
         "messages": messages,
     }
+    if stop_sequences:
+        payload["stop_sequences"] = stop_sequences
 
     for attempt in range(2):
         try:
@@ -475,14 +581,14 @@ def _call_api(system_prompt: str, messages: list[dict], max_tokens: int,
 
 
 def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
-    """对命盘进行深度分析（含验盘自一致性双采样）
+    """对命盘进行深度分析（含 stop_sequences 截停 + 后处理硬校验）
 
     Args:
         plate_dict: plate_to_dict() 的输出
         timeout: API 调用超时秒数
 
     Returns:
-        {"success": True, "analysis": "...", "model": "...", "usage": {...}, "consistency": {...}}
+        {"success": True, "analysis": "...", "model": "...", "usage": {...}}
         或 {"success": False, "error": "..."}
     """
     if not API_CONFIG.get("api_key"):
@@ -492,43 +598,27 @@ def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
     user_message = _build_user_message(plate_dict)
     user_messages = [{"role": "user", "content": user_message}]
 
-    # Pass 1: 主验盘（temperature=0.3，保守）
-    result1 = _call_api(system_prompt, user_messages, 24576, 0.3, timeout)
-    if not result1["success"]:
-        return result1
+    # 验盘（stop_sequences 在【验盘完毕】处截停，物理防止批断泄漏）
+    result = _call_api(system_prompt, user_messages, 24576, 0.3, timeout,
+                       stop_sequences=["【验盘完毕】"])
+    if not result["success"]:
+        return result
 
-    # Pass 2: 自一致性采样（temperature=0.7，短输出）
-    # ponytail: 仅验盘阶段双采样，完整分析不重复（24K token太贵）
-    result2 = _call_api(system_prompt, user_messages, 4096, 0.7, timeout)
+    analysis_text = result["text"]
 
-    analysis_text = result1["text"]
-    consistency = None
-
-    if result2["success"]:
-        consistency = {
-            "pass2_text": result2["text"],
-            "pass1_tokens": result1["usage"].get("output_tokens", 0),
-            "pass2_tokens": result2["usage"].get("output_tokens", 0),
-        }
-        # 追加 Pass 2 结果，让用户和续接 Agent 对比
-        analysis_text += (
-            "\n\n---\n\n"
-            "## 🔄 自一致性检查（Pass 2, temperature=0.7）\n\n"
-            "以下为独立二次验盘（更高随机性），用于交叉验证：\n\n"
-            + result2["text"]
-            + "\n\n---\n"
-            "> 📌 对比两轮验盘：一致的预测置信度更高；不一致的请用户在反馈中澄清。"
-        )
-    else:
-        # Pass 2 失败不阻塞，降级为单次验盘
-        consistency = {"pass2_error": result2["error"]}
+    # 后处理硬校验：预测年份 vs 对照表信号等级
+    info = plate_dict.get("input", {})
+    birth_dt_str = info.get("birth_datetime", "2000-01-01 00:00")
+    current_year = max(int(birth_dt_str[:4]), 2026)  # 至少覆盖到今年
+    verify_report = _verify_predictions(analysis_text, plate_dict, current_year)
+    if verify_report:
+        analysis_text += verify_report
 
     return {
         "success": True,
         "analysis": analysis_text,
-        "model": result1.get("model", API_CONFIG["model"]),
-        "usage": result1.get("usage", {}),
-        "consistency": consistency,
+        "model": result.get("model", API_CONFIG["model"]),
+        "usage": result.get("usage", {}),
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
