@@ -431,8 +431,11 @@ _LEVEL_TO_CONF = {
 def _verify_predictions(analysis_text: str, plate_dict: dict, current_year: int) -> str:
     """后处理硬校验：提取Agent验盘预测中的年份→查对照表→输出信号等级对照
 
-    始终输出校验表（不管Agent是否标注置信度）。
-    置信度标签不匹配时追加 ⚠️ 警告行。
+    支持两种Agent输出格式：
+    1. ### 第N件：title —— 标题式
+    2. **【🔴高置信】** —— 无标题，每段以置信度标签开头
+
+    始终输出校验表。置信度标签不匹配时追加 ⚠️ 警告行。
     """
     p = plate_dict
     pillars = p.get("pillars", {})
@@ -440,33 +443,96 @@ def _verify_predictions(analysis_text: str, plate_dict: dict, current_year: int)
     yue_zhi = pillars.get("month", {}).get("zhi", "")
     nian_zhi = pillars.get("year", {}).get("zhi", "")
     dayun = p.get("dayun", [])
+    info = p.get("input", {})
+    birth_dt_str = info.get("birth_datetime", "2000-01-01 00:00")
+    birth_year = int(birth_dt_str[:4])
 
     tian_gan = '甲乙丙丁戊己庚辛壬癸'
     di_zhi = '子丑寅卯辰巳午未申酉戌亥'
 
     rows = []       # 正常行
     warnings = []   # 不匹配警告
-
     seen_years = set()
+    blocks = []     # (title, body, agent_conf)
 
-    # 逐条 ### 第N件：提取预测块
+    # 格式1：### 第N件：title
     for sec in re.finditer(
-        r'###\s*第[一二三四五六七八九十\d]+件[：:]([^\n]*)\n([\s\S]+?)(?=\n###\s*第|\n---\s*\n>|$)',
+        r'###\s*第[一二三四五六七八九十\d]+件[：:]([^\n]*)\n([\s\S]+?)(?=\n###\s*第|\n---\s*\n>|\n---\s*\n\n>|$)',
         analysis_text
     ):
         title = sec.group(1).strip()[:50]
         body = sec.group(2)
-
-        # 提取置信度标签
-        agent_conf = None
         conf_m = re.search(r'【([🔴🟡🔵][^】]+)】', body)
-        if conf_m:
-            agent_conf = conf_m.group(1).strip()
+        blocks.append((title, body, conf_m.group(1).strip() if conf_m else None))
 
-        # 提取年份
-        for ym in re.finditer(r'(\d{4})\s*[年–—\-]', body):
+    # 格式2：**【🔴高置信】**（无 ### 标题，每段以置信度标签开头）
+    if not blocks:
+        # 按 \n**【🔴/🟡/🔵 分割（保留分隔符）
+        parts = re.split(r'\n(?=\*\*【[🔴🟡🔵])', analysis_text)
+        for part in parts:
+            part = part.strip()
+            if not part:
+                continue
+            # 匹配 **【🟡中置信】可选标题** 或 **【🟡中置信】** 两种变体
+            conf_m = re.match(r'\*\*【([🔴🟡🔵][^】]+)】[^*]*\*\*\s*([^\n]*)', part)
+            if conf_m:
+                agent_conf = conf_m.group(1).strip()
+                raw_title = re.sub(r'\*+', '', (conf_m.group(2) or '').strip())
+                title = raw_title[:50] if raw_title else agent_conf
+                header_end = conf_m.end()
+            else:
+                # 兜底：只匹配置信标签，用整段首行做标题
+                conf_m = re.match(r'\*\*【([🔴🟡🔵][^】]+)】', part)
+                if not conf_m:
+                    continue
+                agent_conf = conf_m.group(1).strip()
+                title = agent_conf
+                header_end = conf_m.end()
+            body = part[header_end:].strip()
+            if body or title:
+                blocks.append((title, body if body else part[header_end:].strip(), agent_conf))
+
+    # 兜底：从验盘区域直接提取所有年份+最近置信度
+    if not blocks:
+        verify_zone = analysis_text
+        vm = re.search(r'(?:验盘|验证).*?\n', analysis_text)
+        if vm:
+            verify_zone = analysis_text[vm.start():]
+        # 找所有带年份的行（粗估）
+        for ym in re.finditer(r'(\d{4})\s*[年–—\-]', verify_zone):
             y = int(ym.group(1))
-            if y > current_year or y in seen_years:
+            if y <= current_year and y not in seen_years:
+                seen_years.add(y)
+                stem_idx = (y - 4) % 10
+                branch_idx = (y - 4) % 12
+                ganzhi = tian_gan[stem_idx] + di_zhi[branch_idx]
+                actual_level, actual_desc = _evaluate_liunian_signal(
+                    ganzhi, ri_ganzhi, yue_zhi, nian_zhi, dayun, y
+                )
+                level_str = actual_level if actual_level else '—'
+                desc_str = actual_desc if actual_desc else '无明显信号'
+                expected_conf = _LEVEL_TO_CONF.get(actual_level, '—')
+                rows.append(
+                    '| (自动提取) | {}年（{}） | {} | {} | {} | 未标 |'.format(
+                        y, ganzhi, level_str, desc_str, expected_conf
+                    )
+                )
+
+    # 逐块处理
+    for title, body, agent_conf in blocks:
+        # 提取年份——搜标题+body全量（年份可能在标题行如"第一条——1993年"）
+        full_text = title + ' ' + body
+        years_in_block = set()
+        for ym in re.finditer(r'(\d{4})\s*[年–—\-]', full_text):
+            y = int(ym.group(1))
+            if y <= current_year:
+                years_in_block.add(y)
+
+        if not years_in_block:
+            continue
+
+        for y in sorted(years_in_block):
+            if y in seen_years:
                 continue
             seen_years.add(y)
 
@@ -489,11 +555,22 @@ def _verify_predictions(analysis_text: str, plate_dict: dict, current_year: int)
                 )
             )
 
-            # 置信度标签不匹配
-            if agent_conf and expected_conf != '—' and agent_conf not in _CONF_TO_LEVEL.get(actual_level, set()):
+            # 置信度标签不匹配：检查 Agent 标签是否匹配实际信号等级
+            if agent_conf and expected_conf != '—':
+                valid_confs = {c for c, lvls in _CONF_TO_LEVEL.items() if actual_level in lvls}
+                if valid_confs and agent_conf not in valid_confs:
+                    warnings.append(
+                        '⚠️ "{}"中{}年实际信号={}级→应标`【{}】`，Agent标`【{}】`'.format(
+                            title[:30], y, level_str, expected_conf, agent_conf
+                        )
+                    )
+
+            # <16岁童年预测硬拦截
+            age_at_year = y - birth_year
+            if age_at_year < 16:
                 warnings.append(
-                    '⚠️ "{}"中{}年实际信号={}级→应标`【{}】`，Agent标`【{}】`'.format(
-                        title, y, level_str, expected_conf, agent_conf
+                    '🚫 童年预测拦截："{}"涉及{}年（{}岁），<16岁不可用于验盘（Agent定义铁律）'.format(
+                        title, y, age_at_year
                     )
                 )
 
