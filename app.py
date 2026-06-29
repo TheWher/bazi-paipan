@@ -706,7 +706,16 @@ def api_analyze():
     # 调用 LLM 分析（使用惰性导入避免循环依赖）
     from analysis_service import analyze_bazi
 
-    result = analyze_bazi(plate_dict, timeout=180)
+    known_events = data.get("known_events") or []
+    # 校验格式
+    if known_events:
+        known_events = [
+            {"year": int(e.get("year", 0)), "desc": str(e.get("desc", "")).strip()}
+            for e in known_events
+            if e.get("year") and str(e.get("year", "")).isdigit()
+        ]
+
+    result = analyze_bazi(plate_dict, timeout=180, known_events=known_events)
 
     if result["success"]:
         # 保存反馈日志

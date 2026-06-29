@@ -28,6 +28,7 @@ from analysis_service import (
     _load_system_prompt,
     _build_user_message,
     _call_api,
+    _verify_predictions,
 )
 
 
@@ -352,83 +353,59 @@ def three_channel_analyze(plate_dict: dict) -> Generator[str, None, None]:
     Yields:
         SSE 格式字符串（进度事件 + 最终 result 事件）
     """
-    # Phase 1: 验盘阶段（发送 commentary 事件）
+    # Phase 1: 验盘阶段 — 单次调用 + stop_sequences 截停 + 后处理硬校验
     yield format_sse({
         "event": "phase",
         "phase": "verify",
-        "message": "验盘阶段开始 — 内部推理 + 流年扫描 + 双采样交叉验证",
+        "message": "验盘阶段开始 — 内部推理 + 流年扫描 + 后处理硬校验",
         "progress_pct": 0,
     })
 
-    # 构造初始分析消息（用于验盘双采样）
     system_prompt = _load_system_prompt()
     user_message = _build_user_message(plate_dict)
 
-    # Pass 1: 验盘主调用
+    # 验盘调用（stop_sequences 在【验盘完毕】处截停）
     yield format_sse(commentary_channel(0))  # 验盘扫描
 
-    result1 = _call_api(
+    result = _call_api(
         system_prompt,
         [{"role": "user", "content": user_message}],
         max_tokens=24576,
         temperature=0.3,
         timeout=180,
+        stop_sequences=["【验盘完毕】"],
     )
 
-    if not result1["success"]:
+    if not result["success"]:
         yield format_sse({
             "event": "error",
-            "message": result1["error"],
+            "message": result["error"],
             "progress_pct": 0,
         })
         yield format_sse({
             "event": "result",
             "success": False,
-            "error": result1["error"],
+            "error": result["error"],
         })
         return
 
-    # Pass 2: 自一致性采样（并行思考）
-    yield format_sse({
-        "event": "phase",
-        "phase": "consistency",
-        "message": "正在进行自一致性交叉验证（Pass 2）...",
-        "progress_pct": 5,
-    })
+    verify_text = result["text"]
 
-    result2 = _call_api(
-        system_prompt,
-        [{"role": "user", "content": user_message}],
-        max_tokens=4096,
-        temperature=0.7,
-        timeout=60,
-    )
-
-    # 构造验盘阶段的 messages
-    verify_text = result1["text"]
-    consistency = None
-    if result2["success"]:
-        consistency = {
-            "pass2_text": result2["text"],
-            "pass1_tokens": result1["usage"].get("output_tokens", 0),
-            "pass2_tokens": result2["usage"].get("output_tokens", 0),
-        }
-        verify_text += (
-            "\n\n---\n\n"
-            "## 🔄 自一致性检查（Pass 2, temperature=0.7）\n\n"
-            "以下为独立二次验盘（更高随机性），用于交叉验证：\n\n"
-            + result2["text"]
-            + "\n\n---\n"
-            "> 📌 对比两轮验盘：一致的预测置信度更高；不一致的请用户在反馈中澄清。"
-        )
+    # 后处理硬校验：预测年份 vs 对照表信号等级
+    info = plate_dict.get("input", {})
+    birth_dt_str = info.get("birth_datetime", "2000-01-01 00:00")
+    current_year = max(int(birth_dt_str[:4]), 2026)
+    verify_report = _verify_predictions(verify_text, plate_dict, current_year)
+    if verify_report:
+        verify_text += verify_report
 
     yield format_sse({
         "event": "verify_complete",
-        "message": "验盘完成 — 请用户确认验证预测",
+        "message": "验盘完成 — 后处理校验已追加",
         "progress_pct": 10,
     })
 
-    # 返回验盘结果（前端展示验盘后暂停，等用户反馈）
+    # 返回验盘结果
     verify_messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_message},
@@ -439,9 +416,8 @@ def three_channel_analyze(plate_dict: dict) -> Generator[str, None, None]:
         "success": True,
         "stage": "verify",
         "analysis": verify_text,
-        "model": result1.get("model", API_CONFIG["model"]),
-        "usage": result1.get("usage", {}),
-        "consistency": consistency,
+        "model": result.get("model", API_CONFIG["model"]),
+        "usage": result.get("usage", {}),
         "messages": verify_messages,
     })
 

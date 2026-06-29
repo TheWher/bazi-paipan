@@ -265,8 +265,14 @@ def _build_year_lookup_table(plate_dict, current_year):
     return '\n'.join(lines)
 
 
-def _build_user_message(plate_dict: dict) -> str:
-    """根据排盘数据构造用户分析请求"""
+def _build_user_message(plate_dict: dict, known_events: list = None) -> str:
+    """根据排盘数据构造用户分析请求
+
+    Args:
+        plate_dict: plate_to_dict() 的输出
+        known_events: 用户提供的已知事件列表，格式 [{"year": 1988, "desc": "毕业"}, ...]
+                      为空或 None 时使用盲猜验盘模式
+    """
     p = plate_dict
     pillars = p.get("pillars", {})
     qy = p.get("qiyun", {})
@@ -372,23 +378,60 @@ def _build_user_message(plate_dict: dict) -> str:
     # 分析要求
     msg_parts.append("## 分析要求")
     msg_parts.append("")
-    msg_parts.append("请按你的 9 级递进分析方法（调候→格局→旺衰→病药→十神→刑冲合害→神煞→大运流年）和四维交叉验证，输出完整的命理分析报告。**注意排版美观**：")
-    msg_parts.append("")
-    msg_parts.append("- 每个大章节用 `##` 标题，章之间空一行")
-    msg_parts.append("- 小节用 `###` 标题")
-    msg_parts.append("- 每个段落不超过 5 行，段落之间空一行")
-    msg_parts.append("- 对比、分类等内容尽量用表格呈现")
-    msg_parts.append("- 重点词汇用 `**粗体**` 强调")
-    msg_parts.append("")
-    msg_parts.append("**分析前必须先验盘！** 在正式批断前，根据此命盘反推 5 件过去已发生的事，预测其特征并请用户对照验证。这是核查时辰是否准确的关键步骤——时辰偏差半小时就可能全盘错位。验证事件优先选：学历/高考年份、父母家境、搬家迁徙年份、重大伤病年份、初次恋爱/结婚年份、事业转折年份。")
-    msg_parts.append("")
-    msg_parts.append("**验盘输出格式：** 先以\"在正式批断之前，我先根据当前排定的命盘，反推过去几件已发生的事，你帮我对照一下是否吻合——这一步是为了验证时辰是否准确\"开场。")
-    msg_parts.append("")
-    msg_parts.append("**⚠️ 强制要求——验盘前先做流年全扫描**：扫描范围 = 命主已走过的每一大运（不可漏步）。16-60岁逐年列出（不跳年），其余区间至少列S/A/B级。扫描必须到最后一步大运，不可提前截断。选3个预测时必须跨生命阶段分散（青年/中年/晚近各1），禁止全集中在同一阶段。特别标注：禄神、印星齐透、大运交接、天克地冲。禁止不列表直接给预测、禁止跳年、禁止提前截断扫描。")
-    msg_parts.append("")
-    msg_parts.append("然后逐条给出预测（如\"你XX岁前后学业表现应该是...你实际的学历情况如何？\"），待用户反馈后再进入正式批断。如果用户尚未反馈，验盘后先暂停，不要继续后面的章节。")
-    msg_parts.append("")
-    msg_parts.append("**⚠️ 验盘终止标记**：验盘输出完毕后，必须单独输出一行 **【验盘完毕】** 作为验盘结束标记。输出此标记后立即停止，禁止继续写任何批断章节。")
+
+    if known_events:
+        # ============================================================
+        # 模式 A：用户提供了已知事件 → 验证时辰模式
+        # ============================================================
+        msg_parts.append("**⚠️ 用户已提供已知事件，验证模式切换**")
+        msg_parts.append("")
+        msg_parts.append("用户提供了以下已知人生事件，请在验盘环节验证时辰是否吻合：")
+        msg_parts.append("")
+        msg_parts.append("| # | 年份 | 事件描述 |")
+        msg_parts.append("|---|------|----------|")
+        for i, evt in enumerate(known_events, 1):
+            year = evt.get("year", "?")
+            desc = evt.get("desc", "").strip() or "(未描述)"
+            msg_parts.append(f"| {i} | {year}年 | {desc} |")
+        msg_parts.append("")
+        msg_parts.append("**验盘任务变更**：")
+        msg_parts.append("")
+        msg_parts.append("1. 查流年对照表，逐条核查每个事件年份的信号等级（S/A/B/C/D/E）")
+        msg_parts.append("2. 判断信号是否支持该事件类型：")
+        msg_parts.append("   - 冲夫妻宫（日支逢冲）在适婚年龄（20-40岁）→ 婚姻/感情变动")
+        msg_parts.append("   - 天克地冲日柱 → 重大人生转折（事业/婚姻/健康）")
+        msg_parts.append("   - 冲月令提纲（月支逢冲）→ 事业/学业/家庭结构变动")
+        msg_parts.append("   - 天克地冲月柱 → 父母/家庭/事业根基变动")
+        msg_parts.append("   - 日柱伏吟 → 人生重要节点（升学/结婚/就业）")
+        msg_parts.append("   - 驿马到位+大运引动 → 迁徙/出国/换城市")
+        msg_parts.append("3. 时辰判定：")
+        msg_parts.append("   - ≥1 个事件信号吻合 → 输出结论，直接进入正式批断（无需等用户反馈）")
+        msg_parts.append("   - 全部不吻合 → 建议排查时辰（夏令时/真太阳时/前后时辰），**仍输出【验盘完毕】截停**")
+        msg_parts.append("4. **禁止盲猜**：用户已经给了事件，不要额外猜测\"你XX年应该发生了...\"")
+        msg_parts.append("5. 核查完毕后不要输出【验盘完毕】截停——直接进入正式批断（13章完整分析）")
+        msg_parts.append("")
+        msg_parts.append("请按你的 9 级递进分析方法（调候→格局→旺衰→病药→十神→刑冲合害→神煞→大运流年）和四维交叉验证，输出完整的命理分析报告。**注意排版美观**：")
+    else:
+        # ============================================================
+        # 模式 B：用户未提供事件 → 盲猜验盘模式（现有逻辑）
+        # ============================================================
+        msg_parts.append("请按你的 9 级递进分析方法（调候→格局→旺衰→病药→十神→刑冲合害→神煞→大运流年）和四维交叉验证，输出完整的命理分析报告。**注意排版美观**：")
+        msg_parts.append("")
+        msg_parts.append("- 每个大章节用 `##` 标题，章之间空一行")
+        msg_parts.append("- 小节用 `###` 标题")
+        msg_parts.append("- 每个段落不超过 5 行，段落之间空一行")
+        msg_parts.append("- 对比、分类等内容尽量用表格呈现")
+        msg_parts.append("- 重点词汇用 `**粗体**` 强调")
+        msg_parts.append("")
+        msg_parts.append("**分析前必须先验盘！** 在正式批断前，根据此命盘反推 5 件过去已发生的事，预测其特征并请用户对照验证。这是核查时辰是否准确的关键步骤——时辰偏差半小时就可能全盘错位。验证事件优先选：学历/高考年份、父母家境、搬家迁徙年份、重大伤病年份、初次恋爱/结婚年份、事业转折年份。")
+        msg_parts.append("")
+        msg_parts.append("**验盘输出格式：** 先以\"在正式批断之前，我先根据当前排定的命盘，反推过去几件已发生的事，你帮我对照一下是否吻合——这一步是为了验证时辰是否准确\"开场。")
+        msg_parts.append("")
+        msg_parts.append("**⚠️ 强制要求——验盘前先做流年全扫描**：扫描范围 = 命主已走过的每一大运（不可漏步）。16-60岁逐年列出（不跳年），其余区间至少列S/A/B级。扫描必须到最后一步大运，不可提前截断。选3个预测时必须跨生命阶段分散（青年/中年/晚近各1），禁止全集中在同一阶段。特别标注：禄神、印星齐透、大运交接、天克地冲。禁止不列表直接给预测、禁止跳年、禁止提前截断扫描。")
+        msg_parts.append("")
+        msg_parts.append("然后逐条给出预测（如\"你XX岁前后学业表现应该是...你实际的学历情况如何？\"），待用户反馈后再进入正式批断。如果用户尚未反馈，验盘后先暂停，不要继续后面的章节。")
+        msg_parts.append("")
+        msg_parts.append("**⚠️ 验盘终止标记**：验盘输出完毕后，必须单独输出一行 **【验盘完毕】** 作为验盘结束标记。输出此标记后立即停止，禁止继续写任何批断章节。")
     msg_parts.append("")
     msg_parts.append("验盘通过后，按以下章节顺序输出完整的命理分析报告。**注意排版美观**：")
     msg_parts.append("")
@@ -657,12 +700,15 @@ def _call_api(system_prompt: str, messages: list[dict], max_tokens: int,
     return {"success": False, "error": "API 调用失败：所有重试均未成功"}
 
 
-def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
+def analyze_bazi(plate_dict: dict, timeout: int = 120, known_events: list = None) -> dict:
     """对命盘进行深度分析（含 stop_sequences 截停 + 后处理硬校验）
 
     Args:
         plate_dict: plate_to_dict() 的输出
         timeout: API 调用超时秒数
+        known_events: 用户提供的已知事件 [{"year": 1988, "desc": "毕业"}, ...]
+                      提供时启用验证模式（Agent核查事件→直接进入批断）
+                      不提供时使用盲猜验盘模式（Agent猜事件→截停等用户反馈）
 
     Returns:
         {"success": True, "analysis": "...", "model": "...", "usage": {...}}
@@ -672,12 +718,16 @@ def analyze_bazi(plate_dict: dict, timeout: int = 120) -> dict:
         return {"success": False, "error": "未配置 API Key，请检查 ~/.claude/settings.json"}
 
     system_prompt = _load_system_prompt()
-    user_message = _build_user_message(plate_dict)
+    user_message = _build_user_message(plate_dict, known_events=known_events)
     user_messages = [{"role": "user", "content": user_message}]
 
-    # 验盘（stop_sequences 在【验盘完毕】处截停，物理防止批断泄漏）
-    result = _call_api(system_prompt, user_messages, 24576, 0.3, timeout,
-                       stop_sequences=["【验盘完毕】"])
+    # 用户提供事件时 → 不截停，Agent 核查后直接进入批断
+    # 无事件盲猜时 → stop_sequences 在【验盘完毕】处截停
+    if known_events:
+        result = _call_api(system_prompt, user_messages, 24576, 0.3, timeout)
+    else:
+        result = _call_api(system_prompt, user_messages, 24576, 0.3, timeout,
+                           stop_sequences=["【验盘完毕】"])
     if not result["success"]:
         return result
 

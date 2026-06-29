@@ -47,6 +47,20 @@
         .radio-label{display:flex;align-items:center;gap:4px;font-size:.82em;cursor:pointer}
         .analysis-content{font-size:.9rem;line-height:1.85;color:var(--text)}
         @media(max-width:860px){.app-layout{flex-direction:column}.app-sidebar{width:100%;min-width:0;height:auto;position:static;border-right:none;padding:20px 16px 16px}.app-main{padding:20px 16px 80px}.sticky-actions{width:100%}.bento-grid{grid-template-columns:1fr}.bento-card.span-2,.bento-card.span-3,.bento-card.span-4{grid-column:span 1}}
+        .known-events-section{margin-top:12px;border:1px solid var(--border-light);border-radius:8px;overflow:hidden}
+        .events-toggle{width:100%;padding:10px 14px;background:var(--bg);border:none;text-align:left;font-size:.82em;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:var(--text)}
+        .events-toggle:hover{background:var(--hover-bg)}
+        .toggle-arrow{transition:transform .2s;font-size:.7em}
+        .toggle-arrow.open{transform:rotate(90deg)}
+        .known-events-body{padding:12px 14px;background:var(--bg);border-top:1px solid var(--border-light)}
+        .known-events-body.hidden{display:none}
+        .events-hint{font-size:.74em;color:var(--text-light);margin:0 0 10px}
+        .event-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+        .event-row input{font-size:.78em;padding:5px 8px;border:1px solid var(--border-light);border-radius:4px;background:var(--input-bg);color:var(--text)}
+        .event-row .event-year{width:64px;text-align:center}
+        .event-row .event-desc{flex:1}
+        .event-row .btn-remove-event{background:none;border:none;color:var(--text-light);cursor:pointer;font-size:1em;padding:2px 6px}
+        .event-row .btn-remove-event:hover{color:#d32f2f}
     </style>
     <!-- 完整样式异步加载 — 不阻塞首屏渲染 -->
     <link rel="preload" href="/static/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -114,6 +128,17 @@
                         <button id="btn-geocode" class="btn btn-secondary btn-sm">🔍</button>
                     </div>
                     <div id="geocode-status" class="geocode-status hidden"></div>
+                </div>
+            </div>
+            <!-- 已知事件输入区 -->
+            <div class="known-events-section">
+                <button id="btn-toggle-events" class="events-toggle" type="button">
+                    📋 提供已知事件（可选，推荐）<span class="toggle-arrow">▶</span>
+                </button>
+                <div id="known-events-body" class="known-events-body hidden">
+                    <p class="events-hint">提供 1-2 件已确定发生的人生大事，Agent 将验证时辰是否吻合。<br>不提供则使用自动验盘。</p>
+                    <div id="known-events-list"></div>
+                    <button id="btn-add-event" class="btn btn-secondary btn-sm">+ 添加事件</button>
                 </div>
             </div>
             <!-- 粘性操作栏 -->
@@ -258,6 +283,77 @@ let _analysisAbortController=null; // AbortController for cancelling in-flight a
 let _analysisStartTime=0; // timestamp when analysis started (for timeout detection)
 let _feedbackFile=''; // current analysis feedback filename for verification
 let _verifyLabels={}; // {predictionIndex: "correct"|"wrong"|"partially_correct"}
+
+// ========== 已知事件管理 ==========
+let _knownEvents = []; // [{year, desc}, ...]
+const MAX_EVENTS = 3;
+
+function renderEventRows() {
+    const list = document.getElementById('known-events-list');
+    if (!list) return;
+    list.innerHTML = _knownEvents.map((evt, i) =>
+        `<div class="event-row">
+            <input type="number" class="event-year" placeholder="年份" min="1900" max="2026"
+                   value="${evt.year||''}" onchange="updateEvent(${i},'year',this.value)">
+            <input type="text" class="event-desc" placeholder="如：考上大学、结婚、创业" maxlength="50"
+                   value="${evt.desc||''}" onchange="updateEvent(${i},'desc',this.value)">
+            <button class="btn-remove-event" onclick="removeEvent(${i})" title="删除">✕</button>
+        </div>`
+    ).join('');
+    const addBtn = document.getElementById('btn-add-event');
+    if (addBtn) addBtn.style.display = _knownEvents.length < MAX_EVENTS ? '' : 'none';
+    updateAnalyzeBtn();
+    saveForm();
+}
+
+function addEvent() {
+    if (_knownEvents.length >= MAX_EVENTS) return;
+    _knownEvents.push({year:'',desc:''});
+    if (_knownEvents.length === 1 && !document.getElementById('known-events-body').classList.contains('hidden')) {
+        // already open, just render
+    }
+    renderEventRows();
+}
+
+function removeEvent(i) {
+    _knownEvents.splice(i, 1);
+    renderEventRows();
+}
+
+function updateEvent(i, field, value) {
+    if (field === 'year') _knownEvents[i].year = parseInt(value) || '';
+    else _knownEvents[i].desc = value;
+    saveForm();
+}
+
+function getValidEvents() {
+    return _knownEvents.filter(e => e.year && String(e.year).length === 4 && e.desc && e.desc.trim());
+}
+
+function updateAnalyzeBtn() {
+    const btn = document.getElementById('btn-analyze');
+    if (!btn) return;
+    const hasEvents = getValidEvents().length > 0;
+    btn.textContent = hasEvents ? '🔍 验证时辰' : '🧠 深度分析';
+}
+
+// Toggle events section
+document.addEventListener('DOMContentLoaded', () => {
+    const toggleBtn = document.getElementById('btn-toggle-events');
+    const body = document.getElementById('known-events-body');
+    const arrow = toggleBtn ? toggleBtn.querySelector('.toggle-arrow') : null;
+    if (toggleBtn && body && arrow) {
+        toggleBtn.addEventListener('click', () => {
+            body.classList.toggle('hidden');
+            arrow.classList.toggle('open');
+            if (!body.classList.contains('hidden') && _knownEvents.length === 0) {
+                addEvent(); // default one empty row
+            }
+        });
+    }
+    document.getElementById('btn-add-event').addEventListener('click', addEvent);
+    updateAnalyzeBtn();
+});
 
 // ========== 词条解释库（42术语白话版） ==========
 const GLOSSARY = {
@@ -449,13 +545,13 @@ function clearPendingAnalysis() {
 
 // ========== localStorage 持久化 ==========
 function saveForm() {
-    const data = {year:elYear.value,month:elMonth.value,day:elDay.value,hour:elHour.value,minute:elMinute.value,location:elLocation.value,longitude:elLongitude.value,gender:document.querySelector('input[name="gender"]:checked').value,calendar:document.querySelector('input[name="calendar"]:checked').value,useTrueSolar:elUseTrueSolar.checked};
+    const data = {year:elYear.value,month:elMonth.value,day:elDay.value,hour:elHour.value,minute:elMinute.value,location:elLocation.value,longitude:elLongitude.value,gender:document.querySelector('input[name="gender"]:checked').value,calendar:document.querySelector('input[name="calendar"]:checked').value,useTrueSolar:elUseTrueSolar.checked,knownEvents:_knownEvents};
     localStorage.setItem('bazi_form', JSON.stringify(data));
 }
 function loadForm() {
     try {
         const d = JSON.parse(localStorage.getItem('bazi_form'));
-        if (d) { elYear.value=d.year;elMonth.value=d.month;elDay.value=d.day;elHour.value=d.hour;elMinute.value=d.minute;elLocation.value=d.location||'';elLongitude.value=d.longitude||'120'; document.querySelector('input[name="gender"][value="'+(d.gender||'男')+'"]').checked=true; document.querySelector('input[name="calendar"][value="'+(d.calendar||'solar')+'"]').checked=true; elUseTrueSolar.checked=d.useTrueSolar||false; if(elUseTrueSolar.checked)elLngLat.style.display=''; }
+        if (d) { elYear.value=d.year;elMonth.value=d.month;elDay.value=d.day;elHour.value=d.hour;elMinute.value=d.minute;elLocation.value=d.location||'';elLongitude.value=d.longitude||'120'; document.querySelector('input[name="gender"][value="'+(d.gender||'男')+'"]').checked=true; document.querySelector('input[name="calendar"][value="'+(d.calendar||'solar')+'"]').checked=true; elUseTrueSolar.checked=d.useTrueSolar||false; if(elUseTrueSolar.checked)elLngLat.style.display=''; if(d.knownEvents&&Array.isArray(d.knownEvents)){_knownEvents=d.knownEvents;renderEventRows();} }
     } catch(e) {}
 }
 [elYear,elMonth,elDay,elHour,elMinute,elLocation,elLongitude].forEach(el => el.addEventListener('change', saveForm));
@@ -839,8 +935,8 @@ async function doAnalyze(isRetry = false) {
         return;
     }
 
-    showLoading(isRetry ? '正在重新连接 Agent...' : '正在验盘——反推过往事件验证时辰（约需 30 秒）...');
-    if (!isRetry) toast('验盘分析已开始\nAgent 正在反推过往事件验证时辰（约需 30 秒）', 'info');
+    showLoading(isRetry ? '正在重新连接 Agent...' : (getValidEvents().length > 0 ? '正在验证时辰...' : '正在验盘——反推过往事件验证时辰（约需 30 秒）...'));
+    if (!isRetry) toast(getValidEvents().length > 0 ? '验证已开始\nAgent 正在核查你提供的事件与命盘是否吻合' : '验盘分析已开始\nAgent 正在反推过往事件验证时辰（约需 30 秒）', 'info');
     showSkeleton();  // 骨架屏占位
     analysisInProgress = true;
     _analysisStartTime = Date.now();
@@ -862,7 +958,7 @@ async function doAnalyze(isRetry = false) {
         const r = await fetch('/api/analyze', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({plate: plateData, password: pw, conversation_id: conversationId}),
+            body: JSON.stringify({plate: plateData, password: pw, conversation_id: conversationId, known_events: getValidEvents()}),
             signal: _analysisAbortController.signal
         });
         clearTimeout(timeoutId);
