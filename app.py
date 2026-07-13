@@ -767,8 +767,11 @@ def api_ziwei_analyze():
     if not check_rate_limit(ip, max_requests=3, window_minutes=60):
         return jsonify({"error": "请求过于频繁，请稍后再试（每小时限 3 次）"}), 429
 
-    from analysis_service import analyze_ziwei
-    result = analyze_ziwei(plate_dict, timeout=120)
+    try:
+        from analysis_service import analyze_ziwei
+        result = analyze_ziwei(plate_dict, timeout=120)
+    except Exception as e:
+        return jsonify({"success": False, "error": f"分析异常: {str(e)}"}), 500
 
     if result["success"]:
         response_data = {
