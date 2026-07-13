@@ -11,8 +11,8 @@ html{font-size:16px}
 body{font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
 .hidden{display:none!important}
 .app-layout{display:flex;min-height:100vh}
-.app-sidebar{width:380px;min-width:380px;flex-shrink:0;border-right:1px solid var(--border);padding:24px 20px 80px;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;background:#1a1a20}
-.app-main{flex:1;min-width:0;padding:28px 36px 60px;overflow-y:auto}
+.app-sidebar{width:340px;min-width:340px;flex-shrink:0;border-right:1px solid var(--border);padding:20px 16px 80px;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;background:#1a1a20}
+.app-main{flex:1;min-width:0;padding:20px 24px 60px;overflow-y:auto}
 .app-header{display:flex;justify-content:space-between;align-items:center;padding:0 0 12px}
 .app-header h1{font-size:1.2rem;cursor:pointer;color:var(--accent);letter-spacing:.05em}
 .app-header .subtitle{font-size:.65em;color:var(--muted)}
@@ -36,36 +36,41 @@ body{font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;backgr
 @keyframes spin{to{transform:rotate(360deg)}}
 .error-box{background:rgba(200,40,40,.12);color:#ef5350;padding:12px 16px;border-radius:8px;margin-bottom:14px;font-size:.82em}
 /* ---- 文墨天机风格十二宫 Grid ---- */
-.ziwei-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:3px;margin-bottom:16px;aspect-ratio:1;min-height:460px}
-.ziwei-cell{background:var(--card);border:1.5px solid var(--border);padding:4px 3px 2px;text-align:center;font-size:.64em;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.ziwei-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:3px;margin-bottom:14px;aspect-ratio:1;min-height:520px}
+.ziwei-cell{background:var(--card);border:1.5px solid var(--border);padding:5px 4px 3px;text-align:center;font-size:.75em;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .ziwei-cell:hover{z-index:2;box-shadow:0 0 18px rgba(212,168,67,.25)}
 .ziwei-cell.empty-cell{opacity:.5}
 .ziwei-cell.current-decadal{border-color:var(--accent);border-width:2px;box-shadow:inset 0 0 28px rgba(212,168,67,.08),0 0 10px rgba(212,168,67,.1)}
 /* 地支大字 */
-.cell-branch{font-size:1.55em;font-weight:800;line-height:1;margin-bottom:1px}
+.cell-branch{font-size:1.6em;font-weight:800;line-height:1;margin-bottom:2px}
 .br-巳{color:#e8a860}.br-午{color:#d4785e}.br-未{color:#c8b878}.br-申{color:#c0c0c0}
 .br-辰{color:#a0c878}.br-酉{color:#c0a860}.br-卯{color:#78b878}.br-戌{color:#c89860}
 .br-寅{color:#78a8c0}.br-丑{color:#b8a878}.br-子{color:#6898c8}.br-亥{color:#8888b8}
 /* 星曜 */
-.cell-stars{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px;min-height:0}
-.star-row{display:flex;align-items:center;gap:2px;font-size:.92em;line-height:1.2;white-space:nowrap}
+.cell-stars{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;min-height:0}
+.star-row{display:flex;align-items:center;gap:3px;font-size:.95em;line-height:1.25;white-space:nowrap}
 .star-name{font-weight:700}
 .star-name.major{color:#d4a843}
 .star-name.auspicious{color:#ce93d8}
 .star-name.malefic{color:#5a5a6e}
 .star-name.neutral{color:var(--muted)}
-.star-brightness{font-size:.62em;padding:0 2px;border-radius:2px;font-weight:600;line-height:1.1}
+.star-brightness{font-size:.68em;padding:0 2px;border-radius:2px;font-weight:600;line-height:1.1}
 .b-miao{background:#d4a843;color:#1a1a2e}.b-wang{background:#e8a860;color:#1a1a2e}
 .b-de{background:#7cb342;color:#fff}.b-li{background:#5c6bc0;color:#fff}
 .b-ping{background:#888;color:#fff}.b-bu{background:#78909c;color:#fff}.b-xian{background:#c62828;color:#fff}
-.star-mutagen{font-size:.68em;font-weight:700}
+.star-mutagen{font-size:.72em;font-weight:700}
 .m-lu{color:#2e7d32}.m-quan{color:#7b1fa2}.m-ke{color:#1565c0}.m-ji{color:#c62828}
 /* 宫名红字 */
-.cell-palace{font-size:.72em;font-weight:700;color:#c0392b;margin-top:1px}
-.cell-dizhi{font-size:.6em;color:var(--muted)}
-.cell-decadal{font-size:.58em;color:var(--accent);font-weight:600;margin-top:1px}
-.cell-tag{position:absolute;top:1px;right:2px;font-size:.52em;padding:1px 3px;border-radius:2px;font-weight:700}
+.cell-palace{font-size:.78em;font-weight:700;color:#c0392b;margin-top:2px}
+.cell-dizhi{font-size:.65em;color:var(--muted)}
+.cell-decadal{font-size:.62em;color:var(--accent);font-weight:600;margin-top:1px}
+.cell-tag{position:absolute;top:1px;right:2px;font-size:.55em;padding:1px 3px;border-radius:2px;font-weight:700}
 .tag-ming{background:#d4a843;color:#1a1a2e}.tag-shen{background:#7c4dff;color:#fff}
+/* 叠盘覆盖标记 */
+.cell-overlay{position:absolute;bottom:0;left:2px;right:2px;font-size:.55em;font-weight:700;text-align:center;padding:2px 0;border-radius:0 0 2px 2px;pointer-events:none}
+.cell-overlay.ly-mark{background:rgba(124,77,255,.12);color:#b39ddb}
+.cell-overlay.dn-mark{background:rgba(33,150,243,.1);color:#64b5f6}
+.cell-overlay.nn-mark{background:rgba(76,175,80,.1);color:#81c784}
 /* 中心 */
 .ziwei-center{grid-row:2/4;grid-column:2/4;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px 6px;background:var(--card);border:1px solid var(--border)}
 .ziwei-center .center-title{font-size:1.1em;font-weight:800;color:var(--accent);margin-bottom:6px;letter-spacing:.06em}
@@ -102,7 +107,7 @@ body{font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;backgr
 .star-modal .star-desc{font-size:.82em;line-height:1.6;margin-bottom:10px}
 .star-modal .star-palace-note{font-size:.76em;color:var(--muted);border-top:1px solid var(--border);padding-top:8px}
 .btn-close{float:right;background:none;border:none;font-size:1.1em;cursor:pointer;color:var(--muted)}
-.sticky-actions{position:fixed;bottom:0;left:0;width:380px;background:var(--card);padding:10px 20px;display:flex;gap:6px;border-top:1px solid var(--border);z-index:10}
+.sticky-actions{position:fixed;bottom:0;left:0;width:340px;background:var(--card);padding:10px 16px;display:flex;gap:6px;border-top:1px solid var(--border);z-index:10}
 .sticky-actions .btn{flex:1;justify-content:center}
 .pw-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center}
 .pw-dialog{background:var(--card);border-radius:12px;padding:24px;width:340px;max-width:90vw;text-align:center}
@@ -312,25 +317,27 @@ $('btn-horoscope').addEventListener('click',async()=>{
 function applyOverlayMarks(horoData){
     // 清除旧标记
     document.querySelectorAll('.cell-overlay').forEach(el=>el.remove());
-    // 流曜落宫标记
     const liuyao=horoData.liuyao||{};
     const cells=document.querySelectorAll('.ziwei-cell');
     for(const cell of cells){
-        const pName=cell.querySelector('.cell-palace')?.textContent;
-        if(!pName)continue;
-        let marks=[];
+        // 从DOM中找到宫名
+        const pEl=cell.querySelector('.cell-palace');
+        if(!pEl)continue;
+        const pName=pEl.textContent.trim();
+        // 分组流曜
+        const ly=[];  // 流曜
         for(const [name,palace] of Object.entries(liuyao)){
-            if(palace===pName)marks.push(name.replace('流',''));
+            if(palace===pName)ly.push(name.replace('流',''));
         }
-        // 流年落宫标记
-        if(horoData.yearly_palace===pName)marks.push('流年');
-        // 大限落宫标记
-        if(horoData.decadal_palace===pName)marks.push('大限');
-        if(marks.length){
+        // 分别标记
+        if(horoData.yearly_palace===pName||horoData.decadal_palace===pName||ly.length){
             const ov=document.createElement('div');
             ov.className='cell-overlay';
-            ov.style.cssText='position:absolute;bottom:0;left:0;right:0;font-size:.5em;color:#7c4dff;text-align:center;background:rgba(124,77,255,.08);padding:1px 0';
-            ov.textContent=marks.join('·');
+            let txt=[];
+            if(horoData.decadal_palace===pName){txt.push('大限');ov.classList.add('dn-mark')}
+            if(horoData.yearly_palace===pName){txt.push('流年');ov.classList.add('nn-mark')}
+            if(ly.length){txt.push(ly.slice(0,3).join('·'));ov.classList.add('ly-mark')}
+            ov.textContent=txt.join(' ');
             cell.appendChild(ov);
         }
     }
