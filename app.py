@@ -631,6 +631,115 @@ def api_ziwei_horoscope():
         return jsonify({"error": f"流年计算失败: {str(e)}"}), 500
 
 
+@app.route("/api/ziwei/analyze/yearly", methods=["POST"])
+def api_ziwei_analyze_yearly():
+    """紫微斗数流年聚焦解读 — 本命+大限+流年三层叠盘分析"""
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求数据格式错误"}), 400
+
+    ip = request.remote_addr or 'unknown'
+    pw_err = check_password(ip, data)
+    if pw_err:
+        return jsonify({"error": pw_err, "need_password": True}), 403
+
+    try:
+        year = int(data["year"])
+        month = int(data["month"])
+        day = int(data["day"])
+        hour = int(data["hour"])
+        gender = data["gender"]
+        target_year = int(data.get("target_year", 2025))
+        is_lunar = data.get("is_lunar", False)
+    except (ValueError, TypeError, KeyError) as e:
+        return jsonify({"error": f"参数错误: {e}"}), 400
+
+    if not check_rate_limit(ip, max_requests=3, window_minutes=60):
+        return jsonify({"error": "请求过于频繁，请稍后再试"}), 429
+
+    try:
+        # 本命盘
+        plate_data = ziwei_paipan(year, month, day, hour, 0, gender, is_lunar)
+        plate_dict = ziwei_plate_to_dict(plate_data, {
+            "birth_datetime": f"{year}-{month:02d}-{day:02d} {hour:02d}:00",
+            "gender": gender,
+        })
+
+        # 流年盘
+        horo = get_horoscope(year, month, day, hour, gender, target_year, is_lunar)
+
+        # 构造聚焦prompt
+        from analysis_service import _load_ziwei_system_prompt
+        system_prompt = _load_ziwei_system_prompt()
+
+        # 本命摘要（只取关键宫：命宫/夫妻/财帛/官禄/迁移/福德）
+        key_palaces = ['命宮', '夫妻', '財帛', '官祿', '遷移', '福德']
+        natal_summary = []
+        for p in plate_dict.get('palaces', []):
+            if p['name'] in key_palaces:
+                stars = '、'.join(s['name'] if isinstance(s, dict) else s for s in p.get('major_stars', [])) or '空宫'
+                muts = '、'.join(f"{m['star']}{m['mutagen']}" for m in p.get('mutagens', []))
+                natal_summary.append(f"{p['name']}({p['dizhi']}): {stars}" + (f" [{muts}]" if muts else ""))
+
+        # 生年四化
+        ym = plate_dict.get('year_mutagens', [])
+        sihua_str = ' · '.join(f"{m['star']}{m['mutagen']}({m['palace']})" for m in ym)
+
+        # 格局
+        patterns = plate_dict.get('patterns', [])
+        pattern_str = ' · '.join(p['name'] for p in patterns) if patterns else '无特殊格局'
+
+        # 流年聚焦
+        liuyao = horo.get('liuyao', {})
+        liuyao_str = ' · '.join(f"{k}→{v}" for k, v in liuyao.items()) if liuyao else '无'
+
+        user_msg = f"""请进行紫微斗数流年聚焦解读。结合本命盘、大限盘和流年盘三层信息，重点分析{target_year}年的运势。
+
+## 本命盘关键宫位
+{chr(10).join(natal_summary)}
+
+## 生年四化
+{sihua_str}
+
+## 格局
+{pattern_str}
+
+## 当前大限
+干支: {horo['decadal_gz']}
+落宫: {horo['decadal_palace']}
+
+## {target_year}年流年
+干支: {horo['yearly_gz']}
+流年落宫: {horo['yearly_palace']}
+流年四化: {'、'.join(horo['yearly_mutagens']) if horo['yearly_mutagens'] else '无'}
+流曜分布: {liuyao_str}
+
+## 解读要求
+1. 先分析当前大限的主题（本命盘落宫+大限四化叠加效应）
+2. 再聚焦{target_year}年流年重点（流年落宫+流年四化+流曜）
+3. 指出今年需要重点关注的领域（哪些本命宫被激活）
+4. 语气亲切有主见，控制在300字以内
+5. 给出1-2条具体建议"""
+
+        from analysis_service import _call_api
+        result = _call_api(system_prompt, [{"role": "user", "content": user_msg}],
+                          max_tokens=8192, temperature=0.5, timeout=90)
+
+        if result["success"]:
+            return jsonify({
+                "success": True,
+                "analysis": result["text"],
+                "model": result.get("model", ""),
+                "usage": result.get("usage", {}),
+            })
+        else:
+            return jsonify({"success": False, "error": result["error"]}), 500
+
+    except Exception as e:
+        return jsonify({"error": f"流年分析失败: {str(e)}"}), 500
+
+
 @app.route("/api/ziwei/analyze", methods=["POST"])
 def api_ziwei_analyze():
     """紫微斗数 Agent 深度分析"""

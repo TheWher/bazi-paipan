@@ -266,9 +266,22 @@ def get_horoscope(year: int, month: int, day: int, hour: int, gender: str,
     }
     dec_palace = PALACE_NAMES_CN[decadal_info['palace_index']] if 0 <= decadal_info['palace_index'] < 12 else '?'
 
+    # 流曜
+    yi_gan = STEM_CN.get(yi.heavenly_stem, '') if hasattr(yi, 'heavenly_stem') else ''
+    yi_zhi = BRANCH_CN.get(yi.earthly_branch, '') if hasattr(yi, 'earthly_branch') else ''
+    # 需要本命十二宫来做地支→宫名映射
+    natal_palaces = chart.palaces
+    natal_list = []
+    for p in natal_palaces:
+        natal_list.append({
+            'name': PALACE_NAMES_CN[p.index] if p.index < len(PALACE_NAMES_CN) else str(p.index),
+            'earthly_branch': BRANCH_CN.get(p.earthly_branch, ''),
+        })
+    liuyao = calculate_liuyao(yi_gan, yi_zhi, natal_list)
+
     return {
         'year': target_year,
-        'yearly_gz': STEM_CN.get(yi.heavenly_stem, '') + BRANCH_CN.get(yi.earthly_branch, ''),
+        'yearly_gz': yi_gan + yi_zhi,
         'yearly_palace': yi_palace_name,
         'yearly_palace_index': yi_idx,
         'yearly_palaces': yearly_palaces,
@@ -276,6 +289,9 @@ def get_horoscope(year: int, month: int, day: int, hour: int, gender: str,
         'decadal_gz': decadal_info['heavenly_stem'] + decadal_info['earthly_branch'],
         'decadal_palace': dec_palace,
         'decadal_palace_index': decadal_info['palace_index'],
+        'liuyao': liuyao,
+        'yearly_gan': yi_gan,
+        'yearly_zhi': yi_zhi,
     }
 
 
@@ -293,6 +309,75 @@ def _translate_star_key(key: str) -> str:
         'lucunMin': '祿存', 'tianmaMin': '天馬',
     }
     return _STAR_KEY_MAP.get(key, key)
+
+
+def calculate_liuyao(liunian_gan: str, liunian_zhi: str, palaces: list) -> dict:
+    """计算流年流曜落在哪些本命宫位。
+
+    流曜包括：流禄、流羊、流陀、流昌、流曲、流魁、流钺、流马、流鸾、流喜
+
+    Returns:
+        {'流禄': ['命宫', '夫妻'], '流羊': ['财帛'], ...}
+        每个流曜可能落在多个宫（如果多个宫地支相同则不重复）
+    """
+    ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
+
+    # 流禄（流年天干定）
+    GAN_LUCUN = {'甲': '寅', '乙': '卯', '丙': '巳', '丁': '午', '戊': '巳', '己': '午',
+                 '庚': '申', '辛': '酉', '壬': '亥', '癸': '子'}
+    # 流昌（流年天干定）
+    GAN_CHANG = {'甲': '巳', '乙': '午', '丙': '申', '丁': '酉', '戊': '申', '己': '酉',
+                 '庚': '亥', '辛': '子', '壬': '寅', '癸': '卯'}
+    # 流曲（流年天干定）
+    GAN_QU = {'甲': '亥', '乙': '子', '丙': '寅', '丁': '卯', '戊': '寅', '己': '卯',
+              '庚': '巳', '辛': '午', '壬': '申', '癸': '酉'}
+    # 流魁（流年天干定）
+    GAN_KUI = {'甲': '丑', '乙': '子', '丙': '亥', '丁': '酉', '戊': '丑', '己': '子',
+               '庚': '未', '辛': '午', '壬': '卯', '癸': '巳'}
+    # 流钺（流年天干定）
+    GAN_YUE = {'甲': '未', '乙': '申', '丙': '酉', '丁': '亥', '戊': '未', '己': '申',
+               '庚': '丑', '辛': '寅', '壬': '巳', '癸': '卯'}
+    # 流马（流年地支三合局冲位）
+    SANHE_CHONG = {'寅': '申', '午': '申', '戌': '申', '申': '寅', '子': '寅', '辰': '寅',
+                   '亥': '巳', '卯': '巳', '未': '巳', '巳': '亥', '酉': '亥', '丑': '亥'}
+    # 流鸾（流年地支定）
+    ZHI_LUAN = {'子': '卯', '丑': '寅', '寅': '丑', '卯': '子', '辰': '亥', '巳': '戌',
+                '午': '酉', '未': '申', '申': '未', '酉': '午', '戌': '巳', '亥': '辰'}
+    # 流喜（流年地支定）
+    ZHI_XI = {'子': '酉', '丑': '申', '寅': '未', '卯': '午', '辰': '巳', '巳': '辰',
+              '午': '卯', '未': '寅', '申': '丑', '酉': '子', '戌': '亥', '亥': '戌'}
+
+    lu_zhi = GAN_LUCUN.get(liunian_gan, '')
+    lu_idx = ZHI.index(lu_zhi) if lu_zhi in ZHI else -1
+    yang_zhi = ZHI[(lu_idx + 1) % 12] if lu_idx >= 0 else ''
+    tuo_zhi = ZHI[(lu_idx - 1) % 12] if lu_idx >= 0 else ''
+
+    liuyao_map = {
+        '流禄': lu_zhi,
+        '流羊': yang_zhi,
+        '流陀': tuo_zhi,
+        '流昌': GAN_CHANG.get(liunian_gan, ''),
+        '流曲': GAN_QU.get(liunian_gan, ''),
+        '流魁': GAN_KUI.get(liunian_gan, ''),
+        '流钺': GAN_YUE.get(liunian_gan, ''),
+        '流马': SANHE_CHONG.get(liunian_zhi, ''),
+        '流鸾': ZHI_LUAN.get(liunian_zhi, ''),
+        '流喜': ZHI_XI.get(liunian_zhi, ''),
+    }
+
+    # 建地支→宫名索引
+    branch_to_palace = {}
+    for p in palaces:
+        b = p.get('earthly_branch', '')
+        if b:
+            branch_to_palace[b] = p.get('name', b)
+
+    result = {}
+    for name, zhi_val in liuyao_map.items():
+        if zhi_val and zhi_val in branch_to_palace:
+            result[name] = branch_to_palace[zhi_val]
+
+    return result
 
 
 def detect_patterns(plate_data: dict) -> list[dict]:
