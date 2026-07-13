@@ -1245,7 +1245,7 @@ def _build_ziwei_user_message(plate_dict: dict) -> str:
     parts.append("5. ## 🔮 当前大限 — 当前十年核心课题")
     parts.append("6. ## 📅 近三年流年 — 关键节点提示")
     parts.append("")
-    parts.append('**解读原则**：有主见有判断、用日常语言翻译术语、先讲优势再讲挑战、不说"你一定会"')
+    parts.append('**解读原则**：每个章节详细充实，不要惜字。有主见有判断、用日常语言翻译术语、先讲优势再讲挑战、不说"你一定会"')
 
     return "\n".join(parts)
 
