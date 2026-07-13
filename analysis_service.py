@@ -525,7 +525,12 @@ def _build_year_lookup_table(plate_dict, current_year, spread=99, balanced=False
         lines.append('')
         if len(scored) == 0:
             lines.append('⚠️ **无≥15岁的🆕首现候选年**——此命局所有十神在童年已全部出现。')
-            lines.append('验盘锚点不足。跳过流年验证，给出每步大运（≥15岁起）的1-2句主题描述，让用户确认。')
+            lines.append('')
+            lines.append('**🚫 硬性门禁（违反即无效验盘）**：')
+            lines.append('1. **禁止输出任何流年预测**——候选表为空，没有可选的年份')
+            lines.append('2. **禁止用童年年份凑数**——4岁搬家、6岁偏科 用户无法验证')
+            lines.append('3. **唯一允许的输出**：直接说「此命局十神首现均在童年，验盘锚点不足」，然后给出每步大运（≥15岁起）1-2句主题描述，让用户确认大运方向即可')
+            lines.append('4. 验盘完毕标记后立即停止')
         else:
             lines.append(f'共 {len(adult_candidates)} 个🆕首现年份（≥15岁），按显著性排序：')
             lines.append('')
