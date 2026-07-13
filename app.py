@@ -18,7 +18,7 @@ from flask import Flask, jsonify, render_template, request, send_file
 from bazi_calculator import paipan
 from generate_bazi_pdf import build_generic_pdf
 from city_coords import search_city
-from ziwei_calculator import ziwei_paipan, plate_to_dict as ziwei_plate_to_dict
+from ziwei_calculator import ziwei_paipan, plate_to_dict as ziwei_plate_to_dict, get_horoscope
 
 # 加载密码保护配置
 WEB_PASSWORD = ""
@@ -599,9 +599,36 @@ def api_ziwei_paipan():
             "longitude": float(data.get("longitude", 120)),
         }
         result = ziwei_plate_to_dict(plate_data, input_info)
+        result['patterns'] = plate_data.get('patterns', [])  # 格局判读
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": f"紫微排盘计算失败: {str(e)}"}), 500
+
+
+@app.route("/api/ziwei/horoscope", methods=["POST"])
+def api_ziwei_horoscope():
+    """紫微斗数流年盘"""
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求数据格式错误"}), 400
+
+    try:
+        year = int(data["year"])
+        month = int(data["month"])
+        day = int(data["day"])
+        hour = int(data["hour"])
+        gender = data["gender"]
+        target_year = int(data.get("target_year", 2025))
+        is_lunar = data.get("is_lunar", False)
+    except (ValueError, TypeError, KeyError) as e:
+        return jsonify({"error": f"参数错误: {e}"}), 400
+
+    try:
+        result = get_horoscope(year, month, day, hour, gender, target_year, is_lunar)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": f"流年计算失败: {str(e)}"}), 500
 
 
 @app.route("/api/ziwei/analyze", methods=["POST"])

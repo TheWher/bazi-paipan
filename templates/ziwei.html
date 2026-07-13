@@ -102,6 +102,31 @@
         .btn-row{display:flex;gap:8px}
         .btn-row .btn{flex:1}
         @media(max-width:860px){.app-layout{flex-direction:column}.app-sidebar{width:100%;min-width:0;height:auto;position:static;border-right:none;padding:20px 16px}.app-main{padding:20px 16px 80px}.sticky-actions{width:100%}.ziwei-grid .ziwei-cell{min-height:58px;padding:5px 3px;font-size:.64em}}
+        /* ---- 格局面板 ---- */
+        .patterns-panel{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+        .pattern-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:14px;font-size:.75em;font-weight:600}
+        .pattern-badge.lv-上吉{background:linear-gradient(135deg,#d4a843,#8b6914);color:#fff}
+        .pattern-badge.lv-吉{background:rgba(212,168,67,.12);color:#8b6914}
+        .pattern-badge.lv-中{background:rgba(120,120,120,.1);color:var(--muted)}
+        .pattern-badge.lv-忌{background:rgba(198,40,40,.1);color:#c62828}
+        /* ---- 流年选择器 ---- */
+        .horoscope-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border:1px solid var(--border-light);border-radius:10px;margin-bottom:14px;flex-wrap:wrap}
+        .horoscope-bar label{font-size:.78em;color:var(--muted);font-weight:500}
+        .horoscope-bar select,.horoscope-bar input{padding:6px 10px;font-size:.8em;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)}
+        .horoscope-bar .horoscope-result{font-size:.78em;color:var(--accent);font-weight:600;margin-left:auto}
+        /* ---- 星曜详情弹窗 ---- */
+        .star-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center}
+        .star-modal{background:var(--card);border-radius:14px;padding:24px;width:340px;max-width:90vw;max-height:80vh;overflow-y:auto}
+        .star-modal h3{color:var(--accent);margin-bottom:8px}
+        .star-modal .star-level{font-size:.78em;color:var(--muted);margin-bottom:12px}
+        .star-modal .star-desc{font-size:.85em;line-height:1.65;margin-bottom:12px}
+        .star-modal .star-palace-note{font-size:.8em;color:var(--muted);border-top:1px solid var(--border-light);padding-top:10px}
+        .star-modal .btn-close{float:right;background:none;border:none;font-size:1.2em;cursor:pointer;color:var(--muted)}
+        /* ---- 信息面板 ---- */
+        .info-panel{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+        .info-panel .info-card{background:var(--card);border:1px solid var(--border-light);border-radius:8px;padding:10px 14px;font-size:.78em}
+        .info-panel .info-card .info-label{color:var(--muted);font-size:.85em;margin-bottom:2px}
+        .info-panel .info-card .info-value{font-weight:600;color:var(--accent)}
     </style>
 </head>
 <body>
@@ -155,6 +180,19 @@
             <div class="floating-bar">
                 <span class="bar-title">🔮 紫微命盘</span>
             </div>
+            <div id="patterns-panel" class="patterns-panel"></div>
+            <div class="info-panel">
+                <div class="info-card"><div class="info-label">五行局</div><div class="info-value" id="info-wuxing">—</div></div>
+                <div class="info-card"><div class="info-label">命宫 / 身宫</div><div class="info-value" id="info-mingshen">—</div></div>
+                <div class="info-card"><div class="info-label">当前大限</div><div class="info-value" id="info-decadal">—</div></div>
+                <div class="info-card"><div class="info-label">生年四化</div><div class="info-value" id="info-sihua">—</div></div>
+            </div>
+            <div class="horoscope-bar">
+                <label>📅 流年盘</label>
+                <input type="number" id="horoscope-year" value="2025" min="1900" max="2100" style="width:80px">
+                <button id="btn-horoscope" class="btn btn-sm">查看</button>
+                <span class="horoscope-result" id="horoscope-result"></span>
+            </div>
             <div id="ziwei-grid" class="ziwei-grid"></div>
             <div id="ziwei-mutagen-line" class="ziwei-mutagen-line"></div>
         </section>
@@ -178,6 +216,14 @@
             <button id="btn-pw-cancel" class="btn">取消</button>
             <button id="btn-pw-confirm" class="btn btn-primary">确认</button>
         </div>
+    </div>
+<div id="star-modal-overlay" class="star-modal-overlay hidden" onclick="this.classList.add('hidden')">
+    <div class="star-modal" onclick="event.stopPropagation()">
+        <button class="btn-close" onclick="document.getElementById('star-modal-overlay').classList.add('hidden')">✕</button>
+        <h3 id="star-modal-name"></h3>
+        <div class="star-level" id="star-modal-level"></div>
+        <div class="star-desc" id="star-modal-desc"></div>
+        <div class="star-palace-note" id="star-modal-note"></div>
     </div>
 </div>
 
@@ -355,6 +401,92 @@ function injectGlossary(container){
     while(walker.nextNode()){const n=walker.currentNode;if(n.parentElement?.closest?.('.glossary-term,.cell-stars,.cell-minor,.cell-name,.cell-dizhi'))continue;let t=n.textContent;for(const term of terms){const i=t.indexOf(term);if(i!==-1){const s=document.createElement('span');s.className='glossary-term';s.title=GLOSSARY[term];s.textContent=term;reps.push({node:n,idx:i,term,s});break}}}
     for(const{node:n,idx,term,s}of reps){const b=n.textContent.slice(0,idx),a=n.textContent.slice(idx+term.length),p=n.parentNode;p.insertBefore(document.createTextNode(b),n);p.insertBefore(s,p.childNodes[p.childNodes.length-1].nextSibling||null);p.insertBefore(document.createTextNode(a),s.nextSibling);p.removeChild(n)}
 }
+
+// ========== 星曜详情数据 ==========
+const STAR_DETAIL = {
+'紫微':{level:'帝王星·土',desc:'紫微是北斗主星，化气为尊。在命宫者天生有领袖气质，贵气逼人，但也要注意孤高自许。紫微喜左辅右弼相伴，三方有吉星则格局更佳。',notes:{'命宮':'天生领袖，适合管理/创业/体制内','夫妻':'配偶条件好，但需放下身段','官祿':'事业有格局，适合大平台','財帛':'财运来自资源整合'}},
+'天機':{level:'智谋星·木',desc:'天机是南斗主星，主智慧与变通。在命宫者思维敏捷，善于策划分析，但思虑过多容易优柔寡断。一生多变化，不适合死板工作。',notes:{'命宮':'脑子快，适合IT/咨询/策划','夫妻':'配偶聪明但易思虑多','官祿':'适合脑力工作'}},
+'太陽':{level:'光明星·火',desc:'太阳主光明正大，热情博爱。庙旺时光芒万丈，落陷时心力不足。在命者适合与人打交道的工作，但需注意不要精力透支。',notes:{'命宮':'阳光型，适合教育/公益/销售','夫妻':'配偶开朗但可能太忙','官祿':'适合对外/公开的工作'}},
+'武曲':{level:'财星/将星·金',desc:'武曲是正财星，主果断刚毅。执行力强，理财有方。但因过于刚硬容易人际关系偏冷。适合金融/军警/技术骨干。',notes:{'命宮':'行动派，适合金融/军警','夫妻':'配偶务实但不够浪漫','財帛':'正财运强，稳健理财'}},
+'天同':{level:'福星·水',desc:'天同是福德宫主，主温和享受。性格温顺，人缘好，知足常乐。但要注意缺乏进取心，容易安于现状。',notes:{'命宮':'人缘好，适合服务/艺术','夫妻':'感情温和稳定','財帛':'财运稳但不暴富'}},
+'廉貞':{level:'囚星/次桃花·火',desc:'廉贞主执着与才艺。做事认真，重情义，有原则。但容易钻牛角尖，情绪化。在命者有才艺天赋，适合法律/艺术/技术。',notes:{'命宮':'做事认真执着，有才艺','夫妻':'感情浓烈但易波折','官祿':'适合法律/技术研究'}},
+'天府':{level:'库星·土',desc:'天府是南斗主星，主稳重包容。有组织力，善于管理，是天生的二把手。但保守固执，不善开拓创新。',notes:{'命宮':'稳重可靠，适合管理/行政','夫妻':'配偶稳重顾家','財帛':'善于积累，存钱能力强'}},
+'太陰':{level:'富星/母星·水',desc:'太阴是月中之精，主细腻内敛。情感丰富，有美感，适合文艺创作。庙旺时贵人运佳，落陷时需注意情绪管理。',notes:{'命宮':'气质优雅，适合设计/艺术','夫妻':'配偶温柔体贴','財帛':'靠服务和审美赚钱'}},
+'貪狼':{level:'桃花星/欲望星·水木',desc:'贪狼是欲望之星，主交际才艺。多才多艺，社交能力强，魅力十足。但需节制欲望，防止过度沉溺。',notes:{'命宮':'多才多艺人缘好','夫妻':'桃花旺，晚婚更稳','財帛':'偏财运好但要防挥霍'}},
+'巨門':{level:'暗星/口舌星·水',desc:'巨门主口才和研究精神。思辨力强，能深入本质。但口舌是非多，需谨言慎行。适合律师/教师/记者/研究员。',notes:{'命宮':'口才好，适合法律/教育','夫妻':'沟通是婚姻关键','官祿':'靠嘴或研究吃饭'}},
+'天相':{level:'印星/服务星·水',desc:'天相是印绶之星，主服务与协调。忠诚可靠，善于调停，是优秀的辅助者。但缺乏主见，依赖心强。',notes:{'命宮':'天生好帮手，适合行政/HR','夫妻':'配偶忠实可靠','官祿':'适合第二把手'}},
+'天梁':{level:'荫星/寿星·土',desc:'天梁是长寿之星，主正直慈悲。有正义感，乐于助人，长于教育医疗。但有时好为人师，需注意不要过于严肃。',notes:{'命宮':'有长者风范，适合教育/医疗','夫妻':'配偶成熟稳重','官祿':'适合教育/咨询/公益'}},
+'七殺':{level:'将星·金',desc:'七杀是将星，主魄力与开拓。有领导力，敢于冒险。一生大起大落但不甘平庸。适合创业/军警/竞技。',notes:{'命宮':'天生做大事，适合创业','夫妻':'感情可能大起大落','財帛':'赚大钱也亏大钱'}},
+'破軍':{level:'耗星/变革星·水',desc:'破军主变革与破坏。不安于现状，敢于创新，但容易始乱终弃。不适合安稳工作，需要在变化中找到节奏。',notes:{'命宮':'不适合安稳，适合创业','夫妻':'感情易变动','官祿':'适合新兴行业/自由职业'}},
+};
+function showStarDetail(name) {
+    const d = STAR_DETAIL[name];
+    if (!d) return;
+    $('star-modal-name').textContent = name;
+    $('star-modal-level').textContent = d.level;
+    $('star-modal-desc').textContent = d.desc;
+    let notes = '';
+    if (d.notes) for (const [k, v] of Object.entries(d.notes)) notes += `<p><strong>${k}</strong>: ${v}</p>`;
+    $('star-modal-note').innerHTML = notes;
+    $('star-modal-overlay').classList.remove('hidden');
+}
+
+// ========== 格局渲染 ==========
+function renderPatterns(patterns) {
+    const el = $('patterns-panel');
+    if (!patterns || !patterns.length) { el.innerHTML = ''; return; }
+    const cls = {'上吉':'lv-上吉','吉':'lv-吉','中':'lv-中','忌':'lv-忌'};
+    el.innerHTML = patterns.map(p =>
+        `<span class="pattern-badge ${cls[p.level]||''}" title="${p.desc}">${p.level==='上吉'?'⭐ ':p.level==='忌'?'⚠️ ':''}${p.name}</span>`
+    ).join('');
+}
+
+// ========== 流年盘 ==========
+$('btn-horoscope').addEventListener('click', async () => {
+    const fd = getFormData();
+    const ty = parseInt($('horoscope-year').value);
+    if (!fd.year || !ty) return;
+    $('horoscope-result').textContent = '计算中...';
+    try {
+        const r = await fetch('/api/ziwei/horoscope', {method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({...fd, target_year:ty})});
+        const d = await r.json();
+        if (d.error) { $('horoscope-result').textContent = d.error; return; }
+        $('horoscope-result').innerHTML = `${d.year}年: <strong>${d.yearly_gz}</strong> 流年落<strong>${d.yearly_palace}</strong> · 四化: ${(d.yearly_mutagens||[]).join('、')||'无'} · 大限<strong>${d.decadal_gz}</strong>`;
+    } catch(e) { $('horoscope-result').textContent = '网络错误'; }
+});
+
+// ========== 增强 renderZiweiChart ==========
+const _origRenderChart = renderZiweiChart;
+renderZiweiChart = function(data) {
+    _origRenderChart(data);
+    // Fill info panel
+    $('info-wuxing').textContent = data.five_elements_class || '—';
+    $('info-mingshen').textContent = (data.soul_palace||'?') + ' / ' + (data.body_palace||'?');
+    // Current decadal
+    const birthStr = (data.input?.birth_datetime||''); const birthYear = parseInt(birthStr);
+    const approxAge = birthYear ? new Date().getFullYear() - birthYear : -1;
+    let decInfo = '—';
+    if (approxAge >= 0) for (const p of data.palaces||[]) {
+        const m = (p.decadal_range||'').match(/(\d+)-(\d+)/);
+        if (m && approxAge >= parseInt(m[1]) && approxAge <= parseInt(m[2])) {
+            decInfo = p.name + ' ' + p.decadal_dizhi + ' (' + p.decadal_range + '岁)'; break;
+        }
+    }
+    $('info-decadal').textContent = decInfo;
+    // 生年四化 summary
+    const ym = data.year_mutagens || [];
+    $('info-sihua').textContent = ym.length ? ym.map(m => m.star + m.mutagen).join(' · ') : '—';
+    // Patterns
+    renderPatterns(data.patterns || []);
+    // Make star names clickable
+    setTimeout(() => {
+        document.querySelectorAll('.ziwei-cell .star-name').forEach(el => {
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', e => { e.stopPropagation(); showStarDetail(el.textContent); });
+        });
+    }, 100);
+};
 </script>
 </body>
 </html>
