@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>八字排盘 · AI命理分析</title>
+<title>八字 & 紫微 · AI命理分析</title>
 <style>
 :root{
   --bg:#050508;--surface:#0a0a10;--border:#1a1a25;--border-glow:#252535;
@@ -125,56 +125,63 @@ footer{
 <nav>
   <a href="/" class="logo"><i>☰</i> Destiny Agent</a>
   <div class="links">
-    <a href="/app">排盘</a>
+    <a href="/app">八字</a>
+    <a href="/app">紫微</a>
     <span class="badge">DeepSeek v4</span>
   </div>
 </nav>
 
 <main>
   <section class="hero">
-    <div class="pretitle">八字命理 · AI 推理引擎</div>
-    <h1>推命 · 验盘 · 知运</h1>
-    <p>符号计算引擎 + 大语言模型推理，梁湘润体系9级递进链，先验盘后批断</p>
+    <div class="pretitle">八字 & 紫微斗数 · AI 推理引擎</div>
+    <h1>推命 · 观星 · 知运</h1>
+    <p>符号计算引擎 + 大语言模型推理。八字梁湘润体系9级递进链，紫微三合中州派十二宫解读</p>
   </section>
 
   <div class="bento" id="bento">
     <a href="/app" class="card lg">
       <div class="icon">☰</div>
-      <h3>排盘引擎</h3>
-      <span class="highlight">sxtwl + Python</span>
-      <p>高精度历算 · 纯Python双回退 · 250+城市经纬度 · 真太阳时自动校正 · 夜子时专用分支</p>
+      <h3>八字排盘</h3>
+      <span class="highlight">sxtwl + 纯Python</span>
+      <p>四柱·十神·纳音·藏干·神煞 · 真太阳时校正 · 夜子时专用分支 · 梁湘润体系9级递进</p>
+    </a>
+    <a href="/app" class="card">
+      <div class="icon">🔮</div>
+      <h3>紫微斗数</h3>
+      <p>iztro-py精确排盘 · 十二宫星曜·四化飞星·大限流年 · 三合派+中州派解读</p>
+    </a>
+    <a href="/app" class="card lg">
+      <div class="icon">◎</div>
+      <h3>验盘闭环</h3>
+      <span class="highlight">S~E 6级流年精度</span>
+      <p>Agent预测→用户确认→后处理硬校验 · 双模式分流（极端冲合信号 / 均衡十神到位）· 盲测83%命中率</p>
     </a>
     <a href="/app" class="card">
       <div class="icon">⚡</div>
-      <h3>三通道管道</h3>
-      <p>analysis→commentary→final · SSE流式推送 · stop_sequences截停+后处理硬校验 · 14阶段进度</p>
-    </a>
-    <a href="/app" class="card">
-      <div class="icon">◎</div>
-      <h3>验盘闭环</h3>
-      <p>用户反馈标注驱动 · S/B/C/D/E 6级流年精度 · 盲测83%命中率</p>
-    </a>
-    <a href="/app" class="card">
-      <div class="icon">⌘</div>
-      <h3>对话续接</h3>
-      <p>完整上下文持久化 · 关标签页不丢 · URL分享续接 · 多轮深度批断</p>
+      <h3>SSE流式管道</h3>
+      <p>三通道analysis→commentary→final · stop_sequences截停 · 14阶段进度 · 多轮续接</p>
     </a>
     <a href="/app" class="card">
       <div class="icon">◈</div>
-      <h3>图表系统</h3>
-      <p>五行环图 · 十二长生轮盘 · 大运环形图 · 干支关系图 · 词条弹窗</p>
+      <h3>可视化</h3>
+      <p>五行环图 · 十二长生轮盘 · 大运环图 · 紫微十二宫Grid · 干支关系图</p>
+    </a>
+    <a href="/app" class="card">
+      <div class="icon">⌘</div>
+      <h3>交互体验</h3>
+      <p>八字紫微抽屉切换 · 42术语词条高亮 · 20条历史命例 · 断线自动恢复 · 验盘反馈面板</p>
     </a>
   </div>
 
   <div class="cta">
     <a href="/app" class="btn">进入命盘 <span class="btn-arrow">→</span></a>
-    <p class="cta-hint">输入生辰，开始推命分析</p>
+    <p class="cta-hint">输入生辰，八字 & 紫微双系统分析</p>
   </div>
 </main>
 
 <footer>
-  <span>PythonAnywhere · Flask + DeepSeek</span>
-  <span>梁湘润体系 · 调候优先</span>
+  <span>八字 sxtwl + 紫微 iztro-py · Flask + DeepSeek</span>
+  <span>梁湘润体系 · 三合中州派</span>
 </footer>
 
 <script>
