@@ -1216,8 +1216,8 @@ def _build_ziwei_user_message(plate_dict: dict) -> str:
     parts.append("| 宫位 | 干支 | 主星 | 辅星 | 四化 | 大限 | 标记 |")
     parts.append("|------|------|------|------|------|------|------|")
     for pal in palaces:
-        stars_str = '、'.join(pal['major_stars']) if pal['major_stars'] else '空宫'
-        minor_str = '、'.join(pal['minor_stars'][:3]) if pal['minor_stars'] else '—'
+        stars_str = '、'.join(s['name'] if isinstance(s, dict) else s for s in pal['major_stars']) if pal['major_stars'] else '空宫'
+        minor_str = '、'.join(s['name'] if isinstance(s, dict) else s for s in pal['minor_stars'][:3]) if pal['minor_stars'] else '—'
         mut_str = '、'.join(f"{m['star']}{m['mutagen']}" for m in pal['mutagens']) if pal['mutagens'] else '—'
         tags_str = '、'.join(pal['tags']) if pal['tags'] else ''
         parts.append(
