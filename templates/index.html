@@ -61,6 +61,35 @@
         .event-row .event-desc{flex:1}
         .event-row .btn-remove-event{background:none;border:none;color:var(--text-light);cursor:pointer;font-size:1em;padding:2px 6px}
         .event-row .btn-remove-event:hover{color:#d32f2f}
+        /* ---- 紫微斗数抽屉 ---- */
+        .ziwei-drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99;transition:opacity .3s}
+        .ziwei-drawer-overlay.hidden{opacity:0;pointer-events:none}
+        .ziwei-drawer{position:fixed;top:0;right:0;width:460px;max-width:100vw;height:100vh;background:var(--bg);z-index:100;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.15);transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
+        .ziwei-drawer.open{transform:translateX(0)}
+        .ziwei-drawer-header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid var(--border-light);flex-shrink:0}
+        .ziwei-drawer-header h2{font-size:1.1rem;margin:0;color:var(--gold)}
+        .ziwei-drawer-body{flex:1;overflow-y:auto;padding:20px 24px}
+        .ziwei-drawer-footer{display:flex;gap:8px;padding:14px 24px;border-top:1px solid var(--border-light);flex-shrink:0;background:var(--bg)}
+        .ziwei-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,auto);gap:4px;margin-bottom:20px}
+        .ziwei-grid .ziwei-cell{background:var(--card-bg);border:1px solid var(--border-light);border-radius:8px;padding:8px 6px;text-align:center;font-size:.72em;min-height:70px;display:flex;flex-direction:column;justify-content:center;position:relative}
+        .ziwei-grid .ziwei-cell.empty-cell{opacity:.55}
+        .ziwei-grid .ziwei-cell .cell-name{font-weight:600;font-size:.85em;color:var(--accent);margin-bottom:2px}
+        .ziwei-grid .ziwei-cell .cell-dizhi{font-size:.7em;color:var(--text-muted);margin-bottom:3px}
+        .ziwei-grid .ziwei-cell .cell-stars{font-weight:500;color:var(--gold);line-height:1.35}
+        .ziwei-grid .ziwei-cell .cell-minor{font-size:.8em;color:var(--text-muted);margin-top:2px}
+        .ziwei-grid .ziwei-cell .cell-tag{position:absolute;top:2px;right:4px;font-size:.6em;padding:1px 4px;border-radius:3px;font-weight:600}
+        .ziwei-grid .ziwei-cell .cell-tag.tag-ming{background:#d4a843;color:#fff}
+        .ziwei-grid .ziwei-cell .cell-tag.tag-shen{background:#7b68ee;color:#fff}
+        .ziwei-grid .ziwei-center{grid-row:2/4;grid-column:2/4;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px;background:var(--card-bg);border:1px dashed var(--border);border-radius:12px;font-size:.75em}
+        .ziwei-grid .ziwei-center .center-title{font-size:1.1em;font-weight:700;color:var(--accent);margin-bottom:6px}
+        .ziwei-grid .ziwei-center .center-row{color:var(--text-muted);margin-bottom:2px}
+        .ziwei-mutagen-line{text-align:center;font-size:.82em;color:var(--text-muted);margin-bottom:16px;padding:8px 12px;background:var(--card-bg);border-radius:8px;border:1px solid var(--border-light)}
+        .ziwei-mutagen-line .mutagen-lu{color:#2e7d32;font-weight:600}
+        .ziwei-mutagen-line .mutagen-quan{color:#6a1b9a;font-weight:600}
+        .ziwei-mutagen-line .mutagen-ke{color:#1565c0;font-weight:600}
+        .ziwei-mutagen-line .mutagen-ji{color:#c62828;font-weight:600}
+        .ziwei-drawer-body .ziwei-loading{text-align:center;padding:40px;color:var(--text-muted)}
+        @media(max-width:860px){.ziwei-drawer{width:100vw}.ziwei-grid .ziwei-cell{min-height:54px;padding:5px 3px;font-size:.68em}}
     </style>
     <!-- 完整样式异步加载 — 不阻塞首屏渲染 -->
     <link rel="preload" href="/static/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -183,7 +212,8 @@
             <div class="floating-bar">
                 <span class="bar-title">📊 命盘结果</span>
                 <span class="bar-status" id="result-status"></span>
-                <button id="btn-pdf" class="btn btn-accent btn-sm" disabled style="margin-left:auto">📄 PDF</button>
+                <button id="btn-ziwei-switch" class="btn btn-sm" disabled style="margin-left:auto" onclick="openZiweiDrawer()">🔮 切换紫微</button>
+                <button id="btn-pdf" class="btn btn-accent btn-sm" disabled>📄 PDF</button>
             </div>
             <div class="bento-grid">
                 <div class="bento-card span-2"><h3 class="card-title">📋 基本信息</h3><div class="info-grid" id="basic-info"></div></div>
@@ -284,6 +314,28 @@
         </div>
     </div>
 
+    <!-- 紫微斗数抽屉 -->
+    <div id="ziwei-drawer-overlay" class="ziwei-drawer-overlay hidden" onclick="closeZiweiDrawer()"></div>
+    <div id="ziwei-drawer" class="ziwei-drawer">
+        <div class="ziwei-drawer-header">
+            <h2>🔮 紫微斗数命盘</h2>
+            <button id="btn-ziwei-close" class="btn btn-clear btn-sm" onclick="closeZiweiDrawer()">✕</button>
+        </div>
+        <div class="ziwei-drawer-body" id="ziwei-drawer-body">
+            <div id="ziwei-loading" class="ziwei-loading hidden"><p>⏳ 排盘中...</p></div>
+            <div id="ziwei-chart-section" class="hidden">
+                <div id="ziwei-grid" class="ziwei-grid"></div>
+                <div id="ziwei-mutagen-line" class="ziwei-mutagen-line"></div>
+            </div>
+            <div id="ziwei-analysis-section" class="hidden">
+                <div id="ziwei-analysis-content" class="analysis-content"></div>
+            </div>
+        </div>
+        <div class="ziwei-drawer-footer" id="ziwei-drawer-footer">
+            <button id="btn-ziwei-analyze" class="btn btn-gold" style="flex:1">🧠 开始解读</button>
+        </div>
+    </div>
+
 <script>
 // ========== DOM 引用 ==========
 const $ = id => document.getElementById(id);
@@ -296,8 +348,17 @@ const elResultSection=$('result-section'),elAnalysisSection=$('analysis-section'
 const elAnalysisContent=$('analysis-content'),elAnalysisChat=$('analysis-chat');
 const elChatInput=$('chat-input'),elBtnChatSend=$('btn-chat-send'),elBtnAnalysisPdf=$('btn-analysis-pdf');
 const elPwOverlay=$('pw-overlay'),elPwInput=$('pw-input'),elPwError=$('pw-error'),elBtnPwConfirm=$('btn-pw-confirm'),elBtnPwCancel=$('btn-pw-cancel');
+// ---- 紫微斗数 ----
+const elZiweiDrawer=$('ziwei-drawer'),elZiweiOverlay=$('ziwei-drawer-overlay');
+const elZiweiDrawerBody=$('ziwei-drawer-body'),elZiweiGrid=$('ziwei-grid');
+const elZiweiMutagenLine=$('ziwei-mutagen-line'),elZiweiChartSection=$('ziwei-chart-section');
+const elZiweiAnalysisSection=$('ziwei-analysis-section'),elZiweiAnalysisContent=$('ziwei-analysis-content');
+const elZiweiLoading=$('ziwei-loading'),elBtnZiweiAnalyze=$('btn-ziwei-analyze');
+const elBtnZiweiSwitch=$('btn-ziwei-switch'),elZiweiDrawerFooter=$('ziwei-drawer-footer');
 
 let plateData=null, analysisText=null, analysisInProgress=false, conversationMessages=null, conversationId=null;
+// ---- 紫微斗数状态 ----
+let ziweiPlateData=null, ziweiAnalysisText=null, ziweiAnalysisInProgress=false;
 
 // ========== 操作栏三态切换 ==========
 const elSticky1=$('sticky-state-1'),elSticky2=$('sticky-state-2'),elSticky3=$('sticky-state-3');
@@ -487,7 +548,7 @@ function restoreHistory(id){
     elResultSection.classList.remove('hidden'); renderResult(e.plate);
     if(e.analysis){ elAnalysisSection.classList.remove('hidden'); elAnalysisContent.innerHTML=formatMarkdown(e.analysis); injectGlossary(elAnalysisContent); elAnalysisChat.classList.remove('hidden'); }
     else elAnalysisSection.classList.add('hidden');
-    elBtnAnalyze.disabled = false; elBtnPdf.disabled = false;
+    elBtnAnalyze.disabled = false; elBtnPdf.disabled = false; elBtnZiweiSwitch.disabled = false;
     $('app-main').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
@@ -750,7 +811,7 @@ elBtnPaipan.addEventListener('click', async () => {
         localStorage.removeItem('bazi_analysis'); localStorage.removeItem('bazi_plate');
         saveForm();
         renderResult(d); elResultSection.classList.remove('hidden');
-        elBtnPdf.disabled=false; elBtnAnalyze.disabled=false;
+        elBtnPdf.disabled=false; elBtnAnalyze.disabled=false; elBtnZiweiSwitch.disabled=false;
         elAnalysisSection.classList.add('hidden'); elAnalysisContent.innerHTML=''; elAnalysisChat.classList.add('hidden');
         addToHistory(d, null);
         showReviewStep(d);
@@ -1013,7 +1074,7 @@ async function doAnalyze(isRetry = false) {
         if (elResultSection.classList.contains('hidden')) {
             renderResult(plateData);
             elResultSection.classList.remove('hidden');
-            elBtnPdf.disabled = false;
+            elBtnPdf.disabled = false; elBtnZiweiSwitch.disabled = false;
         }
     }
 
@@ -1467,7 +1528,7 @@ document.addEventListener('visibilitychange', () => {
                 plateData = sd; analysisText = saved;
                 renderResult(plateData);
                 elResultSection.classList.remove('hidden');
-                elBtnPdf.disabled = false; elBtnAnalyze.disabled = false;
+                elBtnPdf.disabled = false; elBtnZiweiSwitch.disabled = false; elBtnAnalyze.disabled = false;
                 elAnalysisContent.innerHTML = formatMarkdown(analysisText);
                 injectGlossary(elAnalysisContent);
                 elAnalysisSection.classList.remove('hidden');
@@ -1491,7 +1552,7 @@ document.addEventListener('visibilitychange', () => {
         plateData = pending.plate;
         renderResult(plateData);
         elResultSection.classList.remove('hidden');
-        elBtnPdf.disabled = false; elBtnAnalyze.disabled = false;
+        elBtnPdf.disabled = false; elBtnZiweiSwitch.disabled = false; elBtnAnalyze.disabled = false;
         document.getElementById('charts-section').classList.remove('hidden');
         // 标记为已完成恢复，等用户回来后再触发分析
         if (pending.retries < 3) {
@@ -1519,7 +1580,7 @@ $('btn-clear').addEventListener('click', () => {
     plateData = null; analysisText = null; clearConversation();
     elResultSection.classList.add('hidden'); elAnalysisSection.classList.add('hidden');
     document.getElementById('charts-section').classList.add('hidden');
-    elBtnPdf.disabled = true; elBtnAnalyze.disabled = true; elBtnAnalysisPdf.disabled = true;
+    elBtnPdf.disabled = true; elBtnAnalyze.disabled = true; elBtnAnalysisPdf.disabled = true; elBtnZiweiSwitch.disabled = true;
     localStorage.removeItem('bazi_form'); localStorage.removeItem('bazi_analysis'); localStorage.removeItem('bazi_plate');
     clearPendingAnalysis();
     hideError(); autoFillNow();
@@ -1570,6 +1631,215 @@ function renderXuetang(){
     });
     $('xuetang-grid').innerHTML = html;
 }
+
+// ========== 紫微斗数抽屉 ==========
+function openZiweiDrawer() {
+    if (!plateData) { toast('请先排盘'); return; }
+    if (ziweiAnalysisInProgress) return;
+
+    // 复用主表单出生参数
+    const y = elYear.value, m = elMonth.value, d = elDay.value, h = elHour.value;
+    const min = elMinute.value || '0';
+    const gender = document.querySelector('input[name="gender"]:checked')?.value || '男';
+    const lng = elLongitude.value || '120';
+    const loc = elLocation.value || '';
+    const calendar = document.querySelector('input[name="calendar"]:checked')?.value || 'solar';
+    const isLunar = calendar === 'lunar';
+
+    if (!y || !m || !d || !h) { toast('请先填写完整出生信息'); return; }
+
+    elZiweiOverlay.classList.remove('hidden');
+    elZiweiDrawer.classList.add('open');
+    elZiweiChartSection.classList.add('hidden');
+    elZiweiAnalysisSection.classList.add('hidden');
+    elZiweiLoading.classList.remove('hidden');
+    elBtnZiweiAnalyze.disabled = true;
+    ziweiPlateData = null; ziweiAnalysisText = null;
+
+    fetch('/api/ziwei/paipan', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({year:parseInt(y),month:parseInt(m),day:parseInt(d),
+            hour:parseInt(h),minute:parseInt(min),gender,longitude:parseFloat(lng),
+            location:loc,is_lunar:isLunar})
+    }).then(r=>r.json()).then(data=>{
+        if (data.error) { toast('紫微排盘失败: '+data.error); elZiweiLoading.classList.add('hidden'); return; }
+        ziweiPlateData = data;
+        localStorage.setItem('ziwei_plate', JSON.stringify(data));
+        renderZiweiChart(data);
+        elZiweiLoading.classList.add('hidden');
+        elZiweiChartSection.classList.remove('hidden');
+        elBtnZiweiAnalyze.disabled = false;
+    }).catch(e=>{ toast('网络错误: '+e.message); elZiweiLoading.classList.add('hidden'); });
+}
+
+function closeZiweiDrawer() {
+    elZiweiDrawer.classList.remove('open');
+    setTimeout(()=>{ elZiweiOverlay.classList.add('hidden'); }, 350);
+}
+
+function renderZiweiChart(data) {
+    const palaces = data.palaces || [];
+    if (palaces.length !== 12) { elZiweiGrid.innerHTML = '<p style="color:red">宫位数不对</p>'; return; }
+
+    // 4x4 grid: 12 outer cells + center
+    let html = '';
+    for (let row = 1; row <= 4; row++) {
+        for (let col = 1; col <= 4; col++) {
+            // Center area
+            if (row >= 2 && row <= 3 && col >= 2 && col <= 3) {
+                if (row === 2 && col === 2) {
+                    html += `<div class="ziwei-center">
+                        <div class="center-title">紫微斗数</div>
+                        <div class="center-row">五行局: ${data.five_elements_class||'?'}</div>
+                        <div class="center-row">命宫: ${data.soul_palace||'?'} / 身宫: ${data.body_palace||'?'}</div>
+                    </div>`;
+                }
+                continue;
+            }
+            // Find palace at this grid position
+            const pal = palaces.find(p => p.grid_row === row && p.grid_col === col);
+            if (!pal) { html += '<div class="ziwei-cell empty-cell"></div>'; continue; }
+
+            const stars = pal.major_stars?.length ? pal.major_stars.join(' · ') : (pal.is_empty ? '空宫' : '');
+            const minor = pal.minor_stars?.length ? pal.minor_stars.slice(0,3).join(' ') : '';
+            let tags = '';
+            if (pal.tags?.includes('命宫')) tags += '<span class="cell-tag tag-ming">命</span>';
+            if (pal.tags?.includes('身宫')) tags += '<span class="cell-tag tag-shen">身</span>';
+
+            html += `<div class="ziwei-cell${pal.is_empty?' empty-cell':''}">
+                ${tags}
+                <div class="cell-name">${pal.name}</div>
+                <div class="cell-dizhi">${pal.dizhi||''}</div>
+                <div class="cell-stars">${stars||'—'}</div>
+                ${minor?`<div class="cell-minor">${minor}</div>`:''}
+            </div>`;
+        }
+    }
+    elZiweiGrid.innerHTML = html;
+
+    // 生年四化 line
+    const mutagens = data.year_mutagens || [];
+    if (mutagens.length) {
+        const cls = {'化禄':'mutagen-lu','化权':'mutagen-quan','化科':'mutagen-ke','化忌':'mutagen-ji'};
+        elZiweiMutagenLine.innerHTML = '生年四化: ' + mutagens.map(m =>
+            `<span class="${cls[m.mutagen]||''}">${m.star}${m.mutagen}</span>(${m.palace})`
+        ).join(' · ');
+    } else {
+        elZiweiMutagenLine.innerHTML = '';
+    }
+}
+
+async function doZiweiAnalyze() {
+    if (!ziweiPlateData || ziweiAnalysisInProgress) return;
+    ziweiAnalysisInProgress = true;
+    elBtnZiweiAnalyze.disabled = true;
+    elBtnZiweiAnalyze.textContent = '⏳ 分析中...';
+    elZiweiAnalysisContent.innerHTML = '<p style="text-align:center;color:var(--text-muted)">AI 正在解读你的紫微命盘...</p>';
+    elZiweiAnalysisSection.classList.remove('hidden');
+
+    const pw = sessionStorage.getItem('bazi_pw') || '';
+
+    try {
+        const r = await fetch('/api/ziwei/analyze', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({plate:ziweiPlateData, password:pw})
+        });
+        const d = await r.json();
+        if (d.need_password) {
+            const p = await promptPassword();
+            if (!p) { elBtnZiweiAnalyze.disabled=false; elBtnZiweiAnalyze.textContent='🧠 开始解读'; ziweiAnalysisInProgress=false; return; }
+            sessionStorage.setItem('bazi_pw', p);
+            return doZiweiAnalyze(); // retry
+        }
+        if (!d.success) {
+            elZiweiAnalysisContent.innerHTML = `<p style="color:red">分析失败: ${d.error||'未知错误'}</p>`;
+            ziweiAnalysisInProgress = false;
+            elBtnZiweiAnalyze.disabled = false;
+            elBtnZiweiAnalyze.textContent = '🔄 重试';
+            return;
+        }
+        ziweiAnalysisText = d.analysis;
+        localStorage.setItem('ziwei_analysis', d.analysis);
+        elZiweiAnalysisContent.innerHTML = formatMarkdown(d.analysis);
+        injectGlossaryZiwei(elZiweiAnalysisContent);
+        elZiweiDrawerFooter.classList.add('hidden');  // hide button after success
+    } catch(e) {
+        elZiweiAnalysisContent.innerHTML = `<p style="color:red">网络错误: ${e.message}</p>`;
+        ziweiAnalysisInProgress = false;
+        elBtnZiweiAnalyze.disabled = false;
+        elBtnZiweiAnalyze.textContent = '🔄 重试';
+    }
+    ziweiAnalysisInProgress = false;
+}
+
+// ---- 紫微斗数词条高亮 ----
+const ZIWEI_GLOSSARY = {
+    '命宫':'命盘的核心宫位，代表先天禀赋、性格底色、人生大方向',
+    '身宫':'后天发展重心，30岁后影响力逐渐超过命宫',
+    '三方四正':'本宫+对宫+左右三合宫，判断星曜力量的关键',
+    '四化':'化禄(机遇/财富流)、化权(掌控力/竞争)、化科(名声/贵人)、化忌(业力/课题)',
+    '空宫':'宫内无主星，借对宫星曜来参考解读。空宫不代表不好，反而是可塑性强的表现',
+    '大限':'每十年一换的运势周期，由本命盘各宫的大限干支决定起止年龄',
+    '紫微':'帝王星，主贵气、领导力。入命者有掌控欲和管理天赋',
+    '天机':'智谋星，主聪明、善变、策划。思维敏捷，适合脑力工作',
+    '太阳':'光明星，主热情、公益、名望。庙旺则光芒四射，落陷则心力不足',
+    '武曲':'财星，主果断、刚毅、理财。执行力强，适合金融/军警',
+    '天同':'福星，主温和、享受、人缘。性格温顺但要防缺乏进取心',
+    '廉贞':'囚星/次桃花，主执着、才艺、刚烈。重情义但易纠结',
+    '天府':'库星，主稳重、包容、管理。有组织力，是优秀的二把手',
+    '太阴':'富星/母星，主细腻、内敛、美感。情感丰富，适合文艺创作',
+    '贪狼':'桃花星/欲望星，主交际、才艺、贪念。多才多艺但要有制',
+    '巨门':'暗星，主口才、是非、研究。宜深耕专业或以口为业',
+    '天相':'印星，主服务、协调、忠诚。天生好帮手',
+    '天梁':'荫星，主正直、慈悲、长寿。有侠义心肠',
+    '七杀':'将星，主魄力、开拓、刚猛。适合创业/军警/外科',
+    '破军':'耗星，主变革、破坏、创新。天生折腾，不适合安稳工作',
+    '化禄':'四化之一，代表机遇、财富流入、顺利。所在宫位有先天好运',
+    '化权':'四化之一，代表掌控力、竞争、权威。所在宫位有主导能力',
+    '化科':'四化之一，代表名声、贵人、学识。所在宫位有口碑和贵人',
+    '化忌':'四化之一，代表业力、课题、执着。所在宫位是人生核心课题',
+};
+
+function injectGlossaryZiwei(container) {
+    if (!container) return;
+    const terms = Object.keys(ZIWEI_GLOSSARY).sort((a,b)=>b.length-a.length);
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+    const replacements = [];
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (node.parentElement?.closest?.('.glossary-term,.cell-stars,.cell-minor,.cell-name,.cell-dizhi')) continue;
+        let text = node.textContent;
+        let changed = false;
+        for (const term of terms) {
+            const idx = text.indexOf(term);
+            if (idx !== -1) {
+                const span = document.createElement('span');
+                span.className = 'glossary-term';
+                span.title = ZIWEI_GLOSSARY[term];
+                span.setAttribute('data-tip', ZIWEI_GLOSSARY[term]);
+                span.textContent = term;
+                replacements.push({node, idx, term, span});
+                changed = true;
+                break; // one replacement per node
+            }
+        }
+    }
+    for (const {node, idx, term, span} of replacements) {
+        const before = node.textContent.slice(0, idx);
+        const after = node.textContent.slice(idx + term.length);
+        const parent = node.parentNode;
+        const beforeNode = document.createTextNode(before);
+        const afterNode = document.createTextNode(after);
+        parent.insertBefore(beforeNode, node);
+        parent.insertBefore(span, beforeNode.nextSibling);
+        parent.insertBefore(afterNode, span.nextSibling);
+        parent.removeChild(node);
+    }
+}
+
+// ---- 紫微斗数初始化 ----
+elBtnZiweiAnalyze.addEventListener('click', doZiweiAnalyze);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeZiweiDrawer(); });
 
 // ========== 初始化 ==========
 loadForm(); autoFillNow(); renderHistory(); renderXuetang();

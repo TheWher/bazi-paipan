@@ -18,6 +18,7 @@ from flask import Flask, jsonify, render_template, request, send_file
 from bazi_calculator import paipan
 from generate_bazi_pdf import build_generic_pdf
 from city_coords import search_city
+from ziwei_calculator import ziwei_paipan, plate_to_dict as ziwei_plate_to_dict
 
 # 加载密码保护配置
 WEB_PASSWORD = ""
@@ -102,6 +103,19 @@ def _cache_get(key: str) -> dict | None:
         del _analysis_cache[key]
         return None
     return entry["result"]
+
+def _make_ziwei_cache_key(plate_dict: dict) -> str:
+    """从紫微命盘提取关键字段生成缓存键"""
+    palaces = plate_dict.get("palaces", [])
+    info = plate_dict.get("input", {})
+    key_parts = []
+    for p in sorted(palaces, key=lambda x: x.get("index", 0)):
+        key_parts.append(p.get("dizhi", ""))
+        key_parts.append("|".join(sorted(p.get("major_stars", []))))
+    key_parts.append(info.get("gender", ""))
+    raw = "||".join(key_parts)
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
 
 def _cache_set(key: str, result: dict):
     """写入缓存，超出上限时淘汰最旧条目"""
@@ -524,6 +538,108 @@ def api_paipan():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": f"排盘计算失败: {str(e)}"}), 500
+
+
+@app.route("/api/ziwei/paipan", methods=["POST"])
+def api_ziwei_paipan():
+    """紫微斗数排盘计算"""
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求数据格式错误"}), 400
+
+    required = ["year", "month", "day", "hour", "gender"]
+    for field in required:
+        if field not in data:
+            return jsonify({"error": f"缺少参数: {field}"}), 400
+
+    try:
+        year = int(data["year"])
+        month = int(data["month"])
+        day = int(data["day"])
+        hour = int(data["hour"])
+        minute = int(data.get("minute", 0))
+        gender = data["gender"]
+        is_lunar = data.get("is_lunar", False)
+
+        if gender not in ("男", "女"):
+            return jsonify({"error": "性别必须为 '男' 或 '女'"}), 400
+        if not (1 <= month <= 12):
+            return jsonify({"error": "月份范围 1-12"}), 400
+        if not (1 <= day <= 31):
+            return jsonify({"error": "日期范围 1-31"}), 400
+        if not (0 <= hour <= 23):
+            return jsonify({"error": "小时范围 0-23"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "参数格式错误"}), 400
+
+    try:
+        # 农历转公历
+        if is_lunar:
+            try:
+                from zhdate import ZhDate
+                lunar = ZhDate(year, month, day)
+                solar = lunar.to_datetime()
+                year, month, day = solar.year, solar.month, solar.day
+            except Exception:
+                pass  # 转不了就用原值（iztro-py 内部有 lunar 支持，这里先尝试）
+
+        plate_data = ziwei_paipan(year, month, day, hour, minute, gender,
+                                  is_lunar=False)  # 已转为公历
+        input_info = {
+            "birth_datetime": f"{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}",
+            "gender": gender,
+            "location": data.get("location", ""),
+            "longitude": float(data.get("longitude", 120)),
+        }
+        result = ziwei_plate_to_dict(plate_data, input_info)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": f"紫微排盘计算失败: {str(e)}"}), 500
+
+
+@app.route("/api/ziwei/analyze", methods=["POST"])
+def api_ziwei_analyze():
+    """紫微斗数 Agent 深度分析"""
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求数据格式错误"}), 400
+
+    ip = request.remote_addr or 'unknown'
+    pw_err = check_password(ip, data)
+    if pw_err:
+        return jsonify({"error": pw_err, "need_password": True}), 403
+
+    if "plate" not in data:
+        return jsonify({"error": "缺少参数: plate"}), 400
+
+    plate_dict = data["plate"]
+
+    # 缓存检查
+    cache_key = _make_ziwei_cache_key(plate_dict)
+    cached = _cache_get(cache_key)
+    if cached:
+        return jsonify({**cached, "cached": True})
+
+    if not check_rate_limit(ip, max_requests=3, window_minutes=60):
+        return jsonify({"error": "请求过于频繁，请稍后再试（每小时限 3 次）"}), 429
+
+    from analysis_service import analyze_ziwei
+    result = analyze_ziwei(plate_dict, timeout=120)
+
+    if result["success"]:
+        response_data = {
+            "success": True,
+            "analysis": result["analysis"],
+            "model": result.get("model", ""),
+            "usage": result.get("usage", {}),
+        }
+        if cache_key:
+            _cache_set(cache_key, response_data)
+        return jsonify(response_data)
+    else:
+        return jsonify({"success": False, "error": result["error"]}), 500
 
 
 @app.route("/api/pdf", methods=["POST"])

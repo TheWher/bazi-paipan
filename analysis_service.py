@@ -1153,6 +1153,137 @@ def continue_analysis(messages: list[dict], user_reply: str, timeout: int = 600)
 
 
 # ============================================================
+# 紫微斗数分析
+# ============================================================
+
+ZIWEI_AGENT_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    ".claude", "agents", "ziwei-master.md",
+)
+
+
+def _load_ziwei_system_prompt() -> str:
+    """加载紫微斗数 Agent 系统提示词，附加星曜知识库"""
+    if not os.path.exists(ZIWEI_AGENT_PATH):
+        return "你是一位拥有30年实战经验的紫微斗数命理师..."
+
+    with open(ZIWEI_AGENT_PATH, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # 去除 YAML frontmatter
+    if content.startswith("---"):
+        end = content.find("---", 3)
+        if end != -1:
+            content = content[end + 3:].strip()
+
+    # 追加星曜参考知识库
+    stars_kb = _load_json_kb("ziwei_stars.json")
+    if stars_kb:
+        content += "\n\n## 📚 星曜参考（权威知识库）\n\n"
+        content += json.dumps(stars_kb, ensure_ascii=False, indent=2)
+
+    # 追加四化参考知识库
+    hua_kb = _load_json_kb("ziwei_hua.json")
+    if hua_kb:
+        content += "\n\n## 📚 四化参考\n\n"
+        content += json.dumps(hua_kb, ensure_ascii=False, indent=2)
+
+    return content
+
+
+def _build_ziwei_user_message(plate_dict: dict) -> str:
+    """构造紫微斗数分析请求"""
+    p = plate_dict
+    info = p.get("input", {})
+    palaces = p.get("palaces", [])
+    year_mutagens = p.get("year_mutagens", [])
+
+    parts = []
+    parts.append("请根据以下紫微斗数命盘进行完整的命理分析。")
+    parts.append("")
+    parts.append("## 命盘概要")
+    parts.append("")
+    parts.append(f"- 公历出生：{info.get('birth_datetime', '未知')}")
+    parts.append(f"- 性别：{info.get('gender', '?')}")
+    parts.append(f"- 五行局：{p.get('five_elements_class', '?')}")
+    parts.append(f"- 命宫在：{p.get('soul_palace', '?')}宫")
+    parts.append(f"- 身宫在：{p.get('body_palace', '?')}宫")
+    parts.append("")
+
+    # 十二宫表
+    parts.append("## 十二宫分布")
+    parts.append("")
+    parts.append("| 宫位 | 干支 | 主星 | 辅星 | 四化 | 大限 | 标记 |")
+    parts.append("|------|------|------|------|------|------|------|")
+    for pal in palaces:
+        stars_str = '、'.join(pal['major_stars']) if pal['major_stars'] else '空宫'
+        minor_str = '、'.join(pal['minor_stars'][:3]) if pal['minor_stars'] else '—'
+        mut_str = '、'.join(f"{m['star']}{m['mutagen']}" for m in pal['mutagens']) if pal['mutagens'] else '—'
+        tags_str = '、'.join(pal['tags']) if pal['tags'] else ''
+        parts.append(
+            f"| {pal['name']} | {pal['dizhi']} | {stars_str} | {minor_str} | {mut_str} | {pal['decadal_range']} | {tags_str} |"
+        )
+    parts.append("")
+
+    # 生年四化
+    if year_mutagens:
+        parts.append("## 生年四化")
+        parts.append("")
+        for m in year_mutagens:
+            parts.append(f"- {m['star']} → {m['mutagen']}（{m['palace']}·{m['branch']}）")
+        parts.append("")
+
+    # 分析要求
+    parts.append("## 分析要求")
+    parts.append("")
+    parts.append("请输出 Markdown 格式，语气亲切如与朋友聊天。按以下结构解读：")
+    parts.append("")
+    parts.append("1. ## 🎯 命盘底色 — 命宫主星分析性格底层")
+    parts.append("2. ## 💼 事业格局 — 官禄宫 + 财帛宫分析")
+    parts.append("3. ## 💰 财运分析 — 财帛宫深度解读")
+    parts.append("4. ## ❤️ 感情因缘 — 夫妻宫分析")
+    parts.append("5. ## 🔮 当前大限 — 当前十年核心课题")
+    parts.append("6. ## 📅 近三年流年 — 关键节点提示")
+    parts.append("")
+    parts.append('**解读原则**：有主见有判断、用日常语言翻译术语、先讲优势再讲挑战、不说"你一定会"')
+
+    return "\n".join(parts)
+
+
+def analyze_ziwei(plate_dict: dict, timeout: int = 120) -> dict:
+    """紫微斗数命盘一次性解读（无验盘闭环）
+
+    Args:
+        plate_dict: /api/ziwei/paipan 的输出
+        timeout: API 超时秒数
+
+    Returns:
+        {"success": True, "analysis": "...", "model": "...", "usage": {...}}
+    """
+    if not API_CONFIG.get("api_key"):
+        return {"success": False, "error": "未配置 API Key"}
+
+    system_prompt = _load_ziwei_system_prompt()
+    user_message = _build_ziwei_user_message(plate_dict)
+    user_messages = [{"role": "user", "content": user_message}]
+
+    result = _call_api(
+        system_prompt, user_messages,
+        max_tokens=16384, temperature=0.5, timeout=timeout,
+    )
+
+    if not result["success"]:
+        return result
+
+    return {
+        "success": True,
+        "analysis": result["text"],
+        "model": result.get("model", API_CONFIG["model"]),
+        "usage": result.get("usage", {}),
+    }
+
+
+# ============================================================
 # 测试
 # ============================================================
 
