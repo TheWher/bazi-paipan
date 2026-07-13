@@ -1176,17 +1176,32 @@ def _load_ziwei_system_prompt() -> str:
         if end != -1:
             content = content[end + 3:].strip()
 
-    # 追加星曜参考知识库
+    # 追加星曜参考（精简表——14主星）
     stars_kb = _load_json_kb("ziwei_stars.json")
     if stars_kb:
-        content += "\n\n## 📚 星曜参考（权威知识库）\n\n"
-        content += json.dumps(stars_kb, ensure_ascii=False, indent=2)
+        main = stars_kb.get("main_stars", {})
+        if main:
+            lines = ["\n## 📚 十四主星速查\n", "| 星曜 | 五行·类型 | 正面特质 | 注意点 |", "|------|-----------|----------|--------|"]
+            for name, info in main.items():
+                lines.append(f"| {name} | {info.get('element','')}·{info.get('type','')} | {info.get('positive','')[:24]} | {info.get('negative','')[:24]} |")
+            # 吉煞星简述
+            aus = stars_kb.get("auspicious_stars", {})
+            mal = stars_kb.get("malefic_stars", {})
+            if aus or mal:
+                lines.append("\n**六吉**：" + "、".join(f"{k}({v.get('meaning','')})" for k, v in aus.items()))
+                lines.append("**六煞**：" + "、".join(f"{k}({v.get('meaning','')})" for k, v in mal.items()))
+            content += "\n".join(lines)
 
-    # 追加四化参考知识库
+    # 追加四化参考（精简表）
     hua_kb = _load_json_kb("ziwei_hua.json")
     if hua_kb:
-        content += "\n\n## 📚 四化参考\n\n"
-        content += json.dumps(hua_kb, ensure_ascii=False, indent=2)
+        tbl = hua_kb.get("table", {})
+        if tbl:
+            lines = ["\n## 📚 十干四化速查\n", "| 天干 | 化禄 | 化权 | 化科 | 化忌 |", "|------|------|------|------|------|"]
+            for gan in "甲乙丙丁戊己庚辛壬癸":
+                r = tbl.get(gan, {})
+                lines.append(f"| {gan} | {r.get('化祿','')} | {r.get('化權','')} | {r.get('化科','')} | {r.get('化忌','')} |")
+            content += "\n".join(lines)
 
     return content
 
