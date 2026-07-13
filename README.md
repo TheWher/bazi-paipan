@@ -1,12 +1,13 @@
 <div align="center">
 
-# 🏯 八字排盘 · AI 命理分析
+# 🏯 八字 & 紫微 · AI 命理分析
 
-**符号计算 + LLM 推理的混合 AI 架构**
+**符号计算 + LLM 推理的混合 AI 架构 · 双术数系统**
 
 [![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-3.1-black?logo=flask)](https://flask.palletsprojects.com/)
 [![DeepSeek](https://img.shields.io/badge/AI-DeepSeek%20v4--pro-purple)](https://deepseek.com)
+[![iztro-py](https://img.shields.io/badge/紫微-iztro--py-7c4dff)](https://pypi.org/project/iztro-py/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![Deploy](https://img.shields.io/badge/Deploy-PythonAnywhere-orange)](https://thewher.pythonanywhere.com)
 
@@ -43,9 +44,32 @@
 
 ### 📊 可视化 & 交互
 - 五行环图 / 十二长生轮盘 / 大运环形图
+- **🔮 紫微十二宫 Grid**（文墨天机风格）
 - 排盘确认步骤 + 三态粘性操作栏
 - 逐字段行内验证 + 古籍引用 tooltip
 - 浏览器打印 PDF 报告
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🔮 紫微斗数（2026-07 新增）
+- iztro-py 纯 Python 排盘引擎
+- 文墨天机风格十二宫 Grid（本命+大限+流年三层叠盘）
+- 25种格局自动判读 + 10种流曜实时计算
+- 流年聚焦 LLM 解读（本命+大限+流年三层 prompt）
+- 星曜点击详情弹窗 + 术语高亮
+
+</td>
+<td width="50%">
+
+### 🗂️ 双系统架构
+- Landing 页双按钮分流（八字 / 紫微）
+- 独立页面 `/app`（八字）`/ziwei`（紫微）
+- 共享表单输入 + 各自独立分析管道
+- 7+2 JSON 知识库（八字 7 个 + 紫微 2 个）
+- 24 条八字测试 + 全端点验证
 
 </td>
 </tr>
@@ -191,6 +215,10 @@ sequenceDiagram
 | `/api/verify` | POST | 验盘反馈保存 |
 | `/api/pdf` | POST | PDF 报告 |
 | `/api/feedback/list` | GET | 反馈日志列表 |
+| `/api/ziwei/paipan` | POST | 🔮 紫微斗数排盘 |
+| `/api/ziwei/analyze` | POST | 🔮 紫微全盘 AI 解读（32K token） |
+| `/api/ziwei/analyze/yearly` | POST | 🔮 紫微流年聚焦解读（三层叠盘） |
+| `/api/ziwei/horoscope` | POST | 🔮 紫微流年盘 + 流曜计算 |
 
 ---
 
@@ -198,9 +226,10 @@ sequenceDiagram
 
 | 层 | 技术 |
 |:---:|---|
-| **后端** | `Flask` `fpdf2` `requests` `zhdate` |
+| **后端** | `Flask` `fpdf2` `requests` `zhdate` `iztro-py` |
 | **前端** | 原生 JS · 零框架 · 桌面分栏 · 移动端自适应 |
-| **AI** | `DeepSeek v4-pro[1m]` · Anthropic 兼容端点 · 52KB 系统提示词 |
+| **AI** | `DeepSeek v4-pro[1m]` · Anthropic 兼容端点 · 八字+紫微双 Agent |
+| **排盘** | sxtwl C++ (八字) · Meeus 回退 · iztro-py (紫微) |
 | **部署** | PythonAnywhere · Render 备用 |
 
 ---
