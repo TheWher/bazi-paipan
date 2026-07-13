@@ -111,7 +111,9 @@ def _make_ziwei_cache_key(plate_dict: dict) -> str:
     key_parts = []
     for p in sorted(palaces, key=lambda x: x.get("index", 0)):
         key_parts.append(p.get("dizhi", ""))
-        key_parts.append("|".join(sorted(p.get("major_stars", []))))
+        stars = p.get("major_stars", [])
+        star_names = sorted(s['name'] if isinstance(s, dict) else s for s in stars)
+        key_parts.append("|".join(star_names))
     key_parts.append(info.get("gender", ""))
     raw = "||".join(key_parts)
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
