@@ -1269,7 +1269,7 @@ def analyze_ziwei(plate_dict: dict, timeout: int = 120) -> dict:
 
     result = _call_api(
         system_prompt, user_messages,
-        max_tokens=16384, temperature=0.5, timeout=timeout,
+        max_tokens=24576, temperature=0.5, timeout=timeout,
     )
 
     if not result["success"]:

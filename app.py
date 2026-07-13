@@ -771,7 +771,7 @@ def api_ziwei_analyze():
 
     try:
         from analysis_service import analyze_ziwei
-        result = analyze_ziwei(plate_dict, timeout=120)
+        result = analyze_ziwei(plate_dict, timeout=360)
     except Exception as e:
         return jsonify({"success": False, "error": f"分析异常: {str(e)}"}), 500
 
