@@ -1094,6 +1094,45 @@ def api_feedback_list():
 
 
 # ============================================================
+# 知识库查询（glossary + references）
+# ============================================================
+
+@app.route("/api/glossary/lookup", methods=["GET"])
+def api_glossary_lookup():
+    """服务端术语查询。GET /api/glossary/lookup?term=日主"""
+    import json as _json
+    term = request.args.get("term", "").strip()
+    glossary_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "knowledge_base", "glossary.json")
+    try:
+        with open(glossary_path, "r", encoding="utf-8") as f:
+            data = _json.load(f)
+    except Exception:
+        return {"error": "glossary not found"}, 500
+
+    terms = data.get("terms", {})
+    if term == "all":
+        return {"terms": [{"term": k, "definition": v["definition"], "category": v.get("category", "")} for k, v in terms.items()]}
+    if term in terms:
+        return {"term": term, "definition": terms[term]["definition"], "category": terms[term].get("category", "")}
+    # 模糊匹配
+    for k, v in terms.items():
+        if term in k or term in v.get("definition", ""):
+            return {"term": k, "definition": v["definition"], "category": v.get("category", "")}
+    return {"error": "term not found"}, 404
+
+
+@app.route("/api/glossary/references", methods=["GET"])
+def api_glossary_references():
+    """返回字段级古籍引用，前端 tooltip 使用。"""
+    import json as _json
+    ref_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "knowledge_base", "classical_references.json")
+    try:
+        with open(ref_path, "r", encoding="utf-8") as f:
+            return _json.load(f)
+    except Exception:
+        return {"references": []}
+
+# ============================================================
 # 启动
 # ============================================================
 

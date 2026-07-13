@@ -141,11 +141,23 @@
                     <button id="btn-add-event" class="btn btn-secondary btn-sm">+ 添加事件</button>
                 </div>
             </div>
-            <!-- 粘性操作栏 -->
-            <div class="sticky-actions">
-                <button id="btn-paipan" class="btn btn-primary">⚡ 排盘</button>
-                <button id="btn-analyze" class="btn btn-gold" disabled>🧠 深度分析</button>
-                <button id="btn-clear" class="btn btn-clear btn-sm">🗑️</button>
+            <!-- 粘性操作栏（三态） -->
+            <div class="sticky-actions" id="sticky-actions">
+                <div id="sticky-state-1" class="sticky-state">
+                    <button id="btn-paipan" class="btn btn-primary">⚡ 排盘</button>
+                    <button id="btn-analyze" class="btn btn-gold" disabled>🧠 深度分析</button>
+                    <button id="btn-clear" class="btn btn-clear btn-sm">🗑️</button>
+                </div>
+                <div id="sticky-state-2" class="sticky-state hidden">
+                    <span class="step-badge">确认</span>
+                    <button id="btn-review-confirm" class="btn btn-gold">✅ 确认命盘，开始分析</button>
+                    <button id="btn-review-back" class="btn btn-secondary btn-sm">↩ 修改</button>
+                </div>
+                <div id="sticky-state-3" class="sticky-state hidden">
+                    <span class="analyzing-dot"></span>
+                    <span class="analyzing-label">Agent 分析中...</span>
+                    <button id="btn-cancel-analysis" class="btn btn-clear btn-sm">取消</button>
+                </div>
             </div>
         </section>
     </aside>
@@ -178,6 +190,22 @@
                 <div class="bento-card span-2"><h3 class="card-title">🔮 神煞速览</h3><div id="shensha-info" class="info-grid"></div></div>
                 <div class="bento-card span-4"><h3 class="card-title">🏛️ 四柱命盘</h3><div class="table-scroll"><table class="bazi-table" id="pillars-table"><thead><tr><th></th><th>年柱</th><th>月柱</th><th>日柱</th><th>时柱</th></tr></thead><tbody><tr id="row-ganzhi"></tr><tr id="row-tiangan"></tr><tr id="row-dizhi"></tr><tr id="row-shishen"></tr><tr id="row-nayin"></tr><tr id="row-changsheng"></tr><tr id="row-canggan"></tr></tbody></table></div></div>
                 <div class="bento-card span-4"><h3 class="card-title">🔄 起运与大运</h3><div id="qiyun-info" class="info-grid"></div><div class="table-scroll"><table class="bazi-table" id="dayun-table"><thead><tr><th>步数</th><th>干支</th><th>年龄</th><th>年份</th></tr></thead><tbody id="dayun-tbody"></tbody></table></div></div>
+            </div>
+        </section>
+
+        <!-- 确认排盘步骤（排盘成功后、分析前显示） -->
+        <section id="review-section" class="result-section hidden">
+            <div class="floating-bar">
+                <span class="bar-title">📋 确认排盘</span>
+                <span class="bar-status">请逐项确认命盘信息无误后再进行分析</span>
+            </div>
+            <div class="bento-card span-4 review-card">
+                <div class="review-sizhu" id="review-sizhu"></div>
+                <div class="review-grid" id="review-grid"></div>
+                <div class="review-actions">
+                    <button id="btn-review-confirm-2" class="btn btn-gold btn-lg">✅ 确认无误，开始深度分析</button>
+                    <button id="btn-review-back-2" class="btn btn-secondary">↩ 返回修改</button>
+                </div>
             </div>
         </section>
 
@@ -270,6 +298,35 @@ const elChatInput=$('chat-input'),elBtnChatSend=$('btn-chat-send'),elBtnAnalysis
 const elPwOverlay=$('pw-overlay'),elPwInput=$('pw-input'),elPwError=$('pw-error'),elBtnPwConfirm=$('btn-pw-confirm'),elBtnPwCancel=$('btn-pw-cancel');
 
 let plateData=null, analysisText=null, analysisInProgress=false, conversationMessages=null, conversationId=null;
+
+// ========== 操作栏三态切换 ==========
+const elSticky1=$('sticky-state-1'),elSticky2=$('sticky-state-2'),elSticky3=$('sticky-state-3');
+const elReviewSection=$('review-section');
+function showReviewStep(plate) {
+    elSticky1.classList.add('hidden'); elSticky2.classList.remove('hidden'); elSticky3.classList.add('hidden');
+    // 填充确认卡片
+    const sizhu = plate.pillars || {};
+    const gz = [sizhu.year?.gz||'?', sizhu.month?.gz||'?', sizhu.day?.gz||'?', sizhu.hour?.gz||'?'].join(' ');
+    $('review-sizhu').textContent = gz;
+    const input = plate.input || {};
+    const qy = plate.qiyun || {};
+    let h = `<div class="review-item"><span class="review-label">日主</span><span class="review-value">${plate.ri_zhu||'?'}</span></div>`;
+    h += `<div class="review-item"><span class="review-label">起运</span><span class="review-value">${qy.age||'?'}岁（${qy.direction||'?'}行）</span></div>`;
+    h += `<div class="review-item"><span class="review-label">出生日期</span><span class="review-value">${input.birth_datetime||'?'}</span></div>`;
+    h += `<div class="review-item"><span class="review-label">地点</span><span class="review-value">${input.location||'?'}</span></div>`;
+    h += `<div class="review-item"><span class="review-label">性别</span><span class="review-value">${input.gender||'?'}</span></div>`;
+    h += `<div class="review-item"><span class="review-warn">⚠️ 时辰不准全盘皆错——请确认出生时间</span></div>`;
+    $('review-grid').innerHTML = h;
+    elReviewSection.classList.remove('hidden');
+    elReviewSection.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function showAnalyzingStep() {
+    elSticky1.classList.add('hidden'); elSticky2.classList.add('hidden'); elSticky3.classList.remove('hidden');
+    elReviewSection.classList.add('hidden');
+}
+function showDefaultStep() {
+    elSticky1.classList.remove('hidden'); elSticky2.classList.add('hidden'); elSticky3.classList.add('hidden');
+}
 const CONV_KEY='bazi_conversation', CONV_ID_KEY='bazi_conversation_id';
 function saveConversation(){ if(conversationMessages){ try { localStorage.setItem(CONV_KEY, JSON.stringify(conversationMessages)); }catch(e){} } if(conversationId){ try { localStorage.setItem(CONV_ID_KEY, conversationId); }catch(e){} } }
 function loadConversation(){ try { const m=JSON.parse(localStorage.getItem(CONV_KEY)); if(m&&Array.isArray(m)){ conversationMessages=m; conversationId=localStorage.getItem(CONV_ID_KEY)||null; return true; } }catch(e){} return false; }
@@ -586,6 +643,56 @@ function validateInput() {
     return null;
 }
 
+// ========== 逐字段行内验证 ==========
+function createFieldError(group) {
+    let el = group.querySelector('.field-error-msg');
+    if (!el) { el = document.createElement('span'); el.className = 'field-error-msg'; group.appendChild(el); }
+    return el;
+}
+function validateField(fieldId) {
+    const el = document.getElementById(fieldId); if (!el) return true;
+    const group = el.closest('.form-group'); if (!group) return true;
+    const errEl = createFieldError(group);
+    const val = el.value.toString().trim(); let err = null;
+    const y = parseInt(document.getElementById('year').value) || 0;
+    const m = parseInt(document.getElementById('month').value) || 0;
+
+    switch (fieldId) {
+        case 'year': { const n = parseInt(val); if (!val) err = '请输入出生年份'; else if (isNaN(n) || n < 1900 || n > 2100) err = '年份范围 1900-2100'; break; }
+        case 'month': { const n = parseInt(val); if (!val) err = '请输入月份'; else if (isNaN(n) || n < 1 || n > 12) err = '月份范围 1-12'; break; }
+        case 'day': { const n = parseInt(val); if (!val) err = '请输入日期'; else if (y && m) { const dim = new Date(y, m, 0).getDate(); if (n < 1 || n > dim) err = `${y}年${m}月只有${dim}天`; } break; }
+        case 'hour': { const n = parseInt(val); if (isNaN(n)) err = '请输入小时'; else if (n < 0 || n > 23) err = '小时范围 0-23'; break; }
+        case 'minute': { const n = parseInt(val) || 0; if (n < 0 || n > 59) err = '分钟范围 0-59'; break; }
+        case 'location': if (!val) err = '请输入出生地点'; break;
+    }
+    if (err) { group.classList.add('error'); errEl.textContent = err; return false; }
+    else { group.classList.remove('error'); errEl.textContent = ''; return true; }
+}
+['year','month','day','hour','minute','location'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('blur', () => validateField(id));
+});
+
+// ========== 古籍引用 Tooltip 加载 ==========
+async function loadClassicalRefs() {
+    try {
+        const r = await fetch('/api/glossary/references');
+        const d = await r.json();
+        const refs = d.references || [];
+        document.querySelectorAll('label').forEach(label => {
+            const text = label.textContent.trim();
+            const match = refs.find(ref => text.includes(ref.field) || ref.field.includes(text));
+            if (match) {
+                const tip = document.createElement('span');
+                tip.className = 'form-tooltip';
+                tip.innerHTML = `📜<span class="tooltip-text">「${match.quote}」<span class="tooltip-source">——《${match.source}》</span><br>${match.note||''}</span>`;
+                label.appendChild(tip);
+            }
+        });
+    } catch(e) { /* 渐进增强，加载失败不影响表单 */ }
+}
+document.addEventListener('DOMContentLoaded', loadClassicalRefs);
+
 // ========== 真太阳时校正（客户端） ==========
 function getSolarAdjustedTime(hour, minute, lng) {
     // 北京时间基准经度 120°E，每差 1° 校正 4 分钟
@@ -646,8 +753,8 @@ elBtnPaipan.addEventListener('click', async () => {
         elBtnPdf.disabled=false; elBtnAnalyze.disabled=false;
         elAnalysisSection.classList.add('hidden'); elAnalysisContent.innerHTML=''; elAnalysisChat.classList.add('hidden');
         addToHistory(d, null);
+        showReviewStep(d);
         elResultSection.scrollIntoView({behavior:'smooth'});
-        $('app-main').scrollIntoView({behavior:'smooth',block:'start'});
     } catch(e) { showError('网络错误或服务未启动'); }
     finally { hideLoading(); elBtnPaipan.disabled=false; }
 });
@@ -931,13 +1038,13 @@ async function doAnalyze(isRetry = false) {
     const pw = await promptPassword(isRetry ? '重试需要重新输入密码' : '');
     if (pw === null) {
         elBtnAnalyze.disabled = false;
-        analysisInProgress = false;
+        analysisInProgress = false; showDefaultStep();
         return;
     }
 
     showLoading(isRetry ? '正在重新连接 Agent...' : (getValidEvents().length > 0 ? '正在验证时辰...' : '正在验盘——反推过往事件验证时辰（约需 30 秒）...'));
     if (!isRetry) toast(getValidEvents().length > 0 ? '验证已开始\nAgent 正在核查你提供的事件与命盘是否吻合' : '验盘分析已开始\nAgent 正在反推过往事件验证时辰（约需 30 秒）', 'info');
-    showSkeleton();  // 骨架屏占位
+    showSkeleton(); showAnalyzingStep();
     analysisInProgress = true;
     _analysisStartTime = Date.now();
     elBtnAnalyze.disabled = true;
@@ -1017,7 +1124,7 @@ async function doAnalyze(isRetry = false) {
         if (e.name === 'AbortError') {
             hideLoading();
             elBtnAnalyze.disabled = false;
-            analysisInProgress = false;
+            analysisInProgress = false; showDefaultStep();
             _analysisAbortController = null;
             // 自动标记重试
             const p = loadPendingAnalysis();
@@ -1037,7 +1144,7 @@ async function doAnalyze(isRetry = false) {
         if (e.name === 'TypeError' || e.message.includes('NetworkError') || e.message.includes('Failed to fetch')) {
             hideLoading();
             elBtnAnalyze.disabled = false;
-            analysisInProgress = false;
+            analysisInProgress = false; showDefaultStep();
             _analysisAbortController = null;
             const p = loadPendingAnalysis();
             if (p && p.retries < 3) {
@@ -1058,11 +1165,23 @@ async function doAnalyze(isRetry = false) {
         hideLoading();
         hideSkeleton();
         elBtnAnalyze.disabled = false;
-        analysisInProgress = false;
+        analysisInProgress = false; showDefaultStep();
         _analysisAbortController = null;
     }
 }
 elBtnAnalyze.addEventListener('click', () => doAnalyze(false));
+// 确认排盘步骤：两个"确认"按钮都触发分析
+$('btn-review-confirm')?.addEventListener('click', () => { showAnalyzingStep(); doAnalyze(false); });
+$('btn-review-confirm-2')?.addEventListener('click', () => { showAnalyzingStep(); doAnalyze(false); });
+// 返回修改：隐藏确认步骤，回到表单
+$('btn-review-back')?.addEventListener('click', () => { elReviewSection.classList.add('hidden'); showDefaultStep(); });
+$('btn-review-back-2')?.addEventListener('click', () => { elReviewSection.classList.add('hidden'); showDefaultStep(); });
+// 取消分析
+$('btn-cancel-analysis')?.addEventListener('click', () => {
+    if (analysisAbort) analysisAbort.abort();
+    analysisInProgress = false; showDefaultStep(); hideLoading();
+    elBtnAnalyze.disabled = false;
+});
 
 // ========== 验盘反馈 ==========
 
@@ -1327,7 +1446,7 @@ document.addEventListener('visibilitychange', () => {
             if (p && p.retries < 3) {
                 p.retries++;
                 localStorage.setItem('bazi_analysis_pending', JSON.stringify(p));
-                analysisInProgress = false;
+                analysisInProgress = false; showDefaultStep();
                 elBtnAnalyze.disabled = false;
                 hideLoading();
                 showLoading('检测到分析超时，即将自动重试...');

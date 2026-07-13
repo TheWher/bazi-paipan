@@ -14,9 +14,27 @@ import requests
 
 from bazi_calculator import get_shishen, CANG_GAN
 
-# 干支→五行映射
+# 干支→五行映射（模块级缓存，也存在于 knowledge_base/signal_rules.json）
 _WX_GAN = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'}
 _WX_ZHI = {'子':'水','丑':'土','寅':'木','卯':'木','辰':'土','巳':'火','午':'火','未':'土','申':'金','酉':'金','戌':'土','亥':'水'}
+
+# JSON 知识库缓存
+_kb_cache: dict[str, dict] = {}
+_KB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'knowledge_base')
+
+
+def _load_json_kb(filename: str) -> dict:
+    """加载 knowledge_base/*.json 并缓存。返回 dict，失败返回 {}。"""
+    if filename in _kb_cache:
+        return _kb_cache[filename]
+    path = os.path.join(_KB_DIR, filename)
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        _kb_cache[filename] = data
+        return data
+    except Exception:
+        return {}
 
 # ============================================================
 # 配置
@@ -149,25 +167,22 @@ def _load_system_prompt() -> str:
 def _evaluate_liunian_signal(liunian_ganzhi, ri_ganzhi, yue_zhi, nian_zhi, dayun, year):
     """
     评估流年信号等级，返回 (等级, 说明)。
-    规则与 Agent 定义六级表一致。
+    数据源: knowledge_base/signal_rules.json（单点维护，不再内联）。
     """
     ri_gan = ri_ganzhi[0]
     ri_zhi = ri_ganzhi[1]
     ln_gan = liunian_ganzhi[0]
     ln_zhi = liunian_ganzhi[1]
 
-    # 五行相克表
-    wuxing = {'甲': '木', '乙': '木', '丙': '火', '丁': '火', '戊': '土',
-              '己': '土', '庚': '金', '辛': '金', '壬': '水', '癸': '水'}
-    ke_chain = {'木': '土', '土': '水', '水': '火', '火': '金', '金': '木'}
+    rules = _load_json_kb("signal_rules.json")
+    wuxing = rules.get("天干五行", _WX_GAN)
+    ke_chain = rules.get("五行相克", {})
+    chong_list = rules.get("六冲pairs", [])
+    chong_pairs = set((a, b) for a, b in chong_list) | set((b, a) for a, b in chong_list)
 
-    # 地支六冲
-    chong_pairs = {('子', '午'), ('丑', '未'), ('寅', '申'), ('卯', '酉'),
-                   ('辰', '戌'), ('巳', '亥')}
-
-    # S级：天克地冲（流年与日柱同时干克+支冲）
+    # S级：天克地冲
     gan_ke = ke_chain.get(wuxing.get(ln_gan, ''), '') == wuxing.get(ri_gan, '')
-    zhi_chong = (ln_zhi, ri_zhi) in chong_pairs or (ri_zhi, ln_zhi) in chong_pairs
+    zhi_chong = (ln_zhi, ri_zhi) in chong_pairs
     if gan_ke and zhi_chong:
         return ('S', f'天克地冲日柱（{liunian_ganzhi} vs {ri_ganzhi}）')
 
@@ -177,27 +192,27 @@ def _evaluate_liunian_signal(liunian_ganzhi, ri_ganzhi, yue_zhi, nian_zhi, dayun
 
     # B级：六冲日/月/年支
     for label, target_zhi in [('日支', ri_zhi), ('月支', yue_zhi), ('年支', nian_zhi)]:
-        if (ln_zhi, target_zhi) in chong_pairs or (target_zhi, ln_zhi) in chong_pairs:
+        if (ln_zhi, target_zhi) in chong_pairs:
             return ('B', f'冲{label}（{ln_zhi}冲{target_zhi}）')
 
-    # C级：三合/六合日支/月支
-    sanhe_trios = [('申', '子', '辰'), ('亥', '卯', '未'), ('寅', '午', '戌'), ('巳', '酉', '丑')]
-    liuhe = {('子', '丑'), ('寅', '亥'), ('卯', '戌'), ('辰', '酉'), ('巳', '申'), ('午', '未')}
+    # C级：三合/六合
+    sanhe_trios = [tuple(t) for t in rules.get("三合trios", [])]
+    liuhe_list = rules.get("六合pairs", [])
+    liuhe = set((a, b) for a, b in liuhe_list) | set((b, a) for a, b in liuhe_list)
     for label, target in [('日支', ri_zhi), ('月支', yue_zhi)]:
         for trio in sanhe_trios:
             if ln_zhi in trio and target in trio and ln_zhi != target:
                 return ('C', f'三合{label}（{ln_zhi}入{trio}局）')
-        if (ln_zhi, target) in liuhe or (target, ln_zhi) in liuhe:
+        if (ln_zhi, target) in liuhe:
             return ('C', f'六合{label}（{ln_zhi}合{target}）')
 
     # D级：驿马/大运重现
-    yima_map = {'申': '寅', '子': '寅', '辰': '寅', '寅': '申', '午': '申', '戌': '申',
-                '巳': '亥', '酉': '亥', '丑': '亥', '亥': '巳', '卯': '巳', '未': '巳'}
+    yima_map = rules.get("驿马map", {})
     if yima_map.get(ri_zhi) == ln_zhi:
         for d in dayun:
             if d['start_year'] <= year <= d['start_year'] + 9:
                 dz_zhi = d['zhi']
-                if (ln_zhi, dz_zhi) in chong_pairs or (dz_zhi, ln_zhi) in chong_pairs:
+                if (ln_zhi, dz_zhi) in chong_pairs:
                     return ('D', '驿马到位（流年冲大运驿马）')
         return ('D', '驿马到位')
 
@@ -206,8 +221,8 @@ def _evaluate_liunian_signal(liunian_ganzhi, ri_ganzhi, yue_zhi, nian_zhi, dayun
             return ('D', '大运干支重现')
 
     # E级：墓库开闭
-    muku = {'辰', '戌', '丑', '未'}
-    if ln_zhi in muku and (ln_zhi == ri_zhi or (ln_zhi, ri_zhi) in chong_pairs or (ri_zhi, ln_zhi) in chong_pairs):
+    muku = set(rules.get("墓库", []))
+    if ln_zhi in muku and (ln_zhi == ri_zhi or (ln_zhi, ri_zhi) in chong_pairs):
         return ('E', '墓库引动')
 
     return (None, None)
@@ -240,22 +255,25 @@ def compute_spread(plate_dict):
     return spread, label, counts
 
 
-def _get_yuanju_shishen_set(plate_dict):
-    """原局已出现的十神集合（天干 + 地支藏干本气/中气，ratio ≥ 0.3）"""
+def _get_yuanju_shishen_set(plate_dict, strong_only=False):
+    """原局已出现的十神集合（天干 + 地支藏干）。
+
+    strong_only=True: 仅 count 本气（ratio ≥ 0.6）。
+    strong_only=False（默认）: count 本气+中气（ratio ≥ 0.3）。
+    """
+    threshold = 0.6 if strong_only else 0.3
     pillars = plate_dict.get('pillars', {})
     ri_gan = pillars.get('day', {}).get('gan', '')
     shishen_set = set()
     for p in ['year', 'month', 'day', 'hour']:
         d = pillars.get(p, {})
-        # 天干
         gan = d.get('gan', '')
         if gan and gan != ri_gan:
             shishen_set.add(get_shishen(ri_gan, gan))
-        # 藏干（本气 ratio≥0.6，中气 0.3-0.6，余气 <0.3 忽略）
         for cg in d.get('canggan', []):
             g = cg.get('gan', '')
             r = cg.get('ratio', 0)
-            if g and r >= 0.3 and g != ri_gan:
+            if g and r >= threshold and g != ri_gan:
                 shishen_set.add(get_shishen(ri_gan, g))
     return shishen_set
 
@@ -270,10 +288,90 @@ def _get_liunian_shishen_info(ri_gan, ganzhi):
     return gan_ss, zhi_entries
 
 
+def _get_tiaohou(ri_gan, yue_zhi):
+    """查询调候用神表: (日干, 月支) → [第一用神, 第二用神, 第三用神]。
+
+    数据源: knowledge_base/tiaohou.json（穷通宝鉴 120条）
+    """
+    table = _load_json_kb("tiaohou.json").get("table", {})
+    row = table.get(ri_gan, {})
+    return row.get(yue_zhi, [None, None, None])
+
+
+def _map_shishen_to_domain(shishen, age):
+    """十神+年龄 → 人生领域映射（数据源: knowledge_base/shishen_domains.json）"""
+    domains = _load_json_kb("shishen_domains.json").get("mappings", {})
+    if not domains:
+        return shishen  # fallback: JSON 加载失败时返回原值
+
+    if age < 15:
+        bracket = domains.get("0-14", {})
+    elif age < 25:
+        bracket = domains.get("15-24", {})
+    elif age < 45:
+        bracket = domains.get("25-44", {})
+    else:
+        bracket = domains.get("45+", {})
+    return bracket.get(shishen, shishen)
+
+
+def _score_balanced_candidates(raw_candidates, spread):
+    """为均衡命局的🆕首现年份打分排序，返回 top-N 候选。
+
+    raw_candidates: list of {year, age, ganzhi, new_shishen, dayun_change, signal_level}
+    """
+    scored = []
+    for c in raw_candidates:
+        score = 0
+        reasons = []
+
+        # 新十神本身 = 基础分
+        n = len(c['new_shishen'])
+        score += n * 2
+        if n >= 2:
+            reasons.append(f'{n}个十神同时首现')
+
+        # 年龄阶段
+        age = c['age']
+        if 20 <= age <= 50:
+            score += 3
+            reasons.append('人生活跃期')
+        elif 15 <= age < 20:
+            score += 2
+            reasons.append('青年关键期')
+        elif age < 15:
+            score += 0  # 童年事件验证价值低
+        else:
+            score += 1
+
+        # 十神类型加权
+        high_signal = {'正官', '七杀', '正财', '偏财'}
+        for ss in c['new_shishen']:
+            if ss in high_signal:
+                score += 2
+                reasons.append(f'{ss}高价值')
+                break
+
+        # 大运切换叠加
+        if c.get('dayun_change'):
+            score += 1
+            reasons.append('大运首年')
+
+        # 冲合信号叠加（辅助，非主因）
+        if c.get('signal_level') in ('S', 'A'):
+            score += 1
+            reasons.append('叠冲合信号')
+
+        scored.append({**c, 'score': score, 'reasons': reasons})
+
+    scored.sort(key=lambda x: -x['score'])
+    return scored
+
+
 def _build_year_lookup_table(plate_dict, current_year, spread=99, balanced=False):
     """生成流年干支-西历对照表。
 
-    均衡命局（spread ≤ 2）：额外注入十神列 + 首现标记。
+    均衡命局（spread ≤ 2）：十神到位模式 — 去信号列，加🆕首现+领域映射，尾部附候选年。
     极端命局（spread ≥ 3）：仅冲合信号表（当前方案）。
     """
     p = plate_dict
@@ -292,8 +390,10 @@ def _build_year_lookup_table(plate_dict, current_year, spread=99, balanced=False
 
     # 均衡模式：提取原局十神集合
     yuanju_ss = _get_yuanju_shishen_set(plate_dict) if balanced else set()
-    # 跟踪已出现的十神（随年份更新）
     appeared_ss = set(yuanju_ss)
+
+    # 均衡模式：收集🆕首现年份用于后评分
+    balanced_candidates = []
 
     lines = []
     lines.append('## 流年干支-西历对照表')
@@ -302,28 +402,30 @@ def _build_year_lookup_table(plate_dict, current_year, spread=99, balanced=False
     lines.append(f'日柱：{ri_ganzhi}')
 
     if balanced:
+        missing = set(['正官','七杀','正财','偏财','正印','偏印','食神','伤官','比肩','劫财']) - yuanju_ss
         lines.append('')
-        lines.append(f'**命局类型：{compute_spread(plate_dict)[1]}（spread={spread}）→ 十神到位验盘模式**')
+        lines.append(f'**命局类型**：{compute_spread(plate_dict)[1]}（spread={spread}）→ 十神到位验盘模式')
+        lines.append(f'**原局已有十神**（{len(yuanju_ss)}/10）：{", ".join(sorted(yuanju_ss)) if yuanju_ss else "无"}')
+        lines.append(f'**原局缺失十神**（{len(missing)}/10）：{", ".join(sorted(missing)) if missing else "无（十神齐全）"}')
+        if len(missing) == 0:
+            lines.append('⚠️ 原局十神齐全，🆕首现候选可能极少甚至为零。')
         lines.append('')
-        lines.append('**验盘策略**：不找冲合异常的年份，找十神"从无到有"的启动年份。')
-        lines.append('原局已覆盖的十神领域（大运流年重复出现）= 人生延续线，不是验盘锚点。')
-        lines.append('大运/流年出现原局没有的十神 = 新领域启动 = 验盘锚点。')
-        lines.append(f'**原局十神集合**：{", ".join(sorted(yuanju_ss)) if yuanju_ss else "（仅日主）"}')
+        lines.append('**验盘策略**：十神"从无到有"才是新人生领域启动。冲合信号年年有，均衡命局里分不出大事小事。')
         lines.append('')
 
     lines.append('### 逐年流年信号')
     lines.append('')
     if balanced:
-        lines.append('| 年份 | 干支 | 所属大运 | 干十神 | 支十神 | 信号 | 十神变化 |')
-        lines.append('|------|------|----------|--------|--------|------|----------|')
+        lines.append('| 年份 | 干支 | 年龄 | 所属大运 | 流年十神 | 🆕首现 | 领域映射 |')
+        lines.append('|------|------|------|----------|----------|--------|----------|')
     else:
         lines.append('| 年份 | 干支 | 所属大运 | 信号等级 | 信号说明 |')
         lines.append('|------|------|----------|----------|----------|')
 
-    # 均衡模式：跟踪上一步大运，检测大运十神首现
     prev_dayun_step = -1
 
     for year in range(birth_year, current_year + 1):
+        age = year - birth_year
         stem_idx = (year - 4) % 10
         branch_idx = (year - 4) % 12
         ganzhi = tian_gan[stem_idx] + di_zhi[branch_idx]
@@ -331,6 +433,7 @@ def _build_year_lookup_table(plate_dict, current_year, spread=99, balanced=False
         # 所属大运
         dayun_label = '—'
         current_step = -1
+        dayun_change = False
         for d in dayun:
             start_y = d['start_year']
             end_y = start_y + 9
@@ -345,7 +448,12 @@ def _build_year_lookup_table(plate_dict, current_year, spread=99, balanced=False
                 dayun_label = f"{d['gz']}({start_y}-{end_y}) {status}"
                 break
 
-        # 信号等级
+        # 大运切换检测
+        if current_step != prev_dayun_step and current_step >= 0:
+            dayun_change = True
+            prev_dayun_step = current_step
+
+        # 信号等级（仅极端模式展示，均衡模式内部使用）
         signal_level, signal_desc = _evaluate_liunian_signal(
             ganzhi, ri_ganzhi, yue_zhi, nian_zhi, dayun, year
         )
@@ -353,19 +461,21 @@ def _build_year_lookup_table(plate_dict, current_year, spread=99, balanced=False
         desc_str = signal_desc if signal_desc else '—'
 
         if balanced:
-            # 流年十神
             gan_ss, zhi_entries = _get_liunian_shishen_info(ri_gan, ganzhi)
-            zhi_ss_str = '/'.join(f'{g}({ss})' for g, ss, r in zhi_entries)
-            if not zhi_ss_str:
-                zhi_ss_str = '—'
+            # 合并流年十神展示
+            all_ss = [gan_ss] + [ss for _, ss, _ in zhi_entries]
+            ss_display = gan_ss
+            if zhi_entries:
+                extra = [f'{g}({ss})' for g, ss, _ in zhi_entries if ss != gan_ss]
+                if extra:
+                    ss_display += ',' + ','.join(extra)
 
             # 首现检测（流年十神 + 大运十神）
             new_shishen = []
             check_list = [gan_ss] + [ss for _, ss, _ in zhi_entries]
 
             # 大运切换 → 注入大运十神
-            if current_step != prev_dayun_step and current_step >= 0:
-                prev_dayun_step = current_step
+            if dayun_change:
                 for d in dayun:
                     if d['step'] == current_step:
                         du_gan_ss = get_shishen(ri_gan, d['gan'])
@@ -380,23 +490,64 @@ def _build_year_lookup_table(plate_dict, current_year, spread=99, balanced=False
                     new_shishen.append(ss_name)
                     appeared_ss.add(ss_name)
 
-            change_str = ''
+            change_str = '—'
+            domain_str = '—'
             if new_shishen:
-                change_str = '🆕首现:' + ','.join(new_shishen)
-            elif level_str != '—':
-                change_str = level_str + ':' + desc_str
-            else:
-                change_str = '—'
+                change_str = '🆕' + ','.join(new_shishen)
+                # 领域映射（取第一个新十神作为代表）
+                domain_str = _map_shishen_to_domain(new_shishen[0], age)
+                # 收集候选
+                balanced_candidates.append({
+                    'year': year, 'age': age, 'ganzhi': ganzhi,
+                    'new_shishen': new_shishen, 'dayun_change': dayun_change,
+                    'signal_level': signal_level,
+                })
 
             lines.append(
-                f'| {year}年（{ganzhi}） | {ganzhi} | {dayun_label} '
-                f'| {gan_ss} | {zhi_ss_str} | {level_str} | {change_str} |'
+                f'| {year}年（{ganzhi}） | {ganzhi} | {age} | {dayun_label} '
+                f'| {ss_display} | {change_str} | {domain_str} |'
             )
         else:
             lines.append(
                 f'| {year}年（{ganzhi}） | {ganzhi} | {dayun_label} '
                 f'| {level_str} | {desc_str} |'
             )
+
+    # 均衡模式：尾部附候选年摘要（仅 age ≥ 15）
+    if balanced and balanced_candidates:
+        adult_candidates = [c for c in balanced_candidates if c['age'] >= 15]
+        scored = _score_balanced_candidates(adult_candidates, spread)
+        top_n = min(10, len(scored))
+        lines.append('')
+        lines.append('---')
+        lines.append('')
+        lines.append('## 🎯 验盘候选年（仅限以下年份中选择！）')
+        lines.append('')
+        if len(scored) == 0:
+            lines.append('⚠️ **无≥15岁的🆕首现候选年**——此命局所有十神在童年已全部出现。')
+            lines.append('验盘锚点不足。跳过流年验证，给出每步大运（≥15岁起）的1-2句主题描述，让用户确认。')
+        else:
+            lines.append(f'共 {len(adult_candidates)} 个🆕首现年份（≥15岁），按显著性排序：')
+            lines.append('')
+            lines.append('| 年份 | 年龄 | 🆕首现十神 | 领域映射 | 得分 | 选年理由 |')
+            lines.append('|------|------|-----------|----------|------|----------|')
+            for c in scored[:top_n]:
+                reasons = ','.join(c['reasons'][:2]) if c['reasons'] else '—'
+                lines.append(
+                    f'| {c["year"]}年（{c["ganzhi"]}） | {c["age"]} | '
+                    f'{",".join(c["new_shishen"])} | '
+                    f'{_map_shishen_to_domain(c["new_shishen"][0], c["age"])} | '
+                    f'{c["score"]} | {reasons} |'
+                )
+            lines.append('')
+            lines.append('**⚠️ 验盘铁律**：')
+            lines.append(f'- 验盘预测**只能**从上表候选年中选取，**禁止**从逐年对照表中自行挑选年份')
+            if len(scored) < 3:
+                lines.append(f'- 🆕首现候选仅 {len(scored)} 个 → **不得凑3条**，诚实告知"此命局十神首现仅{len(scored)}处，验盘锚点不足"')
+            else:
+                lines.append('- 从候选年中选 2-3 条 —— 按得分高低，优先跨青年/中年/晚近各选1')
+            lines.append('- **禁止使用冲合信号（S/A/B/C/D/E）作为选年依据**——逐年对照表已删除信号列')
+            lines.append('- 选好年份后，查候选表的"领域映射"列 → 推具体事件描述')
 
     return '\n'.join(lines)
 
@@ -579,31 +730,14 @@ def _build_user_message(plate_dict: dict, known_events: list = None) -> str:
             # ============================================================
             # 均衡命局：十神到位验盘
             # ============================================================
-            msg_parts.append("**⚠️ 均衡命局验盘规则——十神到位法（硬性约束）**：")
+            msg_parts.append("**⚠️ 均衡命局验盘——十神到位法（铁律，违反=无效验盘）**：")
             msg_parts.append("")
-            msg_parts.append("1. **不许用冲合信号表选年**。均衡命局冲合被化解，B/C级信号年年都有，无法区分搬家vs离婚。")
-            msg_parts.append("2. **改用十神「首现」选年**：查对照表的'十神变化'列——标记🆕首现的年份 = 新人生领域启动，是验盘锚点。")
-            msg_parts.append("3. **三步法则**：")
-            msg_parts.append("   a) 查对照表，锁定3个有🆕首现标记的年份（跨青年/中年/晚近各1）")
-            msg_parts.append("   b) 结合年龄映射十神→人生领域（正官首现在25-35=事业/婚姻启动，在15-20=管教/早恋；偏财首现在30-45=副业/投资，在50+=子女成家后的经济变化）")
-            msg_parts.append("   c) 推时间锚定：\"XX年（干支），对照表显示该年🆕首现[十神名]，这意味着你的人生在[领域]方向出现了新动向。那年或前后一年内，你是否[具体事件描述]？\"")
-            msg_parts.append("4. **不凑3条**：对照表中🆕首现标记 < 3个 = 诚实告知\"此命局十神首现仅有N处，验盘锚点不足。\"不要为凑数选B/C级冲合信号。")
-            msg_parts.append("5. **置信度标签**：每条预测前标置信度——首现+对冲合信号=S/A → 🔴高；仅首现=B/C → 🟡中；仅大运交接=D → 🔵低。")
-            msg_parts.append("")
-            msg_parts.append("**十神→人生领域映射速查表**：")
-            msg_parts.append("")
-            msg_parts.append("| 十神 | 青年(15-25) | 中年(25-45) | 晚近(45+) |")
-            msg_parts.append("|------|------------|------------|----------|")
-            msg_parts.append("| 正官 | 高考/管教/早恋 | 事业晋升/结婚 | 体制内职位/子女成家 |")
-            msg_parts.append("| 七杀 | 打架/竞赛/叛逆 | 创业/跳槽/诉讼 | 权威地位/健康警报 |")
-            msg_parts.append("| 正财 | 兼职/储蓄 | 薪资变化/购房 | 资产配置/退休金 |")
-            msg_parts.append("| 偏财 | 外快/投机 | 副业/投资/意外财 | 子女经济/遗产 |")
-            msg_parts.append("| 正印 | 考学/证书 | 购房/升职/长辈 | 房产/养老/学术 |")
-            msg_parts.append("| 偏印 | 偏科/特长 | 转行/再培训 | 玄学/文化事业 |")
-            msg_parts.append("| 食神 | 才华/创造力 | 自由职业/生育 | 退休生活/孙辈 |")
-            msg_parts.append("| 伤官 | 叛逆/才艺 | 跳槽/创业/口舌 | 重新定位人生 |")
-            msg_parts.append("| 比肩 | 朋友/竞争 | 合作/团队 | 社交圈/同龄人 |")
-            msg_parts.append("| 劫财 | 争斗/破财 | 合伙/分家 | 人际关系变动 |")
+            msg_parts.append("1. **选年来源**：只能从对照表末尾的「🎯 验盘候选年」表中选。逐年对照表仅供参考，不得从中自行挑年。")
+            msg_parts.append("2. **冲合信号禁入**：逐年对照表已删除信号列（S/A/B/C/D/E），不要自己推算。均衡命局的冲合信号无法区分大事小事。")
+            msg_parts.append("3. **候选不足不凑数**：候选年 < 3 → 只输出实际候选数，诚实说\"信号不足\"。禁止回退到冲合信号凑数。")
+            msg_parts.append("4. **输出格式**：每条预测 = 候选年份 + 🆕首现十神 + 领域映射（直接用候选表中的） + 具体事件提问。格式：")
+            msg_parts.append("   > **【预测一】** 🟡中置信 | XX年（干支）你XX岁，该年🆕首现[十神名]，领域映射为[XXXX]。那年或前后一年内，你是否[具体事件]？")
+            msg_parts.append("5. **不要自己推算领域**——候选表已给领域映射，直接用。")
             msg_parts.append("")
             msg_parts.append("**⚠️ 验盘终止标记**：验盘输出完毕后，必须单独输出一行 **【验盘完毕】** 作为验盘结束标记。输出此标记后立即停止。")
         else:

@@ -699,6 +699,66 @@ a, button, input, select, textarea, .card, .form-section { transition: all 0.3s 
 .toast-msg { font-size: 1rem; color: #333; line-height: 1.7; margin-bottom: 20px; white-space: pre-line; }
 #toast-dismiss { min-width: 120px; }
 
+/* ========== 表单字段逐项验证 ========== */
+.form-group.error input,
+.form-group.error select { border-color: #d32f2f !important; box-shadow: 0 0 0 1px rgba(211,47,47,0.15); }
+.field-error-msg { display: none; font-size: 0.7em; color: #d32f2f; margin-top: 3px; }
+.form-group.error .field-error-msg { display: block; }
+.field-hint { font-size: 0.68em; color: var(--text-muted); margin-top: 1px; font-style: italic; }
+
+/* ========== 古籍引用 Tooltip ========== */
+.form-tooltip {
+    position: relative; display: inline-block; margin-left: 4px;
+    cursor: help; color: #b8860b; font-size: 0.72em; vertical-align: middle;
+}
+.form-tooltip .tooltip-text {
+    visibility: hidden; width: 240px; background: #2d2d2d; color: #f0e6d3;
+    text-align: left; border-radius: 8px; padding: 10px 12px;
+    position: absolute; z-index: 100; bottom: 130%; left: 50%;
+    margin-left: -120px; font-size: 0.85em; line-height: 1.5;
+    opacity: 0; transition: opacity 0.2s; pointer-events: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+.form-tooltip .tooltip-text::after {
+    content: ''; position: absolute; top: 100%; left: 50%;
+    margin-left: -6px; border: 6px solid transparent; border-top-color: #2d2d2d;
+}
+.form-tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
+.tooltip-source { display: block; font-size: 0.8em; color: #b8860b; margin-top: 4px; font-style: italic; }
+
+/* ========== 确认排盘 Review Card ========== */
+.review-card { padding: 24px 28px; text-align: center; }
+.review-sizhu {
+    font-family: 'SF Mono','Consolas',monospace; font-size: 1.5em;
+    letter-spacing: 8px; padding: 18px; margin-bottom: 16px;
+    background: rgba(212,168,67,0.06); border-radius: 12px;
+    border: 1px dashed rgba(212,168,67,0.25);
+}
+.review-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px; margin: 16px 0; text-align: left;
+}
+.review-item {}
+.review-label { font-size: 0.75em; color: var(--text-muted); display: block; margin-bottom: 2px; }
+.review-value { font-size: 1em; font-weight: 600; }
+.review-warn { font-size: 0.7em; color: #e65100; margin-top: 2px; }
+.review-actions { display: flex; gap: 12px; margin-top: 24px; justify-content: center; flex-wrap: wrap; }
+.review-actions .btn { min-width: 200px; }
+.review-actions .btn-lg { padding: 12px 32px; font-size: 1.05em; }
+
+/* ========== 粘性操作栏三态 ========== */
+.sticky-state { display: flex; gap: 8px; align-items: center; width: 100%; flex-wrap: wrap; }
+.step-badge {
+    padding: 3px 10px; border-radius: 12px; background: #d4a843; color: #fff;
+    font-size: 0.7em; font-weight: 700; letter-spacing: 1px;
+}
+.analyzing-dot {
+    width: 10px; height: 10px; border-radius: 50%; background: #d4a843;
+    animation: pulse-dot 1.2s ease-in-out infinite;
+}
+@keyframes pulse-dot { 0%,100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+.analyzing-label { font-size: 0.82em; color: #b8860b; flex: 1; }
+
 /* ========== Canvas 图表 ========== */
 canvas.chart-box { border-radius: 12px; background: rgba(0,0,0,.2); }
 #chart-shengke { min-height: 540px; overflow: visible; }

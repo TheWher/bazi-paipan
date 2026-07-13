@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "name": "古籍引用-表单字段映射",
+    "version": "1.0",
+    "description": "字段级古籍引用，前端tooltip展示",
+    "usage": "GET /api/glossary/references 返回此数据"
+  },
+  "references": [
+    {"field": "出生日期", "field_key": "year,month,day", "quote": "凡推命，先看日干为主", "source": "渊海子平", "note": "年月日三柱定人一生大框架——年柱定根、月柱定苗、日柱定花"},
+    {"field": "出生时间", "field_key": "hour,minute", "quote": "一日一夜，分为十二时", "source": "三命通会", "note": "时柱为四柱之末，定时柱即定果。新疆午时与北京午时，日影长短不同"},
+    {"field": "出生地点", "field_key": "location,longitude", "quote": "用本地实时，不可执京中之时刻", "source": "星平会海·论定真时", "note": "经度不同则真太阳时不同——在西安(108°E)，太阳比手表慢约48分钟"},
+    {"field": "性别", "field_key": "gender", "quote": "阳男阴女顺行，阴男阳女逆行", "source": "渊海子平·论大运", "note": "大运顺逆不同，十年一步、步步方向相反"},
+    {"field": "真太阳时", "field_key": "use-true-solar", "quote": "地势有高低，时刻有早晚", "source": "星平会海·论地理", "note": "古人用当地日晷计时，今人用北京时间——需经度校正"}
+  ]
+}
