@@ -62,34 +62,63 @@
         .event-row .btn-remove-event{background:none;border:none;color:var(--text-light);cursor:pointer;font-size:1em;padding:2px 6px}
         .event-row .btn-remove-event:hover{color:#d32f2f}
         /* ---- 紫微斗数抽屉 ---- */
-        .ziwei-drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99;transition:opacity .3s}
+        .ziwei-drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;transition:opacity .3s}
         .ziwei-drawer-overlay.hidden{opacity:0;pointer-events:none}
-        .ziwei-drawer{position:fixed;top:0;right:0;width:460px;max-width:100vw;height:100vh;background:var(--bg);z-index:100;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.15);transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
+        .ziwei-drawer{position:fixed;top:0;right:0;width:480px;max-width:100vw;height:100vh;background:var(--bg);z-index:100;display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,.25);transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
         .ziwei-drawer.open{transform:translateX(0)}
-        .ziwei-drawer-header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid var(--border-light);flex-shrink:0}
-        .ziwei-drawer-header h2{font-size:1.1rem;margin:0;color:var(--gold)}
+        .ziwei-drawer-header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid var(--border-light);flex-shrink:0;background:linear-gradient(135deg, rgba(212,168,67,.08), transparent)}
+        .ziwei-drawer-header h2{font-size:1.1rem;margin:0;color:var(--gold);letter-spacing:.05em}
         .ziwei-drawer-body{flex:1;overflow-y:auto;padding:20px 24px}
         .ziwei-drawer-footer{display:flex;gap:8px;padding:14px 24px;border-top:1px solid var(--border-light);flex-shrink:0;background:var(--bg)}
-        .ziwei-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,auto);gap:4px;margin-bottom:20px}
-        .ziwei-grid .ziwei-cell{background:var(--card-bg);border:1px solid var(--border-light);border-radius:8px;padding:8px 6px;text-align:center;font-size:.72em;min-height:70px;display:flex;flex-direction:column;justify-content:center;position:relative}
-        .ziwei-grid .ziwei-cell.empty-cell{opacity:.55}
-        .ziwei-grid .ziwei-cell .cell-name{font-weight:600;font-size:.85em;color:var(--accent);margin-bottom:2px}
-        .ziwei-grid .ziwei-cell .cell-dizhi{font-size:.7em;color:var(--text-muted);margin-bottom:3px}
-        .ziwei-grid .ziwei-cell .cell-stars{font-weight:500;color:var(--gold);line-height:1.35}
-        .ziwei-grid .ziwei-cell .cell-minor{font-size:.8em;color:var(--text-muted);margin-top:2px}
-        .ziwei-grid .ziwei-cell .cell-tag{position:absolute;top:2px;right:4px;font-size:.6em;padding:1px 4px;border-radius:3px;font-weight:600}
-        .ziwei-grid .ziwei-cell .cell-tag.tag-ming{background:#d4a843;color:#fff}
-        .ziwei-grid .ziwei-cell .cell-tag.tag-shen{background:#7b68ee;color:#fff}
-        .ziwei-grid .ziwei-center{grid-row:2/4;grid-column:2/4;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px;background:var(--card-bg);border:1px dashed var(--border);border-radius:12px;font-size:.75em}
-        .ziwei-grid .ziwei-center .center-title{font-size:1.1em;font-weight:700;color:var(--accent);margin-bottom:6px}
-        .ziwei-grid .ziwei-center .center-row{color:var(--text-muted);margin-bottom:2px}
-        .ziwei-mutagen-line{text-align:center;font-size:.82em;color:var(--text-muted);margin-bottom:16px;padding:8px 12px;background:var(--card-bg);border-radius:8px;border:1px solid var(--border-light)}
-        .ziwei-mutagen-line .mutagen-lu{color:#2e7d32;font-weight:600}
-        .ziwei-mutagen-line .mutagen-quan{color:#6a1b9a;font-weight:600}
-        .ziwei-mutagen-line .mutagen-ke{color:#1565c0;font-weight:600}
-        .ziwei-mutagen-line .mutagen-ji{color:#c62828;font-weight:600}
-        .ziwei-drawer-body .ziwei-loading{text-align:center;padding:40px;color:var(--text-muted)}
-        @media(max-width:860px){.ziwei-drawer{width:100vw}.ziwei-grid .ziwei-cell{min-height:54px;padding:5px 3px;font-size:.68em}}
+        /* ---- 十二宫 Grid ---- */
+        .ziwei-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,auto);gap:5px;margin-bottom:20px}
+        .ziwei-grid .ziwei-cell{background:var(--card-bg);border:1px solid var(--border-light);border-radius:10px;padding:8px 6px 6px;text-align:center;font-size:.7em;min-height:78px;display:flex;flex-direction:column;justify-content:flex-start;position:relative;transition:all .25s}
+        .ziwei-grid .ziwei-cell:hover{box-shadow:0 0 12px rgba(212,168,67,.15);z-index:2}
+        .ziwei-grid .ziwei-cell.empty-cell{opacity:.5;border-style:dashed}
+        .ziwei-grid .ziwei-cell.current-decadal{border-color:var(--accent);border-width:2px;box-shadow:inset 0 0 20px rgba(212,168,67,.08),0 0 8px rgba(212,168,67,.12)}
+        .ziwei-grid .ziwei-cell .cell-name{font-weight:700;font-size:.8em;color:var(--accent);margin-bottom:1px;letter-spacing:.05em}
+        .ziwei-grid .ziwei-cell .cell-dizhi{font-size:.65em;color:var(--text-muted);margin-bottom:4px}
+        .ziwei-grid .ziwei-cell .cell-stars{display:flex;flex-direction:column;gap:1px;align-items:center}
+        .ziwei-grid .ziwei-cell .star-row{display:flex;align-items:center;gap:3px;font-size:.85em;line-height:1.3;white-space:nowrap}
+        .ziwei-grid .ziwei-cell .star-name{font-weight:600}
+        .ziwei-grid .ziwei-cell .star-name.major{color:var(--gold)}
+        .ziwei-grid .ziwei-cell .star-name.auspicious{color:#4caf50}
+        .ziwei-grid .ziwei-cell .star-name.malefic{color:#ef5350}
+        .ziwei-grid .ziwei-cell .star-name.neutral{color:var(--text-muted)}
+        .ziwei-grid .ziwei-cell .star-brightness{font-size:.7em;padding:0 2px;border-radius:2px;font-weight:500}
+        .ziwei-grid .ziwei-cell .star-brightness.b-miao{background:#d4a843;color:#1a1a2e}
+        .ziwei-grid .ziwei-cell .star-brightness.b-wang{background:#e8a860;color:#1a1a2e}
+        .ziwei-grid .ziwei-cell .star-brightness.b-de{background:#7cb342;color:#fff}
+        .ziwei-grid .ziwei-cell .star-brightness.b-li{background:#5c6bc0;color:#fff}
+        .ziwei-grid .ziwei-cell .star-brightness.b-ping{background:var(--text-muted);color:var(--bg)}
+        .ziwei-grid .ziwei-cell .star-brightness.b-bu{background:#78909c;color:#fff}
+        .ziwei-grid .ziwei-cell .star-brightness.b-xian{background:#c62828;color:#fff}
+        .ziwei-grid .ziwei-cell .star-mutagen{font-size:.75em;font-weight:700}
+        .ziwei-grid .ziwei-cell .star-mutagen.m-lu{color:#2e7d32}
+        .ziwei-grid .ziwei-cell .star-mutagen.m-quan{color:#7b1fa2}
+        .ziwei-grid .ziwei-cell .star-mutagen.m-ke{color:#1565c0}
+        .ziwei-grid .ziwei-cell .star-mutagen.m-ji{color:#c62828}
+        .ziwei-grid .ziwei-cell .cell-minor{font-size:.68em;color:var(--text-muted);margin-top:2px;line-height:1.3}
+        .ziwei-grid .ziwei-cell .cell-tag{position:absolute;top:3px;right:5px;font-size:.6em;padding:1px 5px;border-radius:3px;font-weight:700;letter-spacing:.05em}
+        .ziwei-grid .ziwei-cell .cell-tag.tag-ming{background:#d4a843;color:#1a1a2e}
+        .ziwei-grid .ziwei-cell .cell-tag.tag-shen{background:#7c4dff;color:#fff}
+        .ziwei-grid .ziwei-cell .cell-decadal{font-size:.6em;color:var(--accent);margin-top:3px;font-weight:500}
+        /* ---- 中心区 ---- */
+        .ziwei-grid .ziwei-center{grid-row:2/4;grid-column:2/4;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px 10px;background:var(--card-bg);border:1px dashed var(--border);border-radius:14px;font-size:.72em;position:relative;overflow:hidden}
+        .ziwei-grid .ziwei-center::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center, rgba(212,168,67,.06) 0%, transparent 70%)}
+        .ziwei-grid .ziwei-center .center-icon{font-size:2em;margin-bottom:4px;position:relative}
+        .ziwei-grid .ziwei-center .center-title{font-size:.95em;font-weight:700;color:var(--accent);margin-bottom:6px;position:relative}
+        .ziwei-grid .ziwei-center .center-row{color:var(--text-muted);margin-bottom:3px;position:relative;line-height:1.5}
+        .ziwei-grid .ziwei-center .center-row strong{color:var(--text)}
+        /* ---- 四化汇总 ---- */
+        .ziwei-mutagen-line{text-align:center;font-size:.8em;color:var(--text-muted);margin-bottom:16px;padding:10px 14px;background:var(--card-bg);border-radius:10px;border:1px solid var(--border-light);display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+        .ziwei-mutagen-line .mutagen-badge{display:inline-flex;align-items:center;gap:3px;font-weight:600;padding:2px 8px;border-radius:12px;font-size:.85em}
+        .ziwei-mutagen-line .mutagen-badge.mu-lu{background:rgba(46,125,50,.12);color:#2e7d32}
+        .ziwei-mutagen-line .mutagen-badge.mu-quan{background:rgba(123,31,162,.12);color:#7b1fa2}
+        .ziwei-mutagen-line .mutagen-badge.mu-ke{background:rgba(21,101,192,.12);color:#1565c0}
+        .ziwei-mutagen-line .mutagen-badge.mu-ji{background:rgba(198,40,40,.12);color:#c62828}
+        .ziwei-drawer-body .ziwei-loading{text-align:center;padding:60px 20px;color:var(--text-muted)}
+        @media(max-width:860px){.ziwei-drawer{width:100vw}.ziwei-grid .ziwei-cell{min-height:58px;padding:5px 3px;font-size:.64em}.ziwei-grid .ziwei-cell .star-row{font-size:.78em}}
     </style>
     <!-- 完整样式异步加载 — 不阻塞首屏渲染 -->
     <link rel="preload" href="/static/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -1681,6 +1710,24 @@ function renderZiweiChart(data) {
     const palaces = data.palaces || [];
     if (palaces.length !== 12) { elZiweiGrid.innerHTML = '<p style="color:red">宫位数不对</p>'; return; }
 
+    // 计算当前年龄 → 定位当前大限宫
+    const birthStr = data.input?.birth_datetime || '';
+    const birthYear = parseInt(birthStr) || 0;
+    const currentYear = new Date().getFullYear();
+    const approxAge = birthYear ? currentYear - birthYear : -1;
+
+    let currentDecadalIdx = -1;
+    if (approxAge >= 0) {
+        for (const pal of palaces) {
+            const range = pal.decadal_range || '';
+            const m = range.match(/(\d+)-(\d+)/);
+            if (m) {
+                const lo = parseInt(m[1]), hi = parseInt(m[2]);
+                if (approxAge >= lo && approxAge <= hi) { currentDecadalIdx = pal.index; break; }
+            }
+        }
+    }
+
     // 4x4 grid: 12 outer cells + center
     let html = '';
     for (let row = 1; row <= 4; row++) {
@@ -1688,10 +1735,13 @@ function renderZiweiChart(data) {
             // Center area
             if (row >= 2 && row <= 3 && col >= 2 && col <= 3) {
                 if (row === 2 && col === 2) {
+                    const wuxingEmoji = {'水二局':'🌊','木三局':'🌳','金四局':'⛰️','土五局':'🏔️','火六局':'🔥'};
                     html += `<div class="ziwei-center">
+                        <div class="center-icon">🔮</div>
                         <div class="center-title">紫微斗数</div>
-                        <div class="center-row">五行局: ${data.five_elements_class||'?'}</div>
-                        <div class="center-row">命宫: ${data.soul_palace||'?'} / 身宫: ${data.body_palace||'?'}</div>
+                        <div class="center-row">${wuxingEmoji[data.five_elements_class]||'📐'} <strong>${data.five_elements_class||'?'}</strong></div>
+                        <div class="center-row">命宫 <strong>${data.soul_palace||'?'}</strong> · 身宫 <strong>${data.body_palace||'?'}</strong></div>
+                        <div class="center-row">生年四化 <strong>${(data.year_mutagens||[]).length}</strong> 条</div>
                     </div>`;
                 }
                 continue;
@@ -1700,30 +1750,64 @@ function renderZiweiChart(data) {
             const pal = palaces.find(p => p.grid_row === row && p.grid_col === col);
             if (!pal) { html += '<div class="ziwei-cell empty-cell"></div>'; continue; }
 
-            const stars = pal.major_stars?.length ? pal.major_stars.join(' · ') : (pal.is_empty ? '空宫' : '');
-            const minor = pal.minor_stars?.length ? pal.minor_stars.slice(0,3).join(' ') : '';
+            const isCurrent = pal.index === currentDecadalIdx;
+            let cellClass = 'ziwei-cell';
+            if (pal.is_empty) cellClass += ' empty-cell';
+            if (isCurrent) cellClass += ' current-decadal';
+
+            // Tags
             let tags = '';
             if (pal.tags?.includes('命宫')) tags += '<span class="cell-tag tag-ming">命</span>';
             if (pal.tags?.includes('身宫')) tags += '<span class="cell-tag tag-shen">身</span>';
 
-            html += `<div class="ziwei-cell${pal.is_empty?' empty-cell':''}">
+            // Build star rows with brightness + mutagen
+            let starHtml = '';
+            const majorStars = pal.major_stars || [];
+            for (const s of majorStars) {
+                const name = typeof s === 'string' ? s : s.name;
+                const typeCls = (typeof s === 'object' && s.css) ? s.css.replace('star-','') : 'major';
+                let row = `<span class="star-name ${typeCls}">${name}</span>`;
+                if (typeof s === 'object' && s.brightness) {
+                    row += `<span class="star-brightness ${s.brightness_css||''}">${s.brightness}</span>`;
+                }
+                if (typeof s === 'object' && s.mutagen) {
+                    row += `<span class="star-mutagen ${s.mutagen_css||''}">${s.mutagen_mark||s.mutagen}</span>`;
+                }
+                starHtml += `<div class="star-row">${row}</div>`;
+            }
+            if (!starHtml) starHtml = '<div class="star-row" style="color:var(--text-muted);font-size:.8em">' + (pal.is_empty ? '空宫' : '—') + '</div>';
+
+            // Minor stars
+            let minorHtml = '';
+            const minorStars = pal.minor_stars || [];
+            if (minorStars.length) {
+                const names = minorStars.map(s => typeof s === 'string' ? s : s.name).slice(0, 4);
+                minorHtml = `<div class="cell-minor">${names.join(' ')}</div>`;
+            }
+
+            // Decadal hint
+            const decadalHint = pal.decadal_range ? `<div class="cell-decadal">${isCurrent ? '▸ 当前' : ''} ${pal.decadal_range}岁</div>` : '';
+
+            html += `<div class="${cellClass}">
                 ${tags}
                 <div class="cell-name">${pal.name}</div>
                 <div class="cell-dizhi">${pal.dizhi||''}</div>
-                <div class="cell-stars">${stars||'—'}</div>
-                ${minor?`<div class="cell-minor">${minor}</div>`:''}
+                <div class="cell-stars">${starHtml}</div>
+                ${minorHtml}
+                ${decadalHint}
             </div>`;
         }
     }
     elZiweiGrid.innerHTML = html;
 
-    // 生年四化 line
+    // 生年四化 badges
     const mutagens = data.year_mutagens || [];
     if (mutagens.length) {
-        const cls = {'化禄':'mutagen-lu','化权':'mutagen-quan','化科':'mutagen-ke','化忌':'mutagen-ji'};
-        elZiweiMutagenLine.innerHTML = '生年四化: ' + mutagens.map(m =>
-            `<span class="${cls[m.mutagen]||''}">${m.star}${m.mutagen}</span>(${m.palace})`
-        ).join(' · ');
+        const muCls = {'化禄':'mu-lu','化权':'mu-quan','化科':'mu-ke','化忌':'mu-ji'};
+        const marks = {'化禄':'◈','化权':'▲','化科':'◎','化忌':'✕'};
+        elZiweiMutagenLine.innerHTML = mutagens.map(m =>
+            `<span class="mutagen-badge ${muCls[m.mutagen]||''}">${marks[m.mutagen]||''} ${m.star}${m.mutagen}<span style="font-weight:400;margin-left:3px">${m.palace}</span></span>`
+        ).join('');
     } else {
         elZiweiMutagenLine.innerHTML = '';
     }

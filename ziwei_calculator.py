@@ -120,20 +120,40 @@ def ziwei_paipan(year: int, month: int, day: int, hour: int, minute: int = 0,
                     'branch': BRANCH_CN.get(p.earthly_branch, ''),
                 })
 
+    # 星曜类型→前端CSS类映射
+    _TYPE_CLASS = {
+        'major': 'star-major', 'soft': 'star-auspicious', 'tough': 'star-malefic',
+        'adjective': 'star-neutral', 'flower': 'star-flower', 'helper': 'star-helper',
+        'lucun': 'star-lucun', 'tianma': 'star-tianma',
+    }
+    _MUTAGEN_MARK = {'禄': '◈', '权': '▲', '科': '◎', '忌': '✕'}
+
+    def _make_star_obj(s):
+        """构建单个星曜的富信息对象"""
+        obj = {'name': _translate_name(s), 'type': getattr(s, 'type', ''), 'css': _TYPE_CLASS.get(getattr(s, 'type', ''), '')}
+        b = getattr(s, 'brightness', None)
+        if b:
+            obj['brightness'] = b
+            obj['brightness_css'] = {'庙': 'b-miao', '旺': 'b-wang', '得': 'b-de', '利': 'b-li', '平': 'b-ping', '不': 'b-bu', '陷': 'b-xian'}.get(b, '')
+        m = getattr(s, 'mutagen', None)
+        if m:
+            obj['mutagen'] = m
+            obj['mutagen_mark'] = _MUTAGEN_MARK.get(m, '')
+            obj['mutagen_css'] = {'禄': 'm-lu', '权': 'm-quan', '科': 'm-ke', '忌': 'm-ji'}.get(m, '')
+        return obj
+
     # 十二宫
     palaces = []
     for p in chart.palaces:
-        major = [_translate_name(s) for s in p.major_stars]
-        minor = [_translate_name(s) for s in p.minor_stars]
-        adj = [_translate_name(s) for s in getattr(p, 'adjective_stars', [])]
+        major = [_make_star_obj(s) for s in p.major_stars]
+        minor = [_make_star_obj(s) for s in p.minor_stars]
+        adj = [_make_star_obj(s) for s in getattr(p, 'adjective_stars', [])]
 
-        star_mutagens = []
-        for s in list(p.major_stars) + list(p.minor_stars):
-            if hasattr(s, 'mutagen') and s.mutagen:
-                star_mutagens.append({
-                    'star': _translate_name(s),
-                    'mutagen': s.mutagen,
-                })
+        star_mutagens = [
+            {'star': _translate_name(s), 'mutagen': s.mutagen}
+            for s in list(p.major_stars) + list(p.minor_stars)
+            if hasattr(s, 'mutagen') and s.mutagen
+        ]
 
         dec = p.decadal
         decadal_range = f"{dec.range[0]}-{dec.range[1]}" if dec else ""
