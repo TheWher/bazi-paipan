@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>紫微斗数 · AI命理分析</title>
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :root{--bg:#fefefe;--card:#fff;--text:#222;--muted:#888;--accent:#d4a843;--border:#e0e0e0;--border-light:#eee;--gold:#8b6914;--shadow:0 2px 12px rgba(0,0,0,.06);--radius:14px}
+        [data-theme="dark"]{--bg:#1a1a2e;--card:#16213e;--text:#e0e0e0;--muted:#999;--accent:#d4a843;--border:#3a3a4a;--border-light:#2a2a3e;--gold:#d4a843;--shadow:0 2px 12px rgba(0,0,0,.2)}
+        html{font-size:16px}
+        body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+        .hidden{display:none!important}
+        .app-layout{display:flex;min-height:100vh}
+        .app-sidebar{width:400px;min-width:400px;flex-shrink:0;border-right:1px solid var(--border-light);padding:28px 24px 80px;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+        .app-main{flex:1;min-width:0;padding:36px 44px 80px;overflow-y:auto}
+        .app-header{text-align:left;padding:0 0 12px;display:flex;justify-content:space-between;align-items:center}
+        .app-header h1{font-size:1.35rem;cursor:pointer}
+        .app-header .subtitle{font-size:.68em;color:var(--muted)}
+        .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--border);border-radius:20px;background:var(--card);color:var(--text);font-size:.82em;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .2s}
+        .btn:hover{opacity:.85}
+        .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+        .btn-gold{background:linear-gradient(135deg,#c8a850,#8b6914);color:#fff;border-color:transparent;font-weight:600}
+        .btn-gold:hover{background:linear-gradient(135deg,#d4b060,#a07820)}
+        .btn-sm{font-size:.75em;padding:5px 12px}
+        .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 14px}
+        .form-group{display:flex;flex-direction:column;gap:4px}
+        .form-group label{font-size:.76em;color:var(--muted);font-weight:500}
+        .form-group input,.form-group select{padding:8px 10px;font-size:.82em;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);outline:none}
+        .form-group input:focus,.form-group select:focus{border-color:var(--accent)}
+        .radio-group{display:flex;gap:12px}
+        .radio-label{display:flex;align-items:center;gap:4px;font-size:.82em;cursor:pointer}
+        .quick-input-row{position:relative;margin-bottom:12px}
+        .quick-input-row input{width:100%;padding:10px 12px;font-size:.9em;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);font-family:monospace;letter-spacing:.15em}
+        .quick-hint{font-size:.66em;color:var(--muted)}
+        /* ---- 结果区 ---- */
+        .result-section{padding-top:12px}
+        .floating-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:10px 16px;background:var(--card);border:1px solid var(--border-light);border-radius:10px}
+        .floating-bar .bar-title{font-weight:600;font-size:.9em}
+        .loading{text-align:center;padding:40px;color:var(--muted)}
+        .spinner{width:32px;height:32px;margin:0 auto 12px;border:3px solid var(--border-light);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .error-box{background:rgba(220,50,50,.08);color:#c62828;padding:14px 18px;border-radius:10px;margin-bottom:16px}
+        /* ---- 十二宫 Grid ---- */
+        .ziwei-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,auto);gap:5px;margin-bottom:20px}
+        .ziwei-grid .ziwei-cell{background:var(--card);border:1px solid var(--border-light);border-radius:10px;padding:8px 6px 6px;text-align:center;font-size:.7em;min-height:78px;display:flex;flex-direction:column;justify-content:flex-start;position:relative;transition:all .25s}
+        .ziwei-grid .ziwei-cell:hover{box-shadow:0 0 12px rgba(212,168,67,.15);z-index:2}
+        .ziwei-grid .ziwei-cell.empty-cell{opacity:.5;border-style:dashed}
+        .ziwei-grid .ziwei-cell.current-decadal{border-color:var(--accent);border-width:2px;box-shadow:inset 0 0 20px rgba(212,168,67,.08),0 0 8px rgba(212,168,67,.12)}
+        .ziwei-grid .ziwei-cell .cell-name{font-weight:700;font-size:.8em;color:var(--accent);margin-bottom:1px}
+        .ziwei-grid .ziwei-cell .cell-dizhi{font-size:.65em;color:var(--muted);margin-bottom:4px}
+        .ziwei-grid .ziwei-cell .cell-stars{display:flex;flex-direction:column;gap:1px;align-items:center}
+        .ziwei-grid .ziwei-cell .star-row{display:flex;align-items:center;gap:3px;font-size:.85em;line-height:1.3;white-space:nowrap}
+        .ziwei-grid .ziwei-cell .star-name{font-weight:600}
+        .ziwei-grid .ziwei-cell .star-name.major{color:var(--gold)}
+        .ziwei-grid .ziwei-cell .star-name.auspicious{color:#4caf50}
+        .ziwei-grid .ziwei-cell .star-name.malefic{color:#ef5350}
+        .ziwei-grid .ziwei-cell .star-name.neutral{color:var(--muted)}
+        .ziwei-grid .ziwei-cell .star-brightness{font-size:.7em;padding:0 2px;border-radius:2px;font-weight:500}
+        .ziwei-grid .ziwei-cell .star-brightness.b-miao{background:#d4a843;color:#1a1a2e}
+        .ziwei-grid .ziwei-cell .star-brightness.b-wang{background:#e8a860;color:#1a1a2e}
+        .ziwei-grid .ziwei-cell .star-brightness.b-de{background:#7cb342;color:#fff}
+        .ziwei-grid .ziwei-cell .star-brightness.b-li{background:#5c6bc0;color:#fff}
+        .ziwei-grid .ziwei-cell .star-brightness.b-ping{background:var(--muted);color:var(--bg)}
+        .ziwei-grid .ziwei-cell .star-brightness.b-bu{background:#78909c;color:#fff}
+        .ziwei-grid .ziwei-cell .star-brightness.b-xian{background:#c62828;color:#fff}
+        .ziwei-grid .ziwei-cell .star-mutagen{font-size:.75em;font-weight:700}
+        .ziwei-grid .ziwei-cell .star-mutagen.m-lu{color:#2e7d32}
+        .ziwei-grid .ziwei-cell .star-mutagen.m-quan{color:#7b1fa2}
+        .ziwei-grid .ziwei-cell .star-mutagen.m-ke{color:#1565c0}
+        .ziwei-grid .ziwei-cell .star-mutagen.m-ji{color:#c62828}
+        .ziwei-grid .ziwei-cell .cell-minor{font-size:.68em;color:var(--muted);margin-top:2px;line-height:1.3}
+        .ziwei-grid .ziwei-cell .cell-tag{position:absolute;top:3px;right:5px;font-size:.6em;padding:1px 5px;border-radius:3px;font-weight:700}
+        .ziwei-grid .ziwei-cell .cell-tag.tag-ming{background:#d4a843;color:#1a1a2e}
+        .ziwei-grid .ziwei-cell .cell-tag.tag-shen{background:#7c4dff;color:#fff}
+        .ziwei-grid .ziwei-cell .cell-decadal{font-size:.6em;color:var(--accent);margin-top:3px;font-weight:500}
+        .ziwei-grid .ziwei-center{grid-row:2/4;grid-column:2/4;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px 10px;background:var(--card);border:1px dashed var(--border);border-radius:14px;font-size:.72em;position:relative;overflow:hidden}
+        .ziwei-grid .ziwei-center::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center, rgba(212,168,67,.06) 0%, transparent 70%)}
+        .ziwei-grid .ziwei-center .center-icon{font-size:2em;margin-bottom:4px;position:relative}
+        .ziwei-grid .ziwei-center .center-title{font-size:.95em;font-weight:700;color:var(--accent);margin-bottom:6px;position:relative}
+        .ziwei-grid .ziwei-center .center-row{color:var(--muted);margin-bottom:3px;position:relative;line-height:1.5}
+        .ziwei-grid .ziwei-center .center-row strong{color:var(--text)}
+        .ziwei-mutagen-line{text-align:center;font-size:.8em;margin-bottom:16px;padding:10px 14px;background:var(--card);border-radius:10px;border:1px solid var(--border-light);display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+        .ziwei-mutagen-line .mutagen-badge{display:inline-flex;align-items:center;gap:3px;font-weight:600;padding:2px 8px;border-radius:12px;font-size:.85em}
+        .ziwei-mutagen-line .mutagen-badge.mu-lu{background:rgba(46,125,50,.12);color:#2e7d32}
+        .ziwei-mutagen-line .mutagen-badge.mu-quan{background:rgba(123,31,162,.12);color:#7b1fa2}
+        .ziwei-mutagen-line .mutagen-badge.mu-ke{background:rgba(21,101,192,.12);color:#1565c0}
+        .ziwei-mutagen-line .mutagen-badge.mu-ji{background:rgba(198,40,40,.12);color:#c62828}
+        .analysis-content{font-size:.9rem;line-height:1.85;padding:20px;background:var(--card);border:1px solid var(--border-light);border-radius:var(--radius)}
+        .analysis-content h2{font-size:1.1em;color:var(--accent);margin:1em 0 .5em}
+        .analysis-content h2:first-child{margin-top:0}
+        .glossary-term{color:var(--accent);border-bottom:1px dotted var(--accent);cursor:help}
+        .glossary-term:hover{background:rgba(212,168,67,.1)}
+        .sticky-actions{position:fixed;bottom:0;left:0;width:400px;background:var(--card);padding:12px 24px;display:flex;gap:8px;border-top:1px solid var(--border-light);z-index:10;box-shadow:0 -4px 16px rgba(0,0,0,.06)}
+        .sticky-actions .btn{flex:1;justify-content:center}
+        .pw-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center}
+        .pw-dialog{background:var(--card);border-radius:14px;padding:28px;width:360px;max-width:90vw;text-align:center}
+        .pw-dialog h3{margin-bottom:8px}
+        .pw-dialog p{font-size:.8em;color:var(--muted);margin-bottom:16px}
+        .pw-dialog input{width:100%;padding:10px;font-size:.9em;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;background:var(--bg);color:var(--text)}
+        .pw-error{color:#c62828;font-size:.78em;margin-bottom:8px}
+        .btn-row{display:flex;gap:8px}
+        .btn-row .btn{flex:1}
+        @media(max-width:860px){.app-layout{flex-direction:column}.app-sidebar{width:100%;min-width:0;height:auto;position:static;border-right:none;padding:20px 16px}.app-main{padding:20px 16px 80px}.sticky-actions{width:100%}.ziwei-grid .ziwei-cell{min-height:58px;padding:5px 3px;font-size:.64em}}
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    <aside class="app-sidebar">
+        <header class="app-header">
+            <div>
+                <h1 onclick="location='/'">🔮 紫微斗数</h1>
+                <p class="subtitle">iztro-py 精确排盘 · 三合中州派解读</p>
+            </div>
+            <button id="btn-theme" onclick="toggleTheme()" title="日/夜模式" style="background:none;border:1px solid var(--border);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px">🌙</button>
+        </header>
+
+        <div class="quick-input-row">
+            <input type="text" id="quick-input" maxlength="12" inputmode="numeric" placeholder="199108150100">
+            <span class="quick-hint">快捷输入 199108150100 → 自动填表</span>
+        </div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>历法</label>
+                <div class="radio-group">
+                    <label class="radio-label"><input type="radio" name="calendar" value="solar" checked> 公历</label>
+                    <label class="radio-label"><input type="radio" name="calendar" value="lunar"> 农历</label>
+                </div>
+            </div>
+            <div class="form-group"><label>年份</label><input type="number" id="year" placeholder="1991" min="1900" max="2100"></div>
+            <div class="form-group"><label>月份</label><input type="number" id="month" placeholder="8" min="1" max="12"></div>
+            <div class="form-group"><label>日期</label><input type="number" id="day" placeholder="15" min="1" max="31"></div>
+            <div class="form-group"><label>时</label><input type="number" id="hour" placeholder="1" min="0" max="23"></div>
+            <div class="form-group"><label>分</label><input type="number" id="minute" placeholder="0" min="0" max="59"></div>
+            <div class="form-group">
+                <label>性别</label>
+                <div class="radio-group">
+                    <label class="radio-label"><input type="radio" name="gender" value="男" checked> 男</label>
+                    <label class="radio-label"><input type="radio" name="gender" value="女"> 女</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="sticky-actions">
+            <button id="btn-paipan" class="btn btn-primary">🔮 紫微排盘</button>
+            <button id="btn-analyze" class="btn btn-gold" disabled>🧠 开始解读</button>
+        </div>
+    </aside>
+
+    <main class="app-main">
+        <div id="loading" class="loading hidden"><div class="spinner"></div><p id="loading-text">排盘中...</p></div>
+        <div id="error-box" class="error-box hidden"></div>
+
+        <section id="chart-section" class="result-section hidden">
+            <div class="floating-bar">
+                <span class="bar-title">🔮 紫微命盘</span>
+            </div>
+            <div id="ziwei-grid" class="ziwei-grid"></div>
+            <div id="ziwei-mutagen-line" class="ziwei-mutagen-line"></div>
+        </section>
+
+        <section id="analysis-section" class="result-section hidden">
+            <div class="floating-bar">
+                <span class="bar-title">📜 命盘解读</span>
+            </div>
+            <div id="analysis-content" class="analysis-content"></div>
+        </section>
+    </main>
+</div>
+
+<div id="pw-overlay" class="pw-overlay hidden">
+    <div class="pw-dialog">
+        <h3>🔐 深度分析需要密码</h3>
+        <p>API 调用成本较高，请向管理员获取密码</p>
+        <input type="password" id="pw-input" placeholder="请输入密码" autocomplete="off">
+        <div class="pw-error" id="pw-error"></div>
+        <div class="btn-row">
+            <button id="btn-pw-cancel" class="btn">取消</button>
+            <button id="btn-pw-confirm" class="btn btn-primary">确认</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ========== DOM 引用 ==========
+const $=id=>document.getElementById(id);
+const elYear=$('year'),elMonth=$('month'),elDay=$('day'),elHour=$('hour'),elMinute=$('minute');
+const elBtnPaipan=$('btn-paipan'),elBtnAnalyze=$('btn-analyze');
+const elLoading=$('loading'),elLoadingText=$('loading-text'),elErrorBox=$('error-box');
+const elChartSection=$('chart-section'),elZiweiGrid=$('ziwei-grid'),elZiweiMutagen=$('ziwei-mutagen-line');
+const elAnalysisSection=$('analysis-section'),elAnalysisContent=$('analysis-content');
+const elPwOverlay=$('pw-overlay'),elPwInput=$('pw-input'),elPwError=$('pw-error');
+const elBtnPwConfirm=$('btn-pw-confirm'),elBtnPwCancel=$('btn-pw-cancel');
+let ziweiPlateData=null, analysisInProgress=false, _pwResolve=null;
+
+// ========== 主题切换 ==========
+function toggleTheme(){
+    const cur=document.documentElement.getAttribute('data-theme');
+    const next=cur==='dark'?'':'dark';
+    document.documentElement.setAttribute('data-theme',next);
+    localStorage.setItem('bazi_theme',next);
+    $('btn-theme').textContent=next==='dark'?'☀️':'🌙';
+}
+(function(){
+    const t=localStorage.getItem('bazi_theme');
+    if(t)document.documentElement.setAttribute('data-theme',t);
+    $('btn-theme').textContent=t==='dark'?'☀️':'🌙';
+})();
+
+// ========== 快捷输入 ==========
+$('quick-input').addEventListener('input',function(){
+    const v=this.value.replace(/\D/g,'');
+    if(v.length<8)return;
+    elYear.value=v.slice(0,4);
+    elMonth.value=parseInt(v.slice(4,6));
+    elDay.value=parseInt(v.slice(6,8));
+    if(v.length>=10)elHour.value=parseInt(v.slice(8,10));
+    if(v.length>=12)elMinute.value=parseInt(v.slice(10,12));
+});
+$('quick-input').addEventListener('keydown',function(e){if(e.key==='Enter')elBtnPaipan.click();});
+
+// ========== 工具函数 ==========
+function showLoading(msg){elLoadingText.textContent=msg;elLoading.classList.remove('hidden')}
+function hideLoading(){elLoading.classList.add('hidden')}
+function showError(msg){elErrorBox.textContent=msg;elErrorBox.classList.remove('hidden')}
+function hideError(){elErrorBox.classList.add('hidden')}
+
+function getFormData(){
+    const c=document.querySelector('input[name="calendar"]:checked')?.value||'solar';
+    const g=document.querySelector('input[name="gender"]:checked')?.value||'男';
+    return{
+        year:parseInt(elYear.value),month:parseInt(elMonth.value),day:parseInt(elDay.value),
+        hour:parseInt(elHour.value||'0'),minute:parseInt(elMinute.value||'0'),
+        gender:g,is_lunar:c==='lunar'
+    };
+}
+
+// ========== 排盘 ==========
+elBtnPaipan.addEventListener('click',async()=>{
+    const fd=getFormData();
+    if(!fd.year||!fd.month||!fd.day){showError('请填写完整的出生日期');return}
+    hideError();showLoading('紫微排盘中...');
+    elBtnPaipan.disabled=true;elChartSection.classList.add('hidden');elAnalysisSection.classList.add('hidden');
+    try{
+        const r=await fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(fd)});
+        const d=await r.json();
+        if(d.error){showError(d.error);hideLoading();elBtnPaipan.disabled=false;return}
+        ziweiPlateData=d;hideLoading();renderZiweiChart(d);
+        elChartSection.classList.remove('hidden');elBtnAnalyze.disabled=false;
+    }catch(e){showError('网络错误: '+e.message);hideLoading();elBtnPaipan.disabled=false}
+    elBtnPaipan.disabled=false;
+});
+
+function renderZiweiChart(data){
+    const palaces=data.palaces||[];
+    if(palaces.length!==12){elZiweiGrid.innerHTML='<p style="color:red">数据异常</p>';return}
+    // 当前大限
+    const birthStr=(data.input?.birth_datetime||'');const birthYear=parseInt(birthStr);
+    const approxAge=birthYear?new Date().getFullYear()-birthYear:-1;
+    let curIdx=-1;
+    if(approxAge>=0)for(const p of palaces){const m=(p.decadal_range||'').match(/(\d+)-(\d+)/);if(m){if(approxAge>=parseInt(m[1])&&approxAge<=parseInt(m[2])){curIdx=p.index;break}}}
+    // 宫位HTML
+    let html='';
+    for(let row=1;row<=4;row++){for(let col=1;col<=4;col++){
+        if(row>=2&&row<=3&&col>=2&&col<=3){
+            if(row===2&&col===2){
+                const we={'水二局':'🌊','木三局':'🌳','金四局':'⛰️','土五局':'🏔️','火六局':'🔥'};
+                html+=`<div class="ziwei-center"><div class="center-icon">🔮</div><div class="center-title">紫微斗数</div><div class="center-row">${we[data.five_elements_class]||'📐'} <strong>${data.five_elements_class||'?'}</strong></div><div class="center-row">命宫 <strong>${data.soul_palace||'?'}</strong> · 身宫 <strong>${data.body_palace||'?'}</strong></div></div>`;
+            }continue;
+        }
+        const pal=palaces.find(p=>p.grid_row===row&&p.grid_col===col);
+        if(!pal){html+='<div class="ziwei-cell empty-cell"></div>';continue}
+        const isCur=pal.index===curIdx;
+        let cls='ziwei-cell';if(pal.is_empty)cls+=' empty-cell';if(isCur)cls+=' current-decadal';
+        let tags='';if(pal.tags?.includes('命宫'))tags+='<span class="cell-tag tag-ming">命</span>';if(pal.tags?.includes('身宫'))tags+='<span class="cell-tag tag-shen">身</span>';
+        let starHtml='';
+        for(const s of(pal.major_stars||[])){
+            const nm=typeof s==='string'?s:s.name;
+            const tc=typeof s==='object'?s.css?.replace('star-',''):'major';
+            let row=`<span class="star-name ${tc}">${nm}</span>`;
+            if(typeof s==='object'&&s.brightness)row+=`<span class="star-brightness ${s.brightness_css||''}">${s.brightness}</span>`;
+            if(typeof s==='object'&&s.mutagen)row+=`<span class="star-mutagen ${s.mutagen_css||''}">${s.mutagen_mark||s.mutagen}</span>`;
+            starHtml+=`<div class="star-row">${row}</div>`;
+        }
+        if(!starHtml)starHtml='<div class="star-row" style="color:var(--muted);font-size:.8em">'+(pal.is_empty?'空宫':'—')+'</div>';
+        let minorHtml='';const mn=pal.minor_stars||[];if(mn.length)minorHtml='<div class="cell-minor">'+mn.map(s=>typeof s==='string'?s:s.name).slice(0,4).join(' ')+'</div>';
+        html+=`<div class="${cls}">${tags}<div class="cell-name">${pal.name}</div><div class="cell-dizhi">${pal.dizhi||''}</div><div class="cell-stars">${starHtml}</div>${minorHtml}<div class="cell-decadal">${isCur?'▸ 当前 ':''}${pal.decadal_range||''}岁</div></div>`;
+    }}
+    elZiweiGrid.innerHTML=html;
+    // 四化
+    const mu=data.year_mutagens||[];
+    if(mu.length){const mc={'化禄':'mu-lu','化权':'mu-quan','化科':'mu-ke','化忌':'mu-ji'},mk={'化禄':'◈','化权':'▲','化科':'◎','化忌':'✕'};elZiweiMutagen.innerHTML=mu.map(m=>`<span class="mutagen-badge ${mc[m.mutagen]||''}">${mk[m.mutagen]||''} ${m.star}${m.mutagen} <span style="font-weight:400;margin-left:3px">${m.palace}</span></span>`).join('');}
+}
+
+// ========== 深度分析 ==========
+function promptPassword(){return new Promise(resolve=>{_pwResolve=resolve;elPwOverlay.classList.remove('hidden');elPwInput.value='';elPwError.textContent='';elPwInput.focus()})}
+$('btn-pw-confirm').addEventListener('click',()=>{if(_pwResolve){_pwResolve(elPwInput.value);elPwOverlay.classList.add('hidden')}});
+$('btn-pw-cancel').addEventListener('click',()=>{if(_pwResolve){_pwResolve(null);elPwOverlay.classList.add('hidden')}});
+elPwInput.addEventListener('keydown',e=>{if(e.key==='Enter')$('btn-pw-confirm').click()});
+
+elBtnAnalyze.addEventListener('click',async()=>{
+    if(!ziweiPlateData||analysisInProgress)return;
+    analysisInProgress=true;elBtnAnalyze.disabled=true;elBtnAnalyze.textContent='⏳ 分析中...';
+    elAnalysisSection.classList.remove('hidden');
+    elAnalysisContent.innerHTML='<p style="text-align:center;color:var(--muted)">AI 正在解读你的紫微命盘...</p>';
+
+    const pw=sessionStorage.getItem('bazi_pw')||'';
+    try{
+        let r=await fetch('/api/ziwei/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:ziweiPlateData,password:pw})});
+        let d=await r.json();
+        if(d.need_password){const p=await promptPassword();if(!p){resetAnalyzeBtn();return}sessionStorage.setItem('bazi_pw',p);r=await fetch('/api/ziwei/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:ziweiPlateData,password:p})});d=await r.json()}
+        if(!d.success){elAnalysisContent.innerHTML='<p style="color:#c62828">分析失败: '+(d.error||'未知')+'</p>';resetAnalyzeBtn();return}
+        elAnalysisContent.innerHTML=formatMarkdown(d.analysis);
+        injectGlossary(elAnalysisContent);
+        elBtnAnalyze.classList.add('hidden');
+    }catch(e){elAnalysisContent.innerHTML='<p style="color:#c62828">网络错误: '+e.message+'</p>';resetAnalyzeBtn()}
+    analysisInProgress=false;
+});
+function resetAnalyzeBtn(){analysisInProgress=false;elBtnAnalyze.disabled=false;elBtnAnalyze.textContent='🔄 重试'}
+
+// ========== Markdown渲染 ==========
+function formatMarkdown(text){
+    let h=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    h=h.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+    h=h.replace(/^## (.+)$/gm,'<h2>$1</h2>');
+    h=h.replace(/^# (.+)$/gm,'<h1>$1</h1>');
+    h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    h=h.replace(/\n/g,'<br>');
+    return h;
+}
+
+// ========== 词条高亮 ==========
+const GLOSSARY={
+    '命宫':'命盘核心宫位，代表先天禀赋、性格底色、人生大方向',
+    '身宫':'后天发展重心，30岁后影响力逐渐超过命宫',
+    '三方四正':'本宫+对宫+左右三合宫，判断星曜力量的关键',
+    '四化':'化禄(机遇/财富流)、化权(掌控力/竞争)、化科(名声/贵人)、化忌(业力/课题)——生年四化影响终身',
+    '空宫':'宫内无主星，借对宫星曜来参考解读。空宫不代表不好，反而是可塑性强的表现',
+    '大限':'每十年一换的运势周期', '紫微':'帝王星，主贵气、领导力',
+    '天机':'智谋星，主聪明、善变、策划', '太阳':'光明星，主热情、公益、名望',
+    '武曲':'财星，主果断、刚毅、理财', '天同':'福星，主温和、享受、人缘',
+    '廉贞':'囚星/次桃花，主执着、才艺', '天府':'库星，主稳重、包容、管理',
+    '太阴':'富星/母星，主细腻、内敛、美感', '贪狼':'桃花星/欲望星，主交际、才艺',
+    '巨门':'暗星，主口才、是非、研究', '天相':'印星，主服务、协调、忠诚',
+    '天梁':'荫星，主正直、慈悲、长寿', '七杀':'将星，主魄力、开拓、刚猛',
+    '破军':'耗星，主变革、破坏、创新', '化禄':'四化之一，机遇/财富流入',
+    '化权':'四化之一，掌控力/竞争', '化科':'四化之一，名声/贵人',
+    '化忌':'四化之一，业力/课题/执着',
+};
+function injectGlossary(container){
+    if(!container)return;
+    const terms=Object.keys(GLOSSARY).sort((a,b)=>b.length-a.length);
+    const walker=document.createTreeWalker(container,NodeFilter.SHOW_TEXT,null,false);
+    const reps=[];
+    while(walker.nextNode()){const n=walker.currentNode;if(n.parentElement?.closest?.('.glossary-term,.cell-stars,.cell-minor,.cell-name,.cell-dizhi'))continue;let t=n.textContent;for(const term of terms){const i=t.indexOf(term);if(i!==-1){const s=document.createElement('span');s.className='glossary-term';s.title=GLOSSARY[term];s.textContent=term;reps.push({node:n,idx:i,term,s});break}}}
+    for(const{node:n,idx,term,s}of reps){const b=n.textContent.slice(0,idx),a=n.textContent.slice(idx+term.length),p=n.parentNode;p.insertBefore(document.createTextNode(b),n);p.insertBefore(s,p.childNodes[p.childNodes.length-1].nextSibling||null);p.insertBefore(document.createTextNode(a),s.nextSibling);p.removeChild(n)}
+}
+</script>
+</body>
+</html>

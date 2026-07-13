@@ -424,6 +424,12 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/ziwei")
+def ziwei():
+    """紫微斗数独立应用"""
+    return render_template("ziwei.html")
+
+
 @app.route("/api/geocode")
 def api_geocode():
     """地理编码：地名 → 经纬度"""
