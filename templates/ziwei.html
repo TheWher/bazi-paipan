@@ -11,8 +11,8 @@ html{font-size:16px}
 body{font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
 .hidden{display:none!important}
 .app-layout{display:flex;min-height:100vh}
-.app-sidebar{width:340px;min-width:340px;flex-shrink:0;border-right:1px solid var(--border);padding:20px 16px 80px;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;background:#1a1a20}
-.app-main{flex:1;min-width:0;padding:20px 24px 60px;overflow-y:auto}
+.app-sidebar{width:320px;min-width:320px;flex-shrink:0;border-right:1px solid var(--border);padding:16px 14px 80px;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;background:#1a1a20}
+.app-main{flex:1;min-width:0;padding:16px 20px 60px;overflow-y:auto}
 .app-header{display:flex;justify-content:space-between;align-items:center;padding:0 0 12px}
 .app-header h1{font-size:1.2rem;cursor:pointer;color:var(--accent);letter-spacing:.05em}
 .app-header .subtitle{font-size:.65em;color:var(--muted)}
@@ -36,41 +36,40 @@ body{font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;backgr
 @keyframes spin{to{transform:rotate(360deg)}}
 .error-box{background:rgba(200,40,40,.12);color:#ef5350;padding:12px 16px;border-radius:8px;margin-bottom:14px;font-size:.82em}
 /* ---- 文墨天机风格十二宫 Grid ---- */
-.ziwei-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:3px;margin-bottom:14px;aspect-ratio:1;min-height:520px}
-.ziwei-cell{background:var(--card);border:1.5px solid var(--border);padding:5px 4px 3px;text-align:center;font-size:.75em;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.ziwei-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:4px;margin-bottom:14px;aspect-ratio:1;min-height:560px}
+.ziwei-cell{background:var(--card);border:1.5px solid var(--border);padding:6px 5px 4px;text-align:center;font-size:.85em;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .ziwei-cell:hover{z-index:2;box-shadow:0 0 18px rgba(212,168,67,.25)}
-.ziwei-cell.empty-cell{opacity:.5}
+.ziwei-cell.empty-cell{opacity:.45}
 .ziwei-cell.current-decadal{border-color:var(--accent);border-width:2px;box-shadow:inset 0 0 28px rgba(212,168,67,.08),0 0 10px rgba(212,168,67,.1)}
 /* 地支大字 */
-.cell-branch{font-size:1.6em;font-weight:800;line-height:1;margin-bottom:2px}
+.cell-branch{font-size:1.5em;font-weight:800;line-height:1.1;margin-bottom:1px}
 .br-巳{color:#e8a860}.br-午{color:#d4785e}.br-未{color:#c8b878}.br-申{color:#c0c0c0}
 .br-辰{color:#a0c878}.br-酉{color:#c0a860}.br-卯{color:#78b878}.br-戌{color:#c89860}
 .br-寅{color:#78a8c0}.br-丑{color:#b8a878}.br-子{color:#6898c8}.br-亥{color:#8888b8}
 /* 星曜 */
 .cell-stars{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;min-height:0}
-.star-row{display:flex;align-items:center;gap:3px;font-size:.95em;line-height:1.25;white-space:nowrap}
+.star-row{display:flex;align-items:center;gap:3px;font-size:1em;line-height:1.3;white-space:nowrap}
 .star-name{font-weight:700}
 .star-name.major{color:#d4a843}
 .star-name.auspicious{color:#ce93d8}
 .star-name.malefic{color:#5a5a6e}
 .star-name.neutral{color:var(--muted)}
-.star-brightness{font-size:.68em;padding:0 2px;border-radius:2px;font-weight:600;line-height:1.1}
+.star-brightness{font-size:.7em;padding:0 2px;border-radius:2px;font-weight:600;line-height:1.1}
 .b-miao{background:#d4a843;color:#1a1a2e}.b-wang{background:#e8a860;color:#1a1a2e}
 .b-de{background:#7cb342;color:#fff}.b-li{background:#5c6bc0;color:#fff}
 .b-ping{background:#888;color:#fff}.b-bu{background:#78909c;color:#fff}.b-xian{background:#c62828;color:#fff}
-.star-mutagen{font-size:.72em;font-weight:700}
+.star-mutagen{font-size:.75em;font-weight:700}
 .m-lu{color:#2e7d32}.m-quan{color:#7b1fa2}.m-ke{color:#1565c0}.m-ji{color:#c62828}
 /* 宫名红字 */
-.cell-palace{font-size:.78em;font-weight:700;color:#c0392b;margin-top:2px}
-.cell-dizhi{font-size:.65em;color:var(--muted)}
-.cell-decadal{font-size:.62em;color:var(--accent);font-weight:600;margin-top:1px}
-.cell-tag{position:absolute;top:1px;right:2px;font-size:.55em;padding:1px 3px;border-radius:2px;font-weight:700}
+.cell-palace{font-size:.8em;font-weight:700;color:#c0392b;margin-top:2px}
+.cell-dizhi{font-size:.68em;color:var(--muted)}
+.cell-decadal{font-size:.65em;color:var(--accent);font-weight:600;margin-top:2px;display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+.cell-decadal .dl-badge{font-size:.85em;padding:0 3px;border-radius:2px;font-weight:700}
+.cell-decadal .dl-ly{color:#b39ddb;background:rgba(124,77,255,.08)}
+.cell-decadal .dl-dn{color:#64b5f6;background:rgba(33,150,243,.08)}
+.cell-decadal .dl-nn{color:#81c784;background:rgba(76,175,80,.08)}
+.cell-tag{position:absolute;top:2px;right:3px;font-size:.55em;padding:1px 4px;border-radius:2px;font-weight:700}
 .tag-ming{background:#d4a843;color:#1a1a2e}.tag-shen{background:#7c4dff;color:#fff}
-/* 叠盘覆盖标记 */
-.cell-overlay{position:absolute;bottom:0;left:2px;right:2px;font-size:.55em;font-weight:700;text-align:center;padding:2px 0;border-radius:0 0 2px 2px;pointer-events:none}
-.cell-overlay.ly-mark{background:rgba(124,77,255,.12);color:#b39ddb}
-.cell-overlay.dn-mark{background:rgba(33,150,243,.1);color:#64b5f6}
-.cell-overlay.nn-mark{background:rgba(76,175,80,.1);color:#81c784}
 /* 中心 */
 .ziwei-center{grid-row:2/4;grid-column:2/4;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px 6px;background:var(--card);border:1px solid var(--border)}
 .ziwei-center .center-title{font-size:1.1em;font-weight:800;color:var(--accent);margin-bottom:6px;letter-spacing:.06em}
@@ -107,15 +106,17 @@ body{font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;backgr
 .star-modal .star-desc{font-size:.82em;line-height:1.6;margin-bottom:10px}
 .star-modal .star-palace-note{font-size:.76em;color:var(--muted);border-top:1px solid var(--border);padding-top:8px}
 .btn-close{float:right;background:none;border:none;font-size:1.1em;cursor:pointer;color:var(--muted)}
-.sticky-actions{position:fixed;bottom:0;left:0;width:340px;background:var(--card);padding:10px 16px;display:flex;gap:6px;border-top:1px solid var(--border);z-index:10}
+.sticky-actions{position:fixed;bottom:0;left:0;width:320px;background:var(--card);padding:10px 14px;display:flex;gap:6px;border-top:1px solid var(--border);z-index:10}
 .sticky-actions .btn{flex:1;justify-content:center}
+/* 中心区字号加大 */
+.ziwei-center .center-title{font-size:1.2em}.ziwei-center .center-row{font-size:.95em}
 .pw-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center}
 .pw-dialog{background:var(--card);border-radius:12px;padding:24px;width:340px;max-width:90vw;text-align:center}
 .pw-dialog h3{margin-bottom:6px}.pw-dialog p{font-size:.76em;color:var(--muted);margin-bottom:14px}
 .pw-dialog input{width:100%;padding:9px;font-size:.88em;border:1px solid var(--border);border-radius:6px;margin-bottom:10px;background:var(--bg);color:var(--text)}
 .pw-error{color:#ef5350;font-size:.74em;margin-bottom:6px}
 .btn-row{display:flex;gap:6px}.btn-row .btn{flex:1}
-@media(max-width:860px){.app-layout{flex-direction:column}.app-sidebar{width:100%;min-width:0;height:auto;position:static;border-right:none;padding:16px 14px}.app-main{padding:16px 14px 80px}.sticky-actions{width:100%}.ziwei-grid{min-height:360px}.ziwei-cell{font-size:.58em}}
+@media(max-width:860px){.app-layout{flex-direction:column}.app-sidebar{width:100%;min-width:0;height:auto;position:static;border-right:none;padding:16px 14px}.app-main{padding:16px 14px 80px}.sticky-actions{width:100%}.ziwei-grid{min-height:400px}.ziwei-cell{font-size:.7em}}
 </style>
 </head>
 <body>
@@ -267,7 +268,7 @@ function renderZiweiChart(data){
         }
         if(!starHtml)starHtml=`<div class="star-row" style="font-size:.8em;color:var(--muted)">${pal.is_empty?'空宫':'—'}</div>`;
 
-        html+=`<div class="${cls}">${tags}<div class="cell-branch ${brCls[branch]||''}">${branch}</div><div class="cell-stars">${starHtml}</div><div class="cell-palace">${pal.name}</div><div class="cell-dizhi">${pal.dizhi||''}</div><div class="cell-decadal">${isCur?'▸ ':''}${pal.decadal_range||''}岁</div></div>`;
+        html+=`<div class="${cls}" data-palace="${pal.name}">${tags}<div class="cell-branch ${brCls[branch]||''}">${branch}</div><div class="cell-stars">${starHtml}</div><div class="cell-palace">${pal.name}</div><div class="cell-dizhi">${pal.dizhi||''}</div><div class="cell-decadal">${isCur?'<span class="dl-badge dl-dn">▸大限</span>':''}<span>${pal.decadal_range||''}岁</span></div></div>`;
     }}
     elZiweiGrid.innerHTML=html;
 
@@ -315,30 +316,27 @@ $('btn-horoscope').addEventListener('click',async()=>{
 });
 
 function applyOverlayMarks(horoData){
-    // 清除旧标记
-    document.querySelectorAll('.cell-overlay').forEach(el=>el.remove());
     const liuyao=horoData.liuyao||{};
     const cells=document.querySelectorAll('.ziwei-cell');
     for(const cell of cells){
-        // 从DOM中找到宫名
-        const pEl=cell.querySelector('.cell-palace');
-        if(!pEl)continue;
-        const pName=pEl.textContent.trim();
-        // 分组流曜
-        const ly=[];  // 流曜
+        const pName=cell.dataset.palace||cell.querySelector('.cell-palace')?.textContent?.trim();
+        if(!pName)continue;
+        const decDiv=cell.querySelector('.cell-decadal');
+        if(!decDiv)continue;
+        // 收集流曜
+        const ly=[];
         for(const [name,palace] of Object.entries(liuyao)){
             if(palace===pName)ly.push(name.replace('流',''));
         }
-        // 分别标记
-        if(horoData.yearly_palace===pName||horoData.decadal_palace===pName||ly.length){
-            const ov=document.createElement('div');
-            ov.className='cell-overlay';
-            let txt=[];
-            if(horoData.decadal_palace===pName){txt.push('大限');ov.classList.add('dn-mark')}
-            if(horoData.yearly_palace===pName){txt.push('流年');ov.classList.add('nn-mark')}
-            if(ly.length){txt.push(ly.slice(0,3).join('·'));ov.classList.add('ly-mark')}
-            ov.textContent=txt.join(' ');
-            cell.appendChild(ov);
+        // 追加badge到decadal行
+        if(horoData.decadal_palace===pName&&!decDiv.querySelector('.dl-dn')){
+            const b=document.createElement('span');b.className='dl-badge dl-dn';b.textContent='大限';decDiv.appendChild(b);
+        }
+        if(horoData.yearly_palace===pName){
+            const b=document.createElement('span');b.className='dl-badge dl-nn';b.textContent='流年';decDiv.appendChild(b);
+        }
+        if(ly.length){
+            const b=document.createElement('span');b.className='dl-badge dl-ly';b.textContent=ly.slice(0,2).join('·');decDiv.appendChild(b);
         }
     }
 }
