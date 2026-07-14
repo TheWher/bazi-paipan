@@ -93,10 +93,26 @@ body{font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;backgr
 .horoscope-bar label{font-size:.74em;color:var(--muted);font-weight:500}
 .horoscope-bar select,.horoscope-bar input{padding:5px 8px;font-size:.76em;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text)}
 .horoscope-result{font-size:.74em;color:var(--accent);font-weight:600;margin-left:auto}
-/* 分析 */
-.analysis-content{font-size:.85rem;line-height:1.8;padding:18px;background:var(--card);border:1px solid var(--border);border-radius:8px}
-.analysis-content h2{font-size:1.05em;color:var(--accent);margin:1em 0 .4em}
-.analysis-content h2:first-child{margin-top:0}
+/* 分析卡片 */
+.analysis-content{display:flex;flex-direction:column;gap:14px}
+.analysis-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative;overflow:hidden}
+.analysis-card::after{content:'';position:absolute;inset:0;opacity:.4;pointer-events:none}
+.analysis-card.card-bg{background:linear-gradient(135deg,var(--card),rgba(212,168,67,.04))}
+.analysis-card.card-caifu{background:linear-gradient(135deg,var(--card),rgba(76,175,80,.04))}
+.analysis-card.card-ganqing{background:linear-gradient(135deg,var(--card),rgba(233,30,99,.04))}
+.analysis-card.card-daxian{background:linear-gradient(135deg,var(--card),rgba(33,150,243,.04))}
+.analysis-card.card-liunian{background:linear-gradient(135deg,var(--card),rgba(156,39,176,.04))}
+.analysis-card h2{font-size:.95em;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.analysis-card h2 .card-icon{font-size:1.1em}
+.analysis-card .card-body{font-size:.82em;line-height:1.75;color:var(--text)}
+.analysis-card .card-body strong{color:var(--accent)}
+.analysis-card .card-badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:.7em;font-weight:600;margin-left:auto}
+.analysis-card .card-badge.badge-gold{background:rgba(212,168,67,.15);color:#c8a850}
+.analysis-card .card-badge.badge-green{background:rgba(76,175,80,.12);color:#81c784}
+.analysis-card .card-badge.badge-pink{background:rgba(233,30,99,.1);color:#f48fb1}
+.analysis-card .card-badge.badge-blue{background:rgba(33,150,243,.12);color:#64b5f6}
+.analysis-card .card-badge.badge-purple{background:rgba(156,39,176,.12);color:#ce93d8}
+.analysis-card .card-footer{font-size:.7em;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--border-light)}
 .glossary-term{color:var(--accent);border-bottom:1px dotted var(--accent);cursor:help}
 /* 弹窗 */
 .star-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:flex;align-items:center;justify-content:center}
@@ -408,8 +424,38 @@ elBtnAnalyze.addEventListener('click',async()=>{
 function resetBtn(){analysisInProgress=false;elBtnAnalyze.disabled=false;elBtnAnalyze.textContent='🔄 重试'}
 
 function formatMarkdown(t){
+    // 卡片化渲染——每个 ## 章节独立成卡
     let h=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    h=h.replace(/^### (.+)$/gm,'<h3>$1</h3>');h=h.replace(/^## (.+)$/gm,'<h2>$1</h2>');h=h.replace(/^# (.+)$/gm,'<h1>$1</h1>');
+    // 先提取标题和正文块
+    const sections=[];
+    const parts=h.split(/^## /gm);
+    for(let i=1;i<parts.length;i++){
+        const lines=parts[i].split('\n');
+        const title=lines[0].trim();
+        const body=lines.slice(1).join('\n').trim();
+        sections.push({title,body});
+    }
+    // 如果有 ## 标题，按卡片渲染
+    if(sections.length>=2){
+        const icons={'命盘底色':'🎯','事业':'💼','财运':'💰','感情':'❤️','大限':'🔮','流年':'📅'};
+        const badges={'命盘底色':'badge-gold','事业':'badge-gold','财运':'badge-green','感情':'badge-pink','大限':'badge-blue','流年':'badge-purple'};
+        const bgs={'命盘底色':'card-bg','事业':'card-bg','财运':'card-caifu','感情':'card-ganqing','大限':'card-daxian','流年':'card-liunian'};
+        let cards='';
+        for(const s of sections){
+            let icon='📌';let badge='';let bg='';
+            for(const[k,v] of Object.entries(icons)){if(s.title.includes(k)){icon=v;break}}
+            for(const[k,v] of Object.entries(badges)){if(s.title.includes(k)){badge=v;break}}
+            for(const[k,v] of Object.entries(bgs)){if(s.title.includes(k)){bg=v;break}}
+            // 渲染正文：粗体+换行
+            let body=s.body.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+            // 截取简短标签名
+            const shortLabel=s.title.replace(/[🎯💼💰❤️🔮📅\s]/g,'').slice(0,4);
+            cards+=`<div class="analysis-card ${bg}"><h2><span class="card-icon">${icon}</span>${s.title}<span class="card-badge ${badge}">${shortLabel}</span></h2><div class="card-body">${body}</div></div>`;
+        }
+        return cards;
+    }
+    // fallback: plain format
+    h=h.replace(/^## (.+)$/gm,'<h2>$1</h2>');h=h.replace(/^### (.+)$/gm,'<h3>$1</h3>');
     h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');h=h.replace(/\n/g,'<br>');return h;
 }
 
