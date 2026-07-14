@@ -190,6 +190,10 @@ body{font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;backgr
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:8px 14px;background:var(--card);border:1px solid var(--border);border-radius:6px"><span style="font-weight:600;font-size:.85em">📜 命盘解读</span></div>
         <div id="analysis-content" class="analysis-content"></div>
     </section>
+    <section id="yearly-analysis-section" class="hidden" style="margin-top:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:8px 14px;background:var(--card);border:1px solid var(--border);border-radius:6px"><span style="font-weight:600;font-size:.85em">📅 流年解读</span></div>
+        <div id="yearly-analysis-content" class="analysis-content"></div>
+    </section>
 </main>
 </div>
 <div id="pw-overlay" class="pw-overlay hidden">
@@ -204,6 +208,7 @@ const elYear=$('year'),elMonth=$('month'),elDay=$('day'),elHour=$('hour'),elMinu
 const elBtnPaipan=$('btn-paipan'),elBtnAnalyze=$('btn-analyze'),elLoading=$('loading'),elErrorBox=$('error-box');
 const elChartSection=$('chart-section'),elZiweiGrid=$('ziwei-grid');
 const elAnalysisSection=$('analysis-section'),elAnalysisContent=$('analysis-content');
+const elYearlyAnalysisSection=$('yearly-analysis-section'),elYearlyAnalysisContent=$('yearly-analysis-content');
 let ziweiPlateData=null,analysisInProgress=false,_pwResolve=null;
 
 function showLoading(m){$('loading-text').textContent=m;elLoading.classList.remove('hidden')}
@@ -227,7 +232,7 @@ function getFormData(){
 // ======== 排盘 ========
 elBtnPaipan.addEventListener('click',async()=>{
     const fd=getFormData();if(!fd.year||!fd.month||!fd.day){showError('请填写完整的出生日期');return}
-    hideError();showLoading('紫微排盘中...');elBtnPaipan.disabled=true;elChartSection.classList.add('hidden');elAnalysisSection.classList.add('hidden');
+    hideError();showLoading('紫微排盘中...');elBtnPaipan.disabled=true;elChartSection.classList.add('hidden');elAnalysisSection.classList.add('hidden');elYearlyAnalysisSection.classList.add('hidden');
     try{
         const r=await fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(fd)});
         const d=await r.json();if(d.error){showError(d.error);hideLoading();elBtnPaipan.disabled=false;return}
@@ -362,18 +367,18 @@ $('btn-yearly-analyze').addEventListener('click',async()=>{
     const fd=getFormData();const ty=parseInt($('horoscope-year').value);
     if(!fd.year||!ty||analysisInProgress)return;
     analysisInProgress=true;$('btn-yearly-analyze').disabled=true;$('btn-yearly-analyze').textContent='⏳...';
-    elAnalysisSection.classList.remove('hidden');
-    elAnalysisContent.innerHTML='<p style="text-align:center;color:var(--muted)">AI 正在分析'+ty+'年流年运势...</p>';
+    elYearlyAnalysisSection.classList.remove('hidden');
+    elYearlyAnalysisContent.innerHTML='<p style="text-align:center;color:var(--muted)">AI 正在分析'+ty+'年流年运势...</p>';
     const pw=sessionStorage.getItem('bazi_pw')||'';
     try{
         let r=await fetch('/api/ziwei/analyze/yearly',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...fd,target_year:ty,password:pw})});
         let d=await r.json();
         if(d.need_password){const p=await promptPassword();if(!p){resetYearlyBtn();return}sessionStorage.setItem('bazi_pw',p);r=await fetch('/api/ziwei/analyze/yearly',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...fd,target_year:ty,password:p})});d=await r.json()}
-        if(!d.success){elAnalysisContent.innerHTML='<p style="color:#ef5350">分析失败: '+(d.error||'未知')+'</p>';resetYearlyBtn();return}
-        elAnalysisContent.innerHTML='<p style="color:var(--accent);margin-bottom:10px">📅 '+ty+'年流年解读</p>'+formatMarkdown(d.analysis);injectGlossary(elAnalysisContent);
-    }catch(e){elAnalysisContent.innerHTML='<p style="color:#ef5350">网络错误: '+e.message+'</p>';resetYearlyBtn()}
+        if(!d.success){elYearlyAnalysisContent.innerHTML='<p style="color:#ef5350">分析失败: '+(d.error||'未知')+'</p>';resetYearlyBtn();return}
+        elYearlyAnalysisContent.innerHTML='<p style="color:var(--accent);margin-bottom:10px;font-weight:600">📅 '+ty+'年 流年解读</p>'+formatMarkdown(d.analysis);injectGlossary(elYearlyAnalysisContent);
+    }catch(e){elYearlyAnalysisContent.innerHTML='<p style="color:#ef5350">网络错误: '+e.message+'</p>';resetYearlyBtn()}
     analysisInProgress=false;
-    $('btn-yearly-analyze').classList.add('hidden');
+    $('btn-yearly-analyze').disabled=false;$('btn-yearly-analyze').textContent='🔄 重新流年';
 });
 function resetYearlyBtn(){analysisInProgress=false;$('btn-yearly-analyze').disabled=false;$('btn-yearly-analyze').textContent='🧠 流年解读';}
 
@@ -410,14 +415,15 @@ $('pw-input').addEventListener('keydown',e=>{if(e.key==='Enter')$('btn-pw-confir
 
 elBtnAnalyze.addEventListener('click',async()=>{
     if(!ziweiPlateData||analysisInProgress)return;analysisInProgress=true;elBtnAnalyze.disabled=true;elBtnAnalyze.textContent='⏳ 分析中...';
-    elAnalysisSection.classList.remove('hidden');elAnalysisContent.innerHTML='<p style="text-align:center;color:var(--muted)">AI 正在解读你的紫微命盘...</p>';
+    elYearlyAnalysisSection.classList.add('hidden');elAnalysisSection.classList.remove('hidden');
+    elAnalysisContent.innerHTML='<p style="text-align:center;color:var(--muted)">AI 正在解读你的紫微命盘...</p>';
     const pw=sessionStorage.getItem('bazi_pw')||'';
     try{
         let r=await fetch('/api/ziwei/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:ziweiPlateData,password:pw})});
         let d=await r.json();
         if(d.need_password){const p=await promptPassword();if(!p){resetBtn();return}sessionStorage.setItem('bazi_pw',p);r=await fetch('/api/ziwei/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:ziweiPlateData,password:p})});d=await r.json()}
         if(!d.success){elAnalysisContent.innerHTML='<p style="color:#ef5350">分析失败: '+(d.error||'未知')+'</p>';resetBtn();return}
-        elAnalysisContent.innerHTML=formatMarkdown(d.analysis);injectGlossary(elAnalysisContent);elBtnAnalyze.classList.add('hidden');
+        elAnalysisContent.innerHTML=formatMarkdown(d.analysis);injectGlossary(elAnalysisContent);elBtnAnalyze.disabled=false;elBtnAnalyze.textContent='🔄 重新解读';
     }catch(e){elAnalysisContent.innerHTML='<p style="color:#ef5350">网络错误: '+e.message+'</p>';resetBtn()}
     analysisInProgress=false;
 });
