@@ -1280,21 +1280,42 @@ def analyze_ziwei(plate_dict: dict, timeout: int = 120) -> dict:
 
     system_prompt = _load_ziwei_system_prompt()
     user_message = _build_ziwei_user_message(plate_dict)
-    user_messages = [{"role": "user", "content": user_message}]
 
-    result = _call_api(
-        system_prompt, user_messages,
-        max_tokens=32768, temperature=0.5, timeout=timeout,
-    )
+    # 分两段调用：前半（命盘底色+事业+财运），后半（感情+大限+流年）
+    # 每段独立 32K 预算，避免单次截断
+    first_half = "\n".join(user_message.split("\n")[:-5])  # 去掉旧分析要求
+    first_half += "\n\n## 分析要求\n本次只输出前三章：命盘底色、事业格局、财运分析。每章详细充实，至少150字。"
+    second_half = user_message + "\n\n**注意**：前面已经分析过命盘底色、事业、财运。本次只输出后三章：感情因缘、当前大限、近三年流年。每章详细充实，至少150字。"
 
-    if not result["success"]:
-        return result
+    total_usage = {}
+    analysis_parts = []
+
+    # 第一段：命盘底色 + 事业 + 财运
+    r1 = _call_api(system_prompt, [{"role": "user", "content": first_half}],
+                   max_tokens=24576, temperature=0.5, timeout=timeout // 2)
+    if r1["success"]:
+        analysis_parts.append(r1["text"])
+        total_usage.update(r1.get("usage", {}))
+    else:
+        # 第一段失败则回退到单次调用
+        r = _call_api(system_prompt, [{"role": "user", "content": user_message}],
+                      max_tokens=32768, temperature=0.5, timeout=timeout)
+        if not r["success"]:
+            return r
+        return {"success": True, "analysis": r["text"], "model": r.get("model", API_CONFIG["model"]), "usage": r.get("usage", {})}
+
+    # 第二段：感情 + 大限 + 流年
+    r2 = _call_api(system_prompt, [{"role": "user", "content": second_half}],
+                   max_tokens=24576, temperature=0.5, timeout=timeout // 2)
+    if r2["success"]:
+        analysis_parts.append(r2["text"])
+        total_usage.update(r2.get("usage", {}))
 
     return {
         "success": True,
-        "analysis": result["text"],
-        "model": result.get("model", API_CONFIG["model"]),
-        "usage": result.get("usage", {}),
+        "analysis": "\n\n".join(analysis_parts),
+        "model": API_CONFIG["model"],
+        "usage": total_usage,
     }
 
 
