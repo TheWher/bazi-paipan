@@ -135,8 +135,9 @@ $('btn-paipan').addEventListener('click',()=>{
     $('loading').classList.remove('hidden');$('chart-area').classList.add('hidden');$('analysis-section').classList.add('hidden');
     const hi=Math.floor((b.h+1)/2)%12;
     try{astrolabe=b.cal==='lunar'?iztro.astro.byLunar(`${b.y}-${b.m}-${b.d}`,hi,b.g,false,true,'zh-CN'):iztro.astro.bySolar(`${b.y}-${b.m}-${b.d}`,hi,b.g,true,'zh-CN');}
-    catch(e){$('loading').classList.add('hidden');$('loading').innerHTML=`<p style="color:#ef5350">排盘失败: ${e.message}</p>`;console.error(e);return}
-    renderChart();$('loading').classList.add('hidden');$('chart-area').classList.remove('hidden');$('btn-analyze').disabled=false;
+    catch(e){$('loading').innerHTML=`<p style="color:#ef5350">排盘失败: ${e.message}</p>`;return}
+    try{renderChart();}catch(e){$('loading').innerHTML=`<p style="color:#ef5350">渲染失败: ${e.message}</p>`;return}
+    $('loading').classList.add('hidden');$('chart-area').classList.remove('hidden');$('btn-analyze').disabled=false;
     fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:b.h,minute:b.min,gender:b.g,is_lunar:b.cal==='lunar'})}).then(r=>r.json()).then(d=>{const p=d.patterns||[];$('patterns').innerHTML=p.map(pp=>`<span class="pat-badge pat-${pp.level==='上吉'?'ex':pp.level==='吉'?'gd':pp.level==='忌'?'ca':'ne'}">${pp.name}</span>`).join('');}).catch(()=>{});
 });
 
