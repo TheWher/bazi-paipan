@@ -97,7 +97,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
     <section id="loading-section" class="hidden"><div class="loading"><div class="spinner"></div><p>紫微排盘中...</p></div></section>
     <section id="chart-section" class="hidden">
         <div class="floating-bar"><span class="bar-title">🔮 紫微命盘</span>
-            <select id="horo-scope" style="padding:4px 8px;font-size:.74em;border:1px solid var(--border);border-radius:6px;background:var(--card-bg);color:var(--text)"><option value="origin">本命</option><option value="decadal">大限</option><option value="yearly">流年</option><option value="monthly">流月</option><option value="daily">流日</option></select>
+            <span style="font-size:.72em;color:var(--text-muted)">运限:</span>
+            <button id="btn-decadal" class="btn" style="font-size:.68em;padding:3px 8px" onclick="toggleScope('decadal')">大限</button>
+            <button id="btn-yearly" class="btn" style="font-size:.68em;padding:3px 8px" onclick="toggleScope('yearly')">流年</button>
+            <button id="btn-monthly" class="btn" style="font-size:.68em;padding:3px 8px" onclick="toggleScope('monthly')">流月</button>
+            <button id="btn-daily" class="btn" style="font-size:.68em;padding:3px 8px" onclick="toggleScope('daily')">流日</button>
             <button id="btn-flystar" class="btn" style="font-size:.7em;padding:3px 10px" onclick="toggleFlyStars()">✈️ 飞星</button>
             <span id="horo-result" style="font-size:.7em;color:var(--accent)"></span>
             <div class="pattern-row" id="patterns"></div>
@@ -117,6 +121,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
 <script>
 const $=id=>document.getElementById(id);
 let astrolabe=null,plateData=null,selectedPalace=null,activeStem=null;
+const activeScopes=new Set(); // 'decadal','yearly','monthly','daily'
 
 // Theme
 (function(){const t=localStorage.getItem('bazi_theme');$('btn-theme').textContent=t==='dark'?'☀️':'🌙'})();
@@ -155,8 +160,12 @@ $('btn-render').addEventListener('click',()=>{
     fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:hh,minute:mm,gender:b.gender,is_lunar:b.cal==='lunar',longitude:parseFloat($('longitude').value)||120,location:$('location').value||''})}).then(r=>r.json()).then(d=>{plateData=d;$('patterns').innerHTML=(d.patterns||[]).map(pp=>'<span class="pat-badge pat-'+(pp.level==='上吉'?'ex':pp.level==='吉'?'gd':pp.level==='忌'?'ca':'ne')+'">'+pp.name+'</span>').join('')}).catch(()=>{});
 });
 
-// Horoscope scope change
-$('horo-scope').addEventListener('change',()=>{if(astrolabe)renderChart()});
+// Horoscope scope toggle (independent, can stack)
+function toggleScope(scope){
+    if(activeScopes.has(scope))activeScopes.delete(scope);else activeScopes.add(scope);
+    ['decadal','yearly','monthly','daily'].forEach(s=>{const btn=$('btn-'+s);if(btn)btn.style.cssText=activeScopes.has(s)?'font-size:.68em;padding:3px 8px;border:1px solid var(--accent);border-radius:6px;background:rgba(212,168,67,.12);color:var(--accent);font-weight:600':'font-size:.68em;padding:3px 8px'});
+    if(astrolabe)renderChart();
+}
 
 // GAN_SIHUA table
 const GAN_SIHUA={甲:{禄:'廉贞',权:'破军',科:'武曲',忌:'太阳'},乙:{禄:'天机',权:'天梁',科:'紫微',忌:'太阴'},丙:{禄:'天同',权:'天机',科:'文昌',忌:'廉贞'},丁:{禄:'太阴',权:'天同',科:'天机',忌:'巨门'},戊:{禄:'贪狼',权:'太阴',科:'右弼',忌:'天机'},己:{禄:'武曲',权:'贪狼',科:'天梁',忌:'文曲'},庚:{禄:'太阳',权:'武曲',科:'太阴',忌:'天同'},辛:{禄:'巨门',权:'太阳',科:'文曲',忌:'文昌'},壬:{禄:'天梁',权:'紫微',科:'左辅',忌:'武曲'},癸:{禄:'破军',权:'巨门',科:'太阴',忌:'贪狼'}};
@@ -173,8 +182,8 @@ function renderChart(){
     const S={bg:isDark?'#19192b':'#f8f8fa',cell:isDark?'#1a1a2e':'#fff',border:isDark?'#555':'#bbb',text:isDark?'#999':'#777',gold:'#d4a843'};
     const palaces=Array.isArray(astrolabe.palaces)?astrolabe.palaces:typeof astrolabe.palaces==='function'?astrolabe.palaces():[];
     const soulBr=astrolabe.earthlyBranchOfSoulPalace,bodyBr=astrolabe.earthlyBranchOfBodyPalace,fec=astrolabe.fiveElementsClass;
-    const scope=$('horo-scope').value;let horoscope=null;
-    if(scope!=='origin')try{horoscope=astrolabe.horoscope(new Date(),parseInt($('h').value)||1)}catch(e){}
+    let horoscope=null;
+    if(activeScopes.size>0)try{horoscope=astrolabe.horoscope(new Date(),parseInt($('h').value)||1)}catch(e){}
     const siHua=[];for(const p of palaces)for(const s of[...p.majorStars,...p.minorStars])if(s.mutagen)siHua.push({star:s.name,hua:s.mutagen,palace:p.name});
 
     const W=780,H=960,pad=14,cellW=(W-2*pad)/4,cellH=(H-2*pad-24)/4;
@@ -219,7 +228,7 @@ function renderChart(){
         let hy=y+cellH-16;
         if(horoscope){
             const marks=[{key:'decadal',label:'大限',color:'#4a9eff'},{key:'yearly',label:'流年',color:'#5cb85c'},{key:'monthly',label:'流月',color:'#f0ad4e'},{key:'daily',label:'流日',color:'#d4a843'}];
-            for(const m of marks)if(horoscope[m.key]&&horoscope[m.key].index===p.index){svg+='<text x="'+(x+3)+'" y="'+hy+'" fill="'+m.color+'" font-size="9">'+m.label+'</text>';hy-=7}
+            for(const m of marks)if(activeScopes.has(m.key)&&horoscope[m.key]&&horoscope[m.key].index===p.index){svg+='<text x="'+(x+3)+'" y="'+hy+'" fill="'+m.color+'" font-size="9">'+m.label+'</text>';hy-=7}
         }
     }
 
