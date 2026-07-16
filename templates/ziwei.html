@@ -79,6 +79,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
     </div>
 </aside>
 <main class="app-main">
+    <section id="welcome-section"><div style="text-align:center;padding:120px 40px;color:var(--text-muted)"><div style="font-size:3em;margin-bottom:16px">🔮</div><p style="font-size:1em;margin-bottom:8px">输入出生信息，点击「排盘」开始分析</p><p style="font-size:.75em">iztro JS 原版引擎 · 紫微斗数命盘解读</p></div></section>
     <section id="loading-section" class="hidden"><div class="loading-spinner"><div class="spinner"></div><p>紫微排盘中...</p></div></section>
     <section id="chart-section" class="hidden">
         <div class="floating-bar"><span class="bar-title">🔮 紫微命盘</span><div class="pattern-row" id="patterns"></div></div>
@@ -104,7 +105,7 @@ function getB(){const c=document.querySelector('input[name="cal"]:checked')?.val
 
 document.getElementById('btn-render').addEventListener('click',()=>{
     const b=getB();if(!b.y||!b.m||!b.d)return;
-    $('loading-section').classList.remove('hidden');$('chart-section').classList.add('hidden');$('analysis-section').classList.add('hidden');
+    $('welcome-section').classList.add('hidden');$('loading-section').classList.remove('hidden');$('chart-section').classList.add('hidden');$('analysis-section').classList.add('hidden');
     const hi=Math.floor((b.h+1)/2)%12;
     try{
         astrolabe=b.cal==='lunar'?iztro.astro.byLunar(b.y+'-'+b.m+'-'+b.d,hi,b.gender,false,true,'zh-CN'):iztro.astro.bySolar(b.y+'-'+b.m+'-'+b.d,hi,b.gender,true,'zh-CN');
