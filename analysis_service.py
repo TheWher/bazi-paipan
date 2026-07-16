@@ -1291,7 +1291,7 @@ def _build_ziwei_user_message(plate_dict: dict) -> str:
     parts.append("5. ## 🔮 当前大限 — 当前十年核心课题")
     parts.append("6. ## 📅 近三年流年 — 关键节点提示")
     parts.append("")
-    parts.append('**解读原则**：每个章节详细充实，不要惜字。有主见有判断、用日常语言翻译术语、先讲优势再讲挑战、不说"你一定会"')
+    parts.append('**解读原则**：每章至少250字，详细充实不要惜字。有主见有判断、用日常语言翻译术语、先讲优势再讲挑战、不说"你一定会"。每个结论给出依据（"因为XX星在XX宫+三方有XX，所以..."）。')
 
     return "\n".join(parts)
 
@@ -1315,8 +1315,8 @@ def analyze_ziwei(plate_dict: dict, timeout: int = 120) -> dict:
     # 分两段调用：前半（命盘底色+事业+财运），后半（感情+大限+流年）
     # 每段独立 32K 预算，避免单次截断
     first_half = "\n".join(user_message.split("\n")[:-5])
-    first_half += "\n\n## 分析要求\n本次只输出前两章：命盘底色、事业格局。每章3-5段，详细充实，有主见有依据。"
-    second_half = user_message + "\n\n**注意**：前面已分析命盘底色和事业。本次只输出后三章：感情因缘、当前大限、近三年流年。每章3-5段，详细充实。"
+    first_half += "\n\n## 分析要求\n本次只输出前两章：命盘底色、事业格局。每章至少250字，详细充实有主见。每个关键结论给出依据（因为XX星在XX宫+三方有XX，所以...），不要蜻蜓点水一句话带过。"
+    second_half = user_message + "\n\n**注意**：前面已分析命盘底色和事业。本次只输出后三章：感情因缘、当前大限、近三年流年。每章至少250字，详细充实有主见。"
 
     total_usage = {}
     analysis_parts = []
