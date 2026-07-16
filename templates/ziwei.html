@@ -76,7 +76,8 @@ _:-ms-input-placeholder,:root .form-group{display:none}
                 <div class="radio-group" style="flex:1"><label class="radio-label"><input type="radio" name="g" value="男" checked> 男</label><label class="radio-label" style="margin-left:16px"><input type="radio" name="g" value="女"> 女</label></div>
             </div>
         </div>
-        <label class="radio-label" style="margin-bottom:10px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="use-true-solar" onchange="document.getElementById('solar-row').style.display=this.checked?'flex':'none'"> ⏱ 真太阳时校正</label>
+        <label class="radio-label" style="margin-bottom:4px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="use-true-solar" onchange="document.getElementById('solar-row').style.display=this.checked?'flex':'none';updateSolarInfo()"> ⏱ 真太阳时校正</label>
+        <div id="solar-info" style="display:none;font-size:.68em;color:var(--accent);margin-bottom:8px"></div>
         <div id="solar-row" style="display:none;background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);overflow:hidden;margin-bottom:10px">
             <div style="padding:10px 16px;display:flex;align-items:center;gap:8px">
                 <span style="font-weight:600;font-size:.75em;color:var(--accent);white-space:nowrap">经度</span>
@@ -133,10 +134,12 @@ function getB(){const c=document.querySelector('input[name="cal"]:checked')?.val
 // 城市自动补全
 document.getElementById('location').addEventListener('input',function(){const v=this.value.trim();if(v.length<1){document.getElementById('city-suggestions').style.display='none';return}fetch('/api/cities?q='+encodeURIComponent(v)).then(r=>r.json()).then(cities=>{const el=document.getElementById('city-suggestions');if(!cities.length){el.style.display='none';return}el.innerHTML=cities.slice(0,8).map(c=>'<div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid var(--border-light)" data-lon="'+c.lon.toFixed(2)+'" data-name="'+c.display_name.split('，')[0]+'" class="city-opt">'+c.display_name+' ('+c.lon.toFixed(2)+'°)</div>').join('');el.style.display='block'})});
 document.getElementById('city-suggestions').addEventListener('click',function(e){const d=e.target.closest('.city-opt');if(d){document.getElementById('location').value=d.dataset.name;document.getElementById('longitude').value=d.dataset.lon;this.style.display='none'}});
-document.getElementById('location').addEventListener('blur',()=>setTimeout(()=>document.getElementById('city-suggestions').style.display='none',200));
+document.getElementById('city-suggestions').addEventListener('mousedown',function(e){const d=e.target.closest('.city-opt');if(d){document.getElementById('location').value=d.dataset.name;document.getElementById('longitude').value=d.dataset.lon;this.style.display='none'}});
+document.addEventListener('click',function(e){if(!e.target.closest('#location')&&!e.target.closest('#city-suggestions'))document.getElementById('city-suggestions').style.display='none'});
 
 // 真太阳时校正
-function getAdjustedHour(h,min,lng){const offset=(lng-120)*4;let total=h*60+min+offset;if(total<0)total+=1440;if(total>=1440)total-=1440;return{hour:Math.floor(total/60),minute:Math.round(total%60)}}
+function getAdjustedHour(h,min,lng){const offset=Math.round((lng-120)*4);let total=h*60+min+offset;if(total<0)total+=1440;if(total>=1440)total-=1440;return{hour:Math.floor(total/60),minute:Math.round(total%60),offset:offset}}
+function updateSolarInfo(){if(!document.getElementById('use-true-solar').checked){document.getElementById('solar-info').style.display='none';return}const h=parseInt(document.getElementById('h').value)||0;const m=parseInt(document.getElementById('min').value)||0;const lng=parseFloat(document.getElementById('longitude').value)||120;const adj=getAdjustedHour(h,m,lng);const shi=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];const origIdx=Math.floor((h+1)/2)%12;const adjIdx=Math.floor((adj.hour+1)/2)%12;const origShi=shi[origIdx];const adjShi=shi[adjIdx];const dir=adj.offset>0?'提前':'推后';document.getElementById('solar-info').style.display='block';document.getElementById('solar-info').textContent='校正: '+h+':'+(m||'00').padStart(2,'0')+' ('+origShi+'时) → '+adj.hour+':'+String(adj.minute).padStart(2,'0')+' ('+adjShi+'时) · 偏移'+Math.abs(adj.offset)+'分钟'+dir}
 
 document.getElementById('btn-render').addEventListener('click',()=>{
     const b=getB();if(!b.y||!b.m||!b.d)return;
