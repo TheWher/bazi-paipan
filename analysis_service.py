@@ -1291,7 +1291,7 @@ def _build_ziwei_user_message(plate_dict: dict) -> str:
     parts.append("5. ## 🔮 当前大限 — 当前十年核心课题")
     parts.append("6. ## 📅 近三年流年 — 关键节点提示")
     parts.append("")
-    parts.append('**解读原则**：每章至少250字，详细充实不要惜字。有主见有判断、用日常语言翻译术语、先讲优势再讲挑战、不说"你一定会"。每个结论给出依据（"因为XX星在XX宫+三方有XX，所以..."）。')
+    parts.append('**解读原则**：详细充实，充分展开分析，不要简略。有主见有判断、用日常语言翻译术语、先讲优势再讲挑战、不说"你一定会"。每个结论给出依据（"因为XX星在XX宫+三方有XX，所以..."）。像写文章一样娓娓道来，每个章节至少写500字以上。')
 
     return "\n".join(parts)
 
@@ -1314,7 +1314,7 @@ def analyze_ziwei(plate_dict: dict, timeout: int = 120) -> dict:
     user_messages = [{"role": "user", "content": user_message}]
 
     result = _call_api(system_prompt, user_messages,
-                       max_tokens=32768, temperature=0.5, timeout=timeout)
+                       max_tokens=32768, temperature=0.7, timeout=timeout)
 
     if not result["success"]: return result
     return {"success": True, "analysis": result["text"], "model": result.get("model", API_CONFIG["model"]), "usage": result.get("usage", {})}
