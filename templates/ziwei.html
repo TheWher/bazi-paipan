@@ -34,7 +34,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
 .a-card h2{font-size:.85em;font-weight:600;color:#8b6914;margin-bottom:10px}[data-theme="dark"] .a-card h2{color:var(--accent)}
 .a-card .body{font-size:.9rem;line-height:1.85;color:var(--text)}.a-card .body strong{color:var(--accent)}
 .loading{text-align:center;padding:60px;color:var(--text-muted)}.spinner{width:32px;height:32px;margin:0 auto 12px;border:3px solid var(--border-light);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-.pattern-row{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}.pat-badge{padding:3px 10px;border-radius:12px;font-size:.7em;font-weight:600}.pat-ex{background:linear-gradient(135deg,#d4a843,#8b6914);color:#fff}.pat-gd{background:rgba(212,168,67,.12);color:var(--gold)}.pat-ne{background:rgba(120,120,120,.08);color:var(--text-muted)}.pat-ca{background:rgba(198,40,40,.1);color:#ef5350}
+.pattern-row{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}.pat-badge{padding:3px 10px;border-radius:12px;font-size:.7em;font-weight:600}.pat-ex{background:linear-gradient(135deg,#d4a843,#8b6914);color:#fff;font-size:.75em}.pat-gd{background:rgba(46,125,50,.12);color:#2e7d32;border:1px solid rgba(46,125,50,.2);font-size:.72em}.pat-ne{background:rgba(120,120,120,.06);color:var(--text-muted);font-size:.68em}.pat-ca{background:rgba(198,40,40,.12);color:#ef5350;border:1px solid rgba(198,40,40,.2);font-size:.72em}
 @media(max-width:860px){.app-layout{flex-direction:column}.app-sidebar{width:100%;min-width:0;height:auto;position:static;border-right:none;padding:20px 16px 16px}.app-main{padding:20px 16px 80px}.sticky-actions{width:100%}}
 </style>
 </head>
@@ -158,7 +158,7 @@ $('btn-render').addEventListener('click',()=>{
     catch(e){$('loading-section').innerHTML='<p style="color:#ef5350;text-align:center;padding:60px">排盘失败: '+e.message+'</p>';return}
     try{renderChart()}catch(e){$('loading-section').innerHTML='<p style="color:#ef5350;text-align:center;padding:60px">渲染失败: '+e.message+'</p>';return}
     $('loading-section').classList.add('hidden');$('chart-section').classList.remove('hidden');$('btn-analyze').disabled=false;
-    fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:hh,minute:mm,gender:b.gender,is_lunar:b.cal==='lunar',longitude:parseFloat($('longitude').value)||120,location:$('location').value||''})}).then(r=>r.json()).then(d=>{plateData=d;$('patterns').innerHTML=(d.patterns||[]).map(pp=>'<span class="pat-badge pat-'+(pp.level==='上吉'?'ex':pp.level==='吉'?'gd':pp.level==='忌'?'ca':'ne')+'">'+pp.name+'</span>').join('')}).catch(()=>{});
+    fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:hh,minute:mm,gender:b.gender,is_lunar:b.cal==='lunar',longitude:parseFloat($('longitude').value)||120,location:$('location').value||''})}).then(r=>r.json()).then(d=>{plateData=d;$('patterns').innerHTML=(d.patterns||[]).map(pp=>{const lv=pp.level||'中';const pre=lv==='上吉'?'⭐ ':lv==='吉'?'✅ ':lv==='忌'?'⚠️ ':'';return'<span class="pat-badge pat-'+(lv==='上吉'?'ex':lv==='吉'?'gd':lv==='忌'?'ca':'ne')+'" title="'+(pp.desc||'')+'">'+pre+pp.name+'</span>'}).join('')}).catch(()=>{});
 });
 
 // Horoscope scope toggle (independent, can stack)
