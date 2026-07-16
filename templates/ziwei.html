@@ -76,6 +76,18 @@ _:-ms-input-placeholder,:root .form-group{display:none}
                 <div class="radio-group" style="flex:1"><label class="radio-label"><input type="radio" name="g" value="男" checked> 男</label><label class="radio-label" style="margin-left:16px"><input type="radio" name="g" value="女"> 女</label></div>
             </div>
         </div>
+        <label class="radio-label" style="margin-bottom:10px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="use-true-solar" onchange="document.getElementById('solar-row').style.display=this.checked?'flex':'none'"> ⏱ 真太阳时校正</label>
+        <div id="solar-row" style="display:none;background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);overflow:hidden;margin-bottom:10px">
+            <div style="padding:10px 16px;display:flex;align-items:center;gap:8px">
+                <span style="font-weight:600;font-size:.75em;color:var(--accent);white-space:nowrap">经度</span>
+                <input type="number" id="longitude" step="0.01" placeholder="120" value="120" style="flex:1;border:none;padding:6px 0;font-size:.9em;background:transparent;color:var(--text);outline:none">
+                <span style="font-weight:600;font-size:.75em;color:var(--accent);white-space:nowrap;margin-left:8px">出生地</span>
+                <div style="flex:2;position:relative">
+                    <input type="text" id="location" placeholder="城市名，如：东莞" autocomplete="off" style="width:100%;border:none;padding:6px 0;font-size:.9em;background:transparent;color:var(--text);outline:none">
+                    <div id="city-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;max-height:180px;overflow-y:auto;z-index:20;font-size:.75em"></div>
+                </div>
+            </div>
+        </div>
     </section>
     <div class="sticky-actions">
         <button id="btn-render" class="btn btn-gold">🔮 排盘</button>
@@ -118,17 +130,25 @@ document.getElementById('quick').addEventListener('keydown',e=>{if(e.key==='Ente
 
 function getB(){const c=document.querySelector('input[name="cal"]:checked')?.value||'solar';const g=document.querySelector('input[name="g"]:checked')?.value||'男';return{y:parseInt(document.getElementById('y').value),m:parseInt(document.getElementById('m').value),d:parseInt(document.getElementById('d').value),h:parseInt(document.getElementById('h').value),min:parseInt(document.getElementById('min').value||'0'),gender:g,cal:c}}
 
+// 城市自动补全
+document.getElementById('location').addEventListener('input',function(){const v=this.value.trim();if(v.length<1){document.getElementById('city-suggestions').style.display='none';return};fetch('/api/cities?q='+encodeURIComponent(v)).then(r=>r.json()).then(cities=>{const el=document.getElementById('city-suggestions');if(!cities.length){el.style.display='none';return}el.innerHTML=cities.slice(0,8).map(c=>'<div style="padding:6px 10px;cursor:pointer;border-bottom:1px solid var(--border-light)" onclick="document.getElementById(\'location\').value=\''+c.display_name.split(\'，\')[0]+'\';document.getElementById(\'longitude\').value='+c.lon.toFixed(2)+';document.getElementById(\'city-suggestions\').style.display=\'none\'">'+c.display_name+' ('+c.lon.toFixed(2)+'°)</div>').join('');el.style.display='block'})});
+document.getElementById('location').addEventListener('blur',()=>setTimeout(()=>document.getElementById('city-suggestions').style.display='none',200));
+
+// 真太阳时校正
+function getAdjustedHour(h,min,lng){const offset=(lng-120)*4;let total=h*60+min+offset;if(total<0)total+=1440;if(total>=1440)total-=1440;return{hour:Math.floor(total/60),minute:Math.round(total%60)}}
+
 document.getElementById('btn-render').addEventListener('click',()=>{
     const b=getB();if(!b.y||!b.m||!b.d)return;
     $('welcome-section').classList.add('hidden');$('loading-section').classList.remove('hidden');$('chart-section').classList.add('hidden');$('analysis-section').classList.add('hidden');
-    const hi=Math.floor((b.h+1)/2)%12;
+    let hh=b.h,mm=b.min;if(document.getElementById('use-true-solar').checked){const lng=parseFloat(document.getElementById('longitude').value)||120;const adj=getAdjustedHour(b.h,b.min,lng);hh=adj.hour;mm=adj.minute}
+    const hi=Math.floor((hh+1)/2)%12;
     try{
         astrolabe=b.cal==='lunar'?iztro.astro.byLunar(b.y+'-'+b.m+'-'+b.d,hi,b.gender,false,true,'zh-CN'):iztro.astro.bySolar(b.y+'-'+b.m+'-'+b.d,hi,b.gender,true,'zh-CN');
     }catch(e){$('loading-section').innerHTML='<p style="color:#ef5350">排盘失败: '+e.message+'</p>';return}
     try{renderChart()}catch(e){$('loading-section').innerHTML='<p style="color:#ef5350">渲染失败: '+e.message+'</p>';return}
     $('loading-section').classList.add('hidden');$('chart-section').classList.remove('hidden');$('btn-analyze').disabled=false;
     // 获取格局
-    fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:b.h,minute:b.min,gender:b.gender,is_lunar:b.cal==='lunar'})}).then(r=>r.json()).then(d=>{plateData=d;const p=d.patterns||[];$('patterns').innerHTML=p.map(pp=>'<span class="pat-badge pat-'+(pp.level==='上吉'?'ex':pp.level==='吉'?'gd':pp.level==='忌'?'ca':'ne')+'">'+pp.name+'</span>').join('');}).catch(()=>{});
+    fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:hh,minute:mm,gender:b.gender,is_lunar:b.cal==='lunar',longitude:parseFloat(document.getElementById('longitude').value)||120,location:document.getElementById('location').value||''})}).then(r=>r.json()).then(d=>{plateData=d;const p=d.patterns||[];$('patterns').innerHTML=p.map(pp=>'<span class="pat-badge pat-'+(pp.level==='上吉'?'ex':pp.level==='吉'?'gd':pp.level==='忌'?'ca':'ne')+'">'+pp.name+'</span>').join('');}).catch(()=>{});
 });
 
 function renderChart(){
