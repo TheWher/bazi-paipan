@@ -77,6 +77,7 @@ _:-ms-input-placeholder,:root .form-group{display:none}
             </div>
         </div>
         <label class="radio-label" style="margin-bottom:4px;display:flex;align-items:center;gap:6px"><input type="checkbox" id="use-true-solar" onchange="document.getElementById('solar-row').style.display=this.checked?'flex':'none';updateSolarInfo()"> ⏱ 真太阳时校正</label>
+        <p style="font-size:.62em;color:var(--text-muted);margin-bottom:6px">北京时间以东经120°为准，出生地经度不同会产生时间偏差，可能跨过时辰分界线从而改变命盘</p>
         <div id="solar-info" style="display:none;font-size:.68em;color:var(--accent);margin-bottom:8px"></div>
         <div id="solar-row" style="display:none;background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);overflow:hidden;margin-bottom:10px">
             <div style="padding:10px 16px;display:flex;align-items:center;gap:6px">
