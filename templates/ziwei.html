@@ -221,6 +221,14 @@ function renderChart(){
         // 煞星 (红色可见)
         const sha=(p.minorStars||[]).filter(s=>s.type==='tough');
         if(sha.length){svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#ef5350" font-size="9">'+sha.map(s=>s.name).join(' ')+'</text>';sy+=12}
+        // 运限流曜 (按scope分别显示)
+        if(horoscope){
+            const horoStars=[{key:'decadal',color:'#4a9eff'},{key:'yearly',color:'#5cb85c'},{key:'monthly',color:'#f0ad4e'},{key:'daily',color:'#d4a843'}];
+            for(const hs of horoStars)if(activeScopes.has(hs.key)&&horoscope[hs.key]&&horoscope[hs.key].stars&&horoscope[hs.key].stars[p.index]){
+                const names=horoscope[hs.key].stars[p.index].map(s=>s.name).join(' ');
+                if(names){svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="'+hs.color+'" font-size="7">'+names+'</text>';sy+=9}
+            }
+        }
         // 十二长生
         const cs12=p.changsheng12||'',bs12=p.boshi12||'';
         if(cs12)svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="'+S.text+'" font-size="8">'+cs12+(bs12?' · '+bs12:'')+'</text>';sy+=9;
