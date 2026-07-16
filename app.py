@@ -428,14 +428,8 @@ def index():
 
 @app.route("/ziwei")
 def ziwei():
-    """紫微斗数独立应用"""
+    """紫微斗数 — iztro JS CDN 原版引擎"""
     return render_template("ziwei.html")
-
-
-@app.route("/ziwei2")
-def ziwei2():
-    """紫微斗数 v2 — iztro JS 原版引擎"""
-    return render_template("ziwei2.html")
 
 
 @app.route("/api/geocode")
