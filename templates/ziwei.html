@@ -140,7 +140,7 @@ function renderChart(){
     if(scope!=='origin')try{horoscope=astrolabe.horoscope(new Date(),parseInt(document.getElementById('h').value)||1)}catch(e){}
     const siHua=[];for(const p of palaces)for(const s of[...p.majorStars,...p.minorStars])if(s.mutagen)siHua.push({star:s.name,hua:s.mutagen,palace:p.name});
 
-    const W=640,H=680,pad=10,cellW=(W-2*pad)/4,cellH=(H-2*pad-20)/4;
+    const W=640,H=780,pad=10,cellW=(W-2*pad)/4,cellH=(H-2*pad-20)/4;
     const GRID={'巳':[0,0],'午':[1,0],'未':[2,0],'申':[3,0],'辰':[0,1],'酉':[3,1],'卯':[0,2],'戌':[3,2],'寅':[0,3],'丑':[1,3],'子':[2,3],'亥':[3,3]};
     const BR=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
     const sfSet=new Set();if(selectedPalace){const i=BR.indexOf(selectedPalace);if(i>=0){sfSet.add(selectedPalace);sfSet.add(BR[(i+6)%12]);sfSet.add(BR[(i+4)%12]);sfSet.add(BR[(i+8)%12])}}
@@ -161,6 +161,7 @@ function renderChart(){
         if(isBody)svg+='<text x="'+(x+cellW-6)+'" y="'+(y+16)+'" text-anchor="end" fill="#7c4dff" font-size="7" font-weight="700" style="pointer-events:none">身</text>';
 
         let sy=y+26;
+        // 主星（大字）
         for(const s of p.majorStars){
             const clr=s.type==='major'?'#d4a843':s.type==='soft'?'#ce93d8':s.type==='tough'?'#5a5a6e':'#888';
             svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="'+clr+'" font-size="9" font-weight="600">'+s.name;
@@ -168,11 +169,21 @@ function renderChart(){
             if(s.mutagen)svg+='<tspan fill="'+(s.mutagen==='禄'?'#2e7d32':s.mutagen==='权'?'#7b1fa2':s.mutagen==='科'?'#1565c0':'#c62828')+'" font-size="7">◈</tspan>';
             svg+='</text>';sy+=11;
         }
-        for(const s of(p.minorStars||[]).slice(0,4)){
-            svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="'+(s.type==='soft'?'#ce93d8':s.type==='tough'?'#5a5a6e':'#888')+'" font-size="7">'+s.name+'</text>';sy+=9;
+        // 辅星——全显示，吉星紫色/煞星灰色分行
+        const minors=p.minorStars||[];
+        const ausp=minors.filter(s=>s.type==='soft'||s.type==='tianma'||s.type==='lucun');
+        const sha=minors.filter(s=>s.type==='tough');
+        if(ausp.length){
+            svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#ce93d8" font-size="6.5">'+ausp.map(s=>s.name).join(' ')+'</text>';sy+=8;
         }
+        if(sha.length){
+            svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#5a5a6e" font-size="6.5">'+sha.map(s=>s.name).join(' ')+'</text>';sy+=8;
+        }
+        // 十二长生
+        const cs12=p.changsheng12||'';
+        if(cs12)svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#888" font-size="6">'+cs12+'</text>';
         // 运限标记
-        let hy=y+cellH-15;
+        let hy=y+cellH-12;
         if(horoscope){
             if(horoscope.decadal&&horoscope.decadal.index===p.index){svg+='<text x="'+(x+3)+'" y="'+hy+'" fill="#4a9eff" font-size="6">大限</text>';hy-=7}
             if(horoscope.yearly&&horoscope.yearly.index===p.index){svg+='<text x="'+(x+3)+'" y="'+hy+'" fill="#5cb85c" font-size="6">流年</text>'}
@@ -182,7 +193,13 @@ function renderChart(){
     svg+='<rect x="'+(cx+1)+'" y="'+(cy+1)+'" width="'+(cw-2)+'" height="'+(ch-2)+'" rx="4" fill="'+S.cell+'" stroke="#999"/>';
     svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+28)+'" text-anchor="middle" fill="#d4a843" font-size="12" font-weight="700">紫微斗数</text>';
     svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+46)+'" text-anchor="middle" fill="#888" font-size="8">'+fec+' · 命宫: '+soulBr+' / 身宫: '+bodyBr+'</text>';
-    svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+64)+'" text-anchor="middle" fill="#d4a843" font-size="8">'+siHua.map(s=>s.star+'化'+s.hua).join(' · ')+'</text>';
+    svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+64)+'" text-anchor="middle" fill="#d4a843" font-size="7.5">生年四化:</text>';
+    const huaLabel={'禄':'◈','权':'▲','科':'◎','忌':'✕'};
+    const huaColor={'禄':'#2e7d32','权':'#7b1fa2','科':'#1565c0','忌':'#c62828'};
+    let hy2=cy+76;
+    for(const sh of siHua){
+        svg+='<text x="'+(cx+cw/2)+'" y="'+hy2+'" text-anchor="middle" fill="'+huaColor[sh.hua]+'" font-size="7">'+(huaLabel[sh.hua]||'')+' '+sh.star+'化'+sh.hua+' → '+sh.palace+'</text>';hy2+=11;
+    }
     // 三方四正三角线（画在中心区之后，不被遮挡）
     if(selectedPalace){
         const si=BR.indexOf(selectedPalace);
