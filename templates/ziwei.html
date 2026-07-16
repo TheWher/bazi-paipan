@@ -151,6 +151,7 @@ async function geocodeCity(){const loc=$('location').value.trim();if(!loc)return
 // Paipan
 $('btn-render').addEventListener('click',()=>{
     const b=getB();if(!b.y||!b.m||!b.d)return;
+    liuyaoCache=null;activeStem=null;selectedPalace=null;activeScopes.clear();
     $('welcome-section').classList.add('hidden');$('loading-section').classList.remove('hidden');$('chart-section').classList.add('hidden');$('analysis-section').classList.add('hidden');
     let hh=b.h,mm=b.min;if($('use-true-solar').checked){const lng=parseFloat($('longitude').value)||120;const adj=getAdjustedHour(b.h,b.min,lng);hh=adj.hour;mm=adj.minute}
     const hi=Math.floor((hh+1)/2)%12;
