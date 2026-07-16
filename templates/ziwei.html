@@ -40,7 +40,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
 .sticky-actions .btn{flex:1;justify-content:center;font-size:.82em;padding:8px 14px}
 .floating-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 16px;background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius-sm)}
 .floating-bar .bar-title{font-weight:700;font-size:.88em;color:var(--accent)}
-.chart-wrapper{background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-sm);margin-bottom:18px}
+.chart-wrapper{background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-sm);margin-bottom:18px;min-height:550px}
 .analysis-content{font-size:.9rem;line-height:1.85;color:var(--text)}
 .a-card{background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow-sm);margin-bottom:14px}
 .a-card h2{font-size:.85em;font-weight:600;color:#8b6914;margin-bottom:10px}
@@ -101,19 +101,20 @@ $('quick').addEventListener('input',function(){const v=this.value.replace(/\D/g,
 $('quick').addEventListener('keydown',e=>{if(e.key==='Enter')$('btn-render').click()});
 function getB(){const c=document.querySelector('input[name="cal"]:checked')?.value||'solar';const g=document.querySelector('input[name="g"]:checked')?.value||'male';return{y:parseInt($('y').value),m:parseInt($('m').value),d:parseInt($('d').value),h:parseInt($('h').value),min:parseInt($('min').value||'0'),gender:g,cal:c}}
 
-function renderReactChart(birthday,birthTime,birthdayType,gender){$('zw-chart').innerHTML='';if(window.mountZiweiChart)window.mountZiweiChart('zw-chart',{birthday,birthTime,birthdayType,gender,horoscopeDate:new Date(),horoscopeHour:0})}
+function renderReactChart(birthday,birthTime,birthdayType,gender){
+    if(!window.mountZiweiChart){$('zw-chart').innerHTML='<p style="color:#ef5350">react-iztro 组件未加载，请刷新页面</p>';return}
+    $('zw-chart').innerHTML='';window.mountZiweiChart('zw-chart',{birthday,birthTime,birthdayType,gender,horoscopeDate:new Date(),horoscopeHour:0})}
 
 $('btn-render').addEventListener('click',()=>{
     const b=getB();if(!b.y||!b.m||!b.d)return;
     $('loading-section').classList.remove('hidden');$('chart-section').classList.add('hidden');$('analysis-section').classList.add('hidden');
     const birthTime=Math.floor((b.h+1)/2)%12,gender=b.gender==='male'?'male':'female';
-    setTimeout(()=>{
-        renderReactChart(`${b.y}-${b.m}-${b.d}`,birthTime,b.cal,gender);
-        $('loading-section').classList.add('hidden');$('chart-section').classList.remove('hidden');$('btn-analyze').disabled=false;
+    setTimeout(()=>{$('loading-section').classList.add('hidden');$('chart-section').classList.remove('hidden');
+        setTimeout(()=>{renderReactChart(`${b.y}-${b.m}-${b.d}`,birthTime,b.cal,gender);$('btn-analyze').disabled=false},100);
     },200);
     fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:b.h,minute:b.min,gender:b.gender,is_lunar:b.cal==='lunar'})}).then(r=>r.json()).then(d=>{plateData=d;const p=d.patterns||[];$('patterns').innerHTML=p.map(pp=>`<span class="pat-badge pat-${pp.level==='上吉'?'ex':pp.level==='吉'?'gd':pp.level==='忌'?'ca':'ne'}">${pp.name}</span>`).join('');}).catch(()=>{});
 });
-setTimeout(()=>{renderReactChart('1991-8-15',1,'solar','male');$('chart-section').classList.remove('hidden');$('btn-analyze').disabled=false;},800);
+setTimeout(()=>{$('chart-section').classList.remove('hidden');setTimeout(()=>{renderReactChart('1991-8-15',1,'solar','male');$('btn-analyze').disabled=false}, 100)},700);
 
 $('btn-analyze').addEventListener('click',async()=>{
     if(!plateData)return;$('btn-analyze').disabled=true;$('btn-analyze').textContent='⏳ 分析中...';$('analysis-section').classList.remove('hidden');$('analysis-content').innerHTML='<p style="text-align:center;color:var(--text-muted)">AI 正在解读你的紫微命盘...</p>';
