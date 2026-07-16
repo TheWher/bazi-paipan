@@ -98,7 +98,7 @@ let astrolabe=null,plateData=null,selectedPalace=null;
 // 默认渲染1991-8-15命盘
 (function(){try{astrolabe=iztro.astro.bySolar('1991-8-15',1,'男',true,'zh-CN');renderChart()}catch(e){};fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:1991,month:8,day:15,hour:1,minute:0,gender:'男',is_lunar:false})}).then(r=>r.json()).then(d=>{plateData=d;const p=d.patterns||[];$('patterns').innerHTML=p.map(pp=>'<span class="pat-badge pat-'+(pp.level==='上吉'?'ex':pp.level==='吉'?'gd':pp.level==='忌'?'ca':'ne')+'">'+pp.name+'</span>').join('');$('btn-analyze').disabled=false}).catch(()=>{});})();
 (function(){const t=localStorage.getItem('bazi_theme');document.getElementById('btn-theme').textContent=t==='dark'?'☀️':'🌙'})();
-function toggleTheme(){const c=document.documentElement.getAttribute('data-theme'),n=c==='dark'?'':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('bazi_theme',n);document.getElementById('btn-theme').textContent=n==='dark'?'☀️':'🌙'}
+function toggleTheme(){const c=document.documentElement.getAttribute('data-theme'),n=c==='dark'?'':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('bazi_theme',n);document.getElementById('btn-theme').textContent=n==='dark'?'☀️':'🌙';if(astrolabe)renderChart()}
 
 document.getElementById('quick').addEventListener('input',function(){const v=this.value.replace(/\D/g,'');if(v.length<8)return;document.getElementById('y').value=v.slice(0,4);document.getElementById('m').value=parseInt(v.slice(4,6));document.getElementById('d').value=parseInt(v.slice(6,8));if(v.length>=10)document.getElementById('h').value=parseInt(v.slice(8,10));if(v.length>=12)document.getElementById('min').value=parseInt(v.slice(10,12))});
 document.getElementById('quick').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-render').click()});
@@ -120,6 +120,8 @@ document.getElementById('btn-render').addEventListener('click',()=>{
 
 function renderChart(){
     if(!astrolabe)return;
+    const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+    const S={bg:isDark?'#19192b':'#fff',cell:isDark?'#1a1a2e':'#fafafa',border:isDark?'#999':'#ccc',text:isDark?'#888':'#666',gold:'#d4a843'};
     const palaces=Array.isArray(astrolabe.palaces)?astrolabe.palaces:typeof astrolabe.palaces==='function'?astrolabe.palaces():[];
     const soulBr=astrolabe.earthlyBranchOfSoulPalace,bodyBr=astrolabe.earthlyBranchOfBodyPalace,fec=astrolabe.fiveElementsClass;
     const siHua=[];for(const p of palaces)for(const s of[...p.majorStars,...p.minorStars])if(s.mutagen)siHua.push({star:s.name,hua:s.mutagen,palace:p.name});
@@ -130,7 +132,7 @@ function renderChart(){
     const sfSet=new Set();if(selectedPalace){const i=BR.indexOf(selectedPalace);if(i>=0){sfSet.add(selectedPalace);sfSet.add(BR[(i+6)%12]);sfSet.add(BR[(i+4)%12]);sfSet.add(BR[(i+8)%12])}}
 
     let svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'">';
-    svg+='<rect width="'+W+'" height="'+H+'" fill="#19192b" rx="8"/>';
+    svg+='<rect width="'+W+'" height="'+H+'" fill="'+S.bg+'" rx="8"/>';
     svg+='<text x="'+W/2+'" y="20" text-anchor="middle" fill="#d4a843" font-size="13" font-weight="700">紫微斗数 · '+fec+'</text>';
 
     for(const p of palaces){
@@ -138,7 +140,7 @@ function renderChart(){
         const x=pad+pos[0]*cellW,y=pad+pos[1]*cellH+30;
         const isSoul=br===soulBr,isBody=br===bodyBr,isSF=sfSet.has(br),isSel=br===selectedPalace;
         const stroke=isSel?'#d4a843':isSF?'#64b5f6':isSoul?'#d4a843':isBody?'#7c4dff':'#999';
-        svg+='<rect x="'+(x+1)+'" y="'+(y+1)+'" width="'+(cellW-2)+'" height="'+(cellH-2)+'" rx="4" fill="#1a1a2e" stroke="'+stroke+'" stroke-width="'+(isSel?2.5:isSF||isSoul||isBody?2:1)+'" style="cursor:pointer" onclick="document.querySelector(\'#select-info\').textContent=\'选中: '+p.name+'\';selectPalace(\''+br+'\')"/>';
+        svg+='<rect x="'+(x+1)+'" y="'+(y+1)+'" width="'+(cellW-2)+'" height="'+(cellH-2)+'" rx="4" fill="'+S.cell+'" stroke="'+stroke+'" stroke-width="'+(isSel?2.5:isSF||isSoul||isBody?2:1)+'" style="cursor:pointer" onclick="document.querySelector(\'#select-info\').textContent=\'选中: '+p.name+'\';selectPalace(\''+br+'\')"/>';
         svg+='<text x="'+(x+cellW/2)+'" y="'+(y+14)+'" text-anchor="middle" fill="#888" font-size="13" font-weight="800" style="pointer-events:none">'+br+'</text>';
         svg+='<text x="'+(x+cellW/2)+'" y="'+(y+cellH-5)+'" text-anchor="middle" fill="'+(isSoul?'#c62828':'#888')+'" font-size="8" font-weight="600" style="pointer-events:none">'+p.name+'</text>';
         if(isSoul)svg+='<text x="'+(x+cellW-6)+'" y="'+(y+9)+'" text-anchor="end" fill="#d4a843" font-size="7" font-weight="700" style="pointer-events:none">命</text>';
@@ -158,7 +160,7 @@ function renderChart(){
     }
     //  中心
     const cx=pad+cellW,cy=pad+cellH+30,cw=cellW*2,ch=cellH*2;
-    svg+='<rect x="'+(cx+1)+'" y="'+(cy+1)+'" width="'+(cw-2)+'" height="'+(ch-2)+'" rx="4" fill="#1a1a2e" stroke="#999"/>';
+    svg+='<rect x="'+(cx+1)+'" y="'+(cy+1)+'" width="'+(cw-2)+'" height="'+(ch-2)+'" rx="4" fill="'+S.cell+'" stroke="#999"/>';
     svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+28)+'" text-anchor="middle" fill="#d4a843" font-size="12" font-weight="700">紫微斗数</text>';
     svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+46)+'" text-anchor="middle" fill="#888" font-size="8">'+fec+' · 命宫: '+soulBr+' / 身宫: '+bodyBr+'</text>';
     svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+64)+'" text-anchor="middle" fill="#d4a843" font-size="8">'+siHua.map(s=>s.star+'化'+s.hua).join(' · ')+'</text>';
