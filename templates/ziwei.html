@@ -121,7 +121,7 @@ function renderChart(){
     const soulBr=astrolabe.earthlyBranchOfSoulPalace,bodyBr=astrolabe.earthlyBranchOfBodyPalace,fec=astrolabe.fiveElementsClass;
     const siHua=[];for(const p of palaces)for(const s of[...p.majorStars,...p.minorStars])if(s.mutagen)siHua.push({star:s.name,hua:s.mutagen,palace:p.name});
 
-    const W=640,H=640,pad=10,cellW=(W-2*pad)/4,cellH=(H-2*pad)/4;
+    const W=640,H=680,pad=10,cellW=(W-2*pad)/4,cellH=(H-2*pad-20)/4;
     const GRID={'巳':[0,0],'午':[1,0],'未':[2,0],'申':[3,0],'辰':[0,1],'酉':[3,1],'卯':[0,2],'戌':[3,2],'寅':[0,3],'丑':[1,3],'子':[2,3],'亥':[3,3]};
     const BR=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
     const sfSet=new Set();if(selectedPalace){const i=BR.indexOf(selectedPalace);if(i>=0){sfSet.add(selectedPalace);sfSet.add(BR[(i+6)%12]);sfSet.add(BR[(i+4)%12]);sfSet.add(BR[(i+8)%12])}}
@@ -132,7 +132,7 @@ function renderChart(){
 
     for(const p of palaces){
         const br=p.earthlyBranch;if(!br)continue;const pos=GRID[br];if(!pos)continue;
-        const x=pad+pos[0]*cellW,y=pad+pos[1]*cellH;
+        const x=pad+pos[0]*cellW,y=pad+pos[1]*cellH+30;
         const isSoul=br===soulBr,isBody=br===bodyBr,isSF=sfSet.has(br),isSel=br===selectedPalace;
         const stroke=isSel?'#d4a843':isSF?'#64b5f6':isSoul?'#d4a843':isBody?'#7c4dff':'#999';
         svg+='<rect x="'+(x+1)+'" y="'+(y+1)+'" width="'+(cellW-2)+'" height="'+(cellH-2)+'" rx="4" fill="var(--bg)" stroke="'+stroke+'" stroke-width="'+(isSel?2.5:isSF||isSoul||isBody?2:1)+'" style="cursor:pointer" onclick="document.querySelector(\'#select-info\').textContent=\'选中: '+p.name+'\';selectPalace(\''+br+'\')"/>';
@@ -154,7 +154,7 @@ function renderChart(){
         }
     }
     //  中心
-    const cx=pad+cellW,cy=pad+cellH,cw=cellW*2,ch=cellH*2;
+    const cx=pad+cellW,cy=pad+cellH+30,cw=cellW*2,ch=cellH*2;
     svg+='<rect x="'+(cx+1)+'" y="'+(cy+1)+'" width="'+(cw-2)+'" height="'+(ch-2)+'" rx="4" fill="var(--bg)" stroke="#999"/>';
     svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+28)+'" text-anchor="middle" fill="#d4a843" font-size="12" font-weight="700">紫微斗数</text>';
     svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+46)+'" text-anchor="middle" fill="#888" font-size="8">'+fec+' · 命宫: '+soulBr+' / 身宫: '+bodyBr+'</text>';
