@@ -161,10 +161,15 @@ $('btn-render').addEventListener('click',()=>{
 });
 
 // Horoscope scope toggle (independent, can stack)
+let liuyaoCache=null;
 function toggleScope(scope){
     if(activeScopes.has(scope))activeScopes.delete(scope);else activeScopes.add(scope);
     ['decadal','yearly','monthly','daily'].forEach(s=>{const btn=$('btn-'+s);if(btn)btn.style.cssText=activeScopes.has(s)?'font-size:.68em;padding:3px 8px;border:1px solid var(--accent);border-radius:6px;background:rgba(212,168,67,.12);color:var(--accent);font-weight:600':'font-size:.68em;padding:3px 8px'});
-    if(astrolabe)renderChart();
+    // Fetch 流曜 from backend (CDN doesn't provide yearly/monthly stars)
+    if(activeScopes.size>0&&astrolabe){
+        const b=getB();
+        fetch('/api/ziwei/horoscope',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:b.h,minute:b.min,gender:b.gender,target_year:new Date().getFullYear()})}).then(r=>r.json()).then(d=>{liuyaoCache=d;renderChart()}).catch(()=>renderChart());
+    }else{renderChart()}
 }
 
 // GAN_SIHUA table
@@ -221,12 +226,18 @@ function renderChart(){
         // 煞星 (红色可见)
         const sha=(p.minorStars||[]).filter(s=>s.type==='tough');
         if(sha.length){svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#ef5350" font-size="9">'+sha.map(s=>s.name).join(' ')+'</text>';sy+=12}
-        // 运限流曜 (按scope分别显示)
-        if(horoscope){
-            const horoStars=[{key:'decadal',color:'#4a9eff'},{key:'yearly',color:'#5cb85c'},{key:'monthly',color:'#f0ad4e'},{key:'daily',color:'#d4a843'}];
-            for(const hs of horoStars)if(activeScopes.has(hs.key)&&horoscope[hs.key]&&horoscope[hs.key].stars&&horoscope[hs.key].stars[p.index]){
-                const names=horoscope[hs.key].stars[p.index].map(s=>s.name).join(' ');
-                if(names){svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="'+hs.color+'" font-size="7">'+names+'</text>';sy+=9}
+        // 运限流曜 (按scope分别显示 + 后端liuyao数据)
+        if(horoscope||liuyaoCache){
+            // CDN horoscope markers (decadal stars)
+            if(horoscope&&activeScopes.has('decadal')&&horoscope.decadal&&horoscope.decadal.stars&&horoscope.decadal.stars[p.index]){
+                const names=horoscope.decadal.stars[p.index].map(s=>s.name).join(' ');
+                if(names){svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#4a9eff" font-size="7">'+names+'</text>';sy+=9}
+            }
+            // 后端流曜数据 (yearly流禄/流羊/流昌等)
+            if(liuyaoCache&&activeScopes.has('yearly')){
+                const ly=liuyaoCache.liuyao||{};let cellLy=[];
+                for(const[k,v]of Object.entries(ly))if(v===p.name)cellLy.push(k.replace('流',''));
+                if(cellLy.length){svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#5cb85c" font-size="7">'+cellLy.join(' ')+'</text>';sy+=9}
             }
         }
         // 十二长生
