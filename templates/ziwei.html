@@ -1,67 +1,40 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>紫微斗数 · 命盘</title>
 <style>
-/* ═══ iztro CDN 变量 ═══ */
-:root{--iztro-color-bg:#1a1a24;--iztro-color-border:#3a3a4a;--iztro-color-major:#d4a843;--iztro-color-awesome:#7c4dff;--iztro-color-decadal:#4a9eff;--iztro-color-yearly:#5cb85c;--iztro-star-font-size-small:10px;--iztro-star-font-size:13px;--iztro-star-font-size-big:16px}
-/* ═══ 全局 ═══ */
+:root{--bg:#1a1a24;--card:#1e1e2c;--text:#c8c8d0;--muted:#787878;--gold:#d4a843;--border:#3a3a4a;--shadow:0 2px 20px rgba(0,0,0,.3)}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue,Arial,sans-serif;background:#1a1a24;color:#c8c8d0;min-height:100vh}.hidden{display:none!important}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.hidden{display:none!important}
 .app-layout{display:flex;min-height:100vh}
-.sidebar{width:300px;min-width:300px;background:#1a1a20;border-right:1px solid #3a3a4a;padding:14px 12px 60px;position:sticky;top:0;height:100vh;overflow-y:auto}
-.main{flex:1;padding:16px 20px;overflow-y:auto}
-.frm{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-bottom:10px}.frm label{font-size:.65em;color:#777}
-.frm input,.frm select{padding:5px 6px;font-size:.72em;border:1px solid #3a3a4a;border-radius:4px;background:#1e1e2c;color:#c8c8d0}
-.btn{padding:6px 12px;border:1px solid #3a3a4a;border-radius:5px;background:#1e1e2c;color:#c8c8d0;font-size:.74em;cursor:pointer}.btn:hover{opacity:.85}
-.btn-gold{background:linear-gradient(135deg,#c8a850,#8b6914);color:#fff;border:none}
-.quick{width:100%;padding:7px;font-size:.76em;border:1px solid #3a3a4a;border-radius:5px;background:#1e1e2c;color:#c8c8d0;font-family:monospace;margin-bottom:6px}
-/* ═══ react-iztro 完整 CSS (从源码移植) ═══ */
-.iztro-astrolabe{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue,Arial,Noto Sans,sans-serif;display:grid;position:relative;width:100%;max-width:720px;gap:3px;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;grid-template-areas:"g3 g4 g5 g6" "g2 ct ct g7" "g1 ct ct g8" "g0 g11 g10 g9";min-height:580px;height:calc(100vw - 350px);max-height:720px}
-.iztro-palace{padding:3px;display:grid;text-transform:capitalize;grid-template-rows:auto auto auto auto auto;grid-template-columns:repeat(3,1fr);grid-template-areas:"major minor adj" "horo horo adj" "fate fate fate" "ft  ft  ft";transition:all .25s;border:1px solid transparent}
-.iztro-palace:hover,.iztro-palace.focused-palace{background-color:rgba(170,184,211,.12);border-color:#d4a843}
-.iztro-palace-major{grid-area:major}
-.iztro-palace-minor{grid-area:minor;justify-self:center}
-.iztro-palace-adj{grid-area:adj;display:inline-flex;justify-self:flex-end;gap:2px;white-space:nowrap}
-.iztro-palace-horo-star{grid-area:horo;align-self:center}.iztro-palace-horo-star .stars{display:flex;gap:3px;flex-wrap:wrap}
-.iztro-palace-fate{grid-area:fate;align-self:flex-end;white-space:nowrap;justify-content:center;display:flex;gap:3px;height:15px;font-size:9px}
-.iztro-palace-fate .decadal-active{background:var(--iztro-color-decadal);color:#fff;padding:0 3px;border-radius:3px}
-.iztro-palace-fate .yearly-active{background:var(--iztro-color-yearly);color:#fff;padding:0 3px;border-radius:3px}
-.iztro-palace-footer{grid-area:ft;display:grid;grid-template-columns:auto auto auto;align-self:flex-start}
-.iztro-palace-lft24{text-align:left;font-size:8px;color:#555}.iztro-palace-rgt24{text-align:right;font-size:8px;color:#555}
-.iztro-palace-name{text-wrap:nowrap;font-size:10px;font-weight:700;color:#c62828;text-align:center}.iztro-palace-name .soul-mark{color:#d4a843}
-.iztro-palace-scope{white-space:nowrap;text-align:center;font-size:9px}.iztro-palace-scope-decadal{font-weight:700}
-.iztro-palace-dynamic-name{text-align:center;display:flex;white-space:nowrap;gap:3px;justify-content:center;font-size:8px}
-.iztro-palace-gz{text-align:right;cursor:pointer}.iztro-palace-gz span{display:inline-block;padding:0 1px;font-size:10px;font-weight:600;color:#d4a843}
-.iztro-palace-gz-active{background:rgba(212,168,67,.15)!important;border-radius:3px}
-/* 星曜 */
-.iztro-star{display:block;font-size:11px;line-height:1.2;white-space:nowrap}.iztro-star-major{color:#d4a843;font-weight:700}.iztro-star-soft{color:#ce93d8}.iztro-star-tough{color:#5a5a6e}.iztro-star-tianma{color:#81c784}.iztro-star-lucun{color:#ff9800}.iztro-star-flower{color:#f48fb1}
-.iztro-star-brightness{font-size:8px;font-style:normal;margin-left:1px}
-.iztro-star-mutagen{font-weight:400;font-size:8px;border-radius:3px;color:#fff;display:inline-block;margin-left:1px;padding:0 2px}
-.mutagen-0{background:#2e7d32}.mutagen-1{background:#7b1fa2}.mutagen-2{background:#1565c0}.mutagen-3{background:#c62828}
-.star-with-mutagen{position:relative}.star-with-mutagen::before{bottom:0;content:" ";left:-3px;position:absolute;top:0;width:3px;transition:all .25s}
-.iztro-star-mutagen-0::before{background:#2e7d32}.iztro-star-mutagen-1::before{background:#7b1fa2}.iztro-star-mutagen-2::before{background:#1565c0}.iztro-star-mutagen-3::before{background:#c62828}
-/* 中心 */
-.iztro-center-palace{grid-area:ct;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
-.iztro-center-palace .center-title{padding:4px 0;margin:0 0 6px;font-size:14px;font-weight:700;color:#d4a843;border-bottom:1px dashed #3a3a4a;width:80%}
-.iztro-center-palace ul.basic-info{margin:6px 0;padding:0;display:grid;grid-template-columns:repeat(2,1fr);column-gap:12px;list-style:none;font-size:10px;color:#888;width:80%}
-.iztro-center-palace ul.basic-info li{list-style:none}
-.horo-buttons{margin:6px 0;font-size:9px;display:flex;justify-content:center;gap:4px}
-.horo-buttons .center-button{display:block;text-align:center;padding:4px 8px;border:1px solid #3a3a4a;cursor:pointer;color:#c8c8d0;border-radius:4px}.horo-buttons .center-button.active{color:#d4a843;border-color:#d4a843;background:rgba(212,168,67,.1)}
-/* ═══ 辅助 ═══ */
-.patterns{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}.pat-badge{padding:2px 6px;border-radius:8px;font-size:.62em;font-weight:600}.pat-ex{background:linear-gradient(135deg,#d4a843,#8b6914);color:#fff}.pat-gd{background:rgba(212,168,67,.12);color:#c8a850}.pat-ne{background:rgba(120,120,120,.1);color:#aaa}.pat-ca{background:rgba(198,40,40,.12);color:#ef5350}
-.loading{text-align:center;padding:40px;color:#888}.spinner{width:28px;height:28px;margin:0 auto 10px;border:3px solid #3a3a4a;border-top-color:#d4a843;border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-.analysis{display:flex;flex-direction:column;gap:12px;margin-top:12px}
-.a-card{background:#1e1e2c;border:1px solid #3a3a4a;border-radius:10px;padding:18px}.a-card h2{font-size:.88em;color:#d4a843;margin-bottom:8px}.a-card .body{font-size:.8em;line-height:1.7}.a-card .body strong{color:#d4a843}
-@media(max-width:860px){.app-layout{flex-direction:column}.sidebar{width:100%;min-width:0;height:auto;position:static}}
+.sidebar{width:300px;min-width:300px;background:#1a1a1f;border-right:1px solid var(--border);padding:18px 14px 60px;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+.sidebar h2{color:var(--gold);font-size:.95rem;cursor:pointer;margin-bottom:4px;letter-spacing:.04em}
+.sidebar .sub{font-size:.6em;color:#555;margin-bottom:12px}
+.main{flex:1;padding:24px 28px 40px;overflow-y:auto}
+.frm{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-bottom:12px}
+.frm label{display:block;font-size:.66em;color:#777;margin-bottom:2px}
+.frm input,.frm select{width:100%;padding:7px 8px;font-size:.76em;border:1px solid var(--border);border-radius:5px;background:var(--card);color:var(--text);outline:none}.frm input:focus,.frm select:focus{border-color:var(--gold)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:8px 16px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:.78em;cursor:pointer;transition:all .2s}.btn:hover{background:#2a2a38}
+.btn-gold{background:linear-gradient(135deg,#d4a843,#8b6914);color:#fff;border:none;font-weight:600}.btn-gold:hover{opacity:.9}
+.quick{width:100%;padding:8px 10px;font-size:.8em;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-family:monospace;letter-spacing:.08em;margin-bottom:12px;outline:none}.quick:focus{border-color:var(--gold)}
+.chart-container{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow)}
+.chart-container svg{width:100%;height:auto;max-width:720px;display:block;margin:0 auto}
+.toolbar{display:flex;gap:8px;margin-bottom:14px;align-items:center}
+.toolbar select{padding:5px 10px;font-size:.74em;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:5px}
+.toolbar span{font-size:.74em;color:var(--gold);margin-left:auto;font-weight:500}
+.patterns{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0}.pat-badge{padding:2px 7px;border-radius:9px;font-size:.64em;font-weight:600}.pat-ex{background:linear-gradient(135deg,#d4a843,#8b6914);color:#fff}.pat-gd{background:rgba(212,168,67,.12);color:#d4a843}.pat-ne{background:rgba(120,120,120,.1);color:#aaa}.pat-ca{background:rgba(198,40,40,.12);color:#ef5350}
+.loading{text-align:center;padding:60px;color:var(--muted)}.spinner{width:32px;height:32px;margin:0 auto 12px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.analysis{display:flex;flex-direction:column;gap:14px}.a-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px}.a-card h2{font-size:.9em;color:var(--gold);margin-bottom:8px}.a-card .body{font-size:.82em;line-height:1.75}.a-card .body strong{color:var(--gold)}
+@media(max-width:860px){.app-layout{flex-direction:column}.sidebar{width:100%;min-width:0;height:auto;position:static}.main{padding:16px 14px 60px}}
 </style>
 </head>
 <body>
 <div class="app-layout">
 <aside class="sidebar">
-    <h2 style="color:#d4a843;font-size:.95rem;cursor:pointer;margin-bottom:8px" onclick="location='/'">🔮 紫微斗数</h2>
+    <h2 onclick="location='/'">🔮 紫微斗数</h2>
+    <div class="sub">iztro JS 原版引擎 · 命盘解读</div>
     <input class="quick" id="quick" maxlength="12" inputmode="numeric" placeholder="200508190135">
     <div class="frm">
         <div><label>历法</label><select id="cal"><option value="solar">公历</option><option value="lunar">农历</option></select></div>
@@ -73,24 +46,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue
         <div><label>性别</label><select id="g"><option value="男">男</option><option value="女">女</option></select></div>
     </div>
     <button id="btn-paipan" class="btn btn-gold" style="width:100%;margin-bottom:6px">🔮 排盘</button>
-    <button id="btn-analyze" class="btn" disabled style="width:100%;margin-bottom:8px">🧠 AI 解读</button>
+    <button id="btn-analyze" class="btn" disabled style="width:100%;margin-bottom:10px">🧠 AI 解读</button>
     <div class="patterns" id="patterns"></div>
 </aside>
 <main class="main">
     <div id="loading" class="loading hidden"><div class="spinner"></div><p>排盘中...</p></div>
     <div id="chart-area" class="hidden">
-        <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
-            <select id="horo-scope" style="padding:4px 8px;font-size:.72em;background:#1e1e2c;color:#c8c8d0;border:1px solid #3a3a4a;border-radius:4px">
-                <option value="origin">本命</option><option value="decadal">大限</option><option value="yearly">流年</option>
-            </select>
-            <button id="btn-flystar" class="btn" style="font-size:.7em;padding:3px 8px" onclick="toggleFlyStars()">✈️ 飞星</button>
-            <span id="horo-result" style="font-size:.72em;color:#d4a843;margin-left:auto"></span>
+        <div class="toolbar">
+            <span style="font-weight:700;color:var(--gold);font-size:.85em">命盘</span>
+            <select id="horo-scope"><option value="origin">本命</option><option value="decadal">大限</option><option value="yearly">流年</option></select>
+            <button id="btn-flystar" class="btn" style="font-size:.72em;padding:4px 10px" onclick="toggleFlyStars()">✈️ 飞星全览</button>
+            <span id="horo-result"></span>
         </div>
-        <div id="flystar-panel" class="hidden" style="background:#1e1e2c;border:1px solid #3a3a4a;border-radius:6px;padding:10px;margin-bottom:8px;font-size:.72em;max-height:240px;overflow-y:auto"></div>
-        <div id="zw-chart"></div>
+        <div id="flystar-panel" class="hidden" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;font-size:.74em;max-height:260px;overflow-y:auto"></div>
+        <div class="chart-container" id="zw-chart"></div>
     </div>
     <div id="analysis-section" class="hidden">
-        <div style="font-weight:600;color:#d4a843;margin-bottom:10px">📜 命盘解读</div>
+        <div style="font-weight:700;color:var(--gold);font-size:.9em;margin-bottom:12px">📜 命盘解读</div>
         <div id="analysis-content" class="analysis"></div>
     </div>
 </main>
@@ -106,7 +78,6 @@ $('quick').addEventListener('input',function(){const v=this.value.replace(/\D/g,
 $('quick').addEventListener('keydown',e=>{if(e.key==='Enter')$('btn-paipan').click()});
 function getB(){return{y:parseInt($('y').value),m:parseInt($('m').value),d:parseInt($('d').value),h:parseInt($('h').value),min:parseInt($('min').value||'0'),g:$('g').value,cal:$('cal').value}}
 
-// ═══ 排盘 ═══
 $('btn-paipan').addEventListener('click',()=>{
     const b=getB();if(!b.y||!b.m||!b.d)return;
     $('loading').classList.remove('hidden');$('chart-area').classList.add('hidden');$('analysis-section').classList.add('hidden');
@@ -118,128 +89,86 @@ $('btn-paipan').addEventListener('click',()=>{
     fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:b.h,minute:b.min,gender:b.g,is_lunar:b.cal==='lunar'})}).then(r=>r.json()).then(d=>{const p=d.patterns||[];$('patterns').innerHTML=p.map(pp=>`<span class="pat-badge pat-${pp.level==='上吉'?'ex':pp.level==='吉'?'gd':pp.level==='忌'?'ca':'ne'}">${pp.name}</span>`).join('');}).catch(()=>{});
 });
 
-// ═══ 严格按 react-iztro 结构渲染 ═══
 function renderChart(){
     if(!astrolabe)return;
     const palaces=typeof astrolabe.palaces==='function'?astrolabe.palaces():Array.isArray(astrolabe.palaces)?astrolabe.palaces:[];
     const soulBr=astrolabe.earthlyBranchOfSoulPalace,bodyBr=astrolabe.earthlyBranchOfBodyPalace;
     const fec=astrolabe.fiveElementsClass;const scope=$('horo-scope').value;
-    let horoscope=null;
-    if(scope!=='origin')try{horoscope=astrolabe.horoscope(new Date(),parseInt($('h').value)||1);}catch(e){}
+    let horoscope=null;if(scope!=='origin')try{horoscope=astrolabe.horoscope(new Date(),parseInt($('h').value)||1);}catch(e){}
 
-    let html=`<div class="iztro-astrolabe">`;
-    for(let i=0;i<12;i++){
-        const p=palaces[i];if(!p)continue;
-        const br=p.earthlyBranch||'';const st=p.heavenlyStem||'';
-        const isSoul=br===soulBr,isBody=br===bodyBr;
-        const sel=i===selectedPalace;
-        let cls='iztro-palace';
-        if(sel)cls+=' focused-palace';
+    const W=640,H=640,pad=10,cellW=(W-2*pad)/4,cellH=(H-2*pad)/4;
+    const GRID={'巳':[0,0],'午':[1,0],'未':[2,0],'申':[3,0],'辰':[0,1],'酉':[3,1],'卯':[0,2],'戌':[3,2],'寅':[0,3],'丑':[1,3],'子':[2,3],'亥':[3,3]};
+    const siHua=[];for(const p of palaces)for(const s of[...p.majorStars,...p.minorStars])if(s.mutagen)siHua.push({star:s.name,hua:s.mutagen,palace:p.name});
+    const sfSet=new Set();if(selectedPalace!=null){const br=palaces[selectedPalace]?.earthlyBranch;if(br){const BR=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];const i=BR.indexOf(br);if(i>=0){sfSet.add(br);sfSet.add(BR[(i+6)%12]);sfSet.add(BR[(i+4)%12]);sfSet.add(BR[(i+8)%12])}}}
 
-        // 主星 (Izstar components)
-        let major='';for(const s of p.majorStars)major+=renderIzstar(s,st);
-        // 辅星
-        let minor='';for(const s of (p.minorStars||[]).slice(0,4))minor+=renderIzstar(s,st);
-        // 杂曜 (adj) - 5+ / first5
-        const adj=p.adjectiveStars||[];
-        let adjR='',adjL='';for(let k=0;k<adj.length;k++){if(k<5)adjL+=`<span style="font-size:8px;color:#555">${adj[k].name}</span>`;else adjR+=`<span style="font-size:8px;color:#555">${adj[k].name}</span>`}
-        // 运限流曜
-        let horoStars='';
-        if(horoscope){for(const sk of['decadal','yearly']){const hs=horoscope[sk];if(hs?.stars?.[i])for(const s of hs.stars[i])horoStars+=`<span class="iztro-star" style="font-size:8px;color:${sk==='decadal'?'var(--iztro-color-decadal)':'var(--iztro-color-yearly)'}">${s.name}</span>`}}
-        // 运限标签 (fate)
-        let fate='';
-        if(horoscope?.decadal?.index===i){const d=horoscope.decadal;fate+=`<span class="${scope==='decadal'?'decadal-active':''}" style="cursor:pointer" onclick="event.stopPropagation();$('horo-scope').value='decadal';$('horo-scope').dispatchEvent(new Event('change'))">大限·${d.heavenlyStem||''}${d.earthlyBranch||''}</span>`}
-        if(horoscope?.yearly?.index===i){const y=horoscope.yearly;fate+=`<span class="${scope==='yearly'?'yearly-active':''}" style="cursor:pointer" onclick="event.stopPropagation();$('horo-scope').value='yearly';$('horo-scope').dispatchEvent(new Event('change'))">流年·${y.heavenlyStem||''}${y.earthlyBranch||''}</span>`}
-        if(p.ages?.length)fate+=`<span style="font-size:8px;color:#555">${p.ages.slice(0,3).join(' ')}</span>`;
-        // 大限范围
-        const dec=p.decadal||p.stage||{};const decR=dec.range?`${dec.range[0]}-${dec.range[1]}`:'';
-        // 十二长生
-        const cs12=p.changsheng12||'';const bs12=p.boshi12||'';
-        const sq12=p.suiqian12||'';const jq12=p.jiangqian12||'';
-        // 宫干高亮
-        const ganCls=activeStem===st?'iztro-palace-gz-active':'';
+    let svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">`;
+    svg+=`<rect width="${W}" height="${H}" fill="#1e1e2c" rx="8"/>`;
+    svg+=`<text x="${W/2}" y="20" text-anchor="middle" fill="#d4a843" font-size="13" font-weight="700">紫微斗数 · ${fec}</text>`;
 
-        html+=`<div class="${cls}" style="grid-area:g${i}" onclick="selectPalace(${i})">
-            <div class="iztro-palace-major">${major}</div>
-            <div class="iztro-palace-minor">${minor}</div>
-            <div class="iztro-palace-adj"><div>${adjR}</div><div>${adjL}</div></div>
-            <div class="iztro-palace-horo-star"><div class="stars">${horoStars}</div></div>
-            <div class="iztro-palace-fate">${fate}</div>
-            <div class="iztro-palace-footer">
-                <div class="iztro-palace-lft24"><div>${cs12}</div><div>${bs12}</div></div>
-                <div class="iztro-palace-name">${isSoul?'<span class="soul-mark">☯</span>':''}${p.name}</div>
-                <div class="iztro-palace-rgt24"><div>${sq12}</div><div>${jq12}</div></div>
-            </div>
-            <div class="iztro-palace-scope"><div class="iztro-palace-scope-decadal">${decR}</div></div>
-            <div class="iztro-palace-dynamic-name"></div>
-            <div class="iztro-palace-gz ${ganCls}" onclick="event.stopPropagation();toggleStem('${st}')"><span>${st}${br}</span></div>
-        </div>`;
-    }
-    html+=`<div class="iztro-center-palace">
-        <div class="center-title">紫微斗数</div>
-        <ul class="basic-info"><li>五行局: ${fec}</li><li>命宫: ${soulBr}</li><li>身宫: ${bodyBr}</li><li id="sel-info">点击宫位看详情</li></ul>
-        <div class="horo-buttons">
-            <span class="center-button ${scope==='origin'?'active':''}" onclick="$('horo-scope').value='origin';$('horo-scope').dispatchEvent(new Event('change'))">本命</span>
-            <span class="center-button ${scope==='decadal'?'active':''}" onclick="$('horo-scope').value='decadal';$('horo-scope').dispatchEvent(new Event('change'))">大限</span>
-            <span class="center-button ${scope==='yearly'?'active':''}" onclick="$('horo-scope').value='yearly';$('horo-scope').dispatchEvent(new Event('change'))">流年</span>
-        </div></div>`;
-    html+='</div>';
-    $('zw-chart').innerHTML=html;
-}
+    for(const p of palaces){
+        const br=p.earthlyBranch;if(!br)continue;
+        const pos=GRID[br];if(!pos)continue;
+        const x=pad+pos[0]*cellW,y=pad+pos[1]*cellH;
+        const isSoul=br===soulBr,isBody=br===bodyBr,isSF=sfSet.has(br),isSel=br===selectedPalace;
+        const stroke=isSel?'#d4a843':isSF?'#64b5f6':isSoul?'#d4a843':isBody?'#7c4dff':'#3a3a4a';
+        const sw=isSel?2.5:isSF||isSoul||isBody?2:1;
+        const fill=isSel?'#252535':isSF?'#1f1f30':'#1e1e2c';
 
-// ═══ Izstar 组件 (react-iztro 源码原样移植) ═══
-function renderIzstar(star,palaceStem=''){
-    const tp=star.type||'major';
-    // 生成飞星色条类名
-    let mutagenCls='',selfCls='';
-    if(activeStem){
-        const fly=GAN_SIHUA[activeStem];if(fly){
-            const idx=Object.values(fly).indexOf(star.name);
-            if(idx>=0)mutagenCls=` star-with-mutagen iztro-star-mutagen-${idx}`;
+        svg+=`<rect id="cell-${br}" x="${x+1}" y="${y+1}" width="${cellW-2}" height="${cellH-2}" rx="3" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" style="cursor:pointer" onclick="document.getElementById('horo-result').click();selectPalace('${br}')"/>`;
+        svg+=`<text x="${x+cellW/2}" y="${y+14}" text-anchor="middle" fill="#aaa" font-size="13" font-weight="800" style="pointer-events:none">${br}</text>`;
+        svg+=`<text x="${x+cellW/2}" y="${y+cellH-5}" text-anchor="middle" fill="${isSoul?'#c62828':'#888'}" font-size="8" font-weight="600" style="pointer-events:none">${p.name}</text>`;
+        if(isSoul)svg+=`<text x="${x+cellW-6}" y="${y+9}" text-anchor="end" fill="#d4a843" font-size="7" font-weight="700" style="pointer-events:none">命</text>`;
+        if(isBody)svg+=`<text x="${x+cellW-6}" y="${y+16}" text-anchor="end" fill="#7c4dff" font-size="7" font-weight="700" style="pointer-events:none">身</text>`;
+
+        let sy=y+26;
+        for(const s of p.majorStars){
+            const clr=s.type==='major'?'#d4a843':s.type==='soft'?'#ce93d8':s.type==='tough'?'#5a5a6e':'#888';
+            svg+=`<text x="${x+cellW/2}" y="${sy}" text-anchor="middle" fill="${clr}" font-size="9" font-weight="${s.type==='major'?600:400}" style="cursor:pointer" onclick="event.stopPropagation()">${s.name}`;
+            if(s.brightness)svg+=`<tspan fill="${s.brightness==='庙'?'#d4a843':s.brightness==='旺'?'#e8a860':s.brightness==='陷'?'#c62828':'#888'}" font-size="6">${s.brightness}</tspan>`;
+            if(s.mutagen){const hc={'禄':'#2e7d32','权':'#7b1fa2','科':'#1565c0','忌':'#c62828'};svg+=`<tspan fill="${hc[s.mutagen]||'#888'}" font-size="7">◈</tspan>`}
+            svg+=`</text>`;sy+=11;
+        }
+        for(const s of (p.minorStars||[]).slice(0,4)){
+            svg+=`<text x="${x+cellW/2}" y="${sy}" text-anchor="middle" fill="${s.type==='soft'?'#ce93d8':s.type==='tough'?'#5a5a6e':'#888'}" font-size="7">${s.name}</text>`;sy+=9;
+        }
+        // 运限标记
+        if(horoscope){
+            let fy=y+cellH-18;
+            if(horoscope.decadal?.index===p.getIndex?.()||horoscope.decadal?.index===palaces.indexOf(p)){svg+=`<text x="${x+4}" y="${fy}" fill="#4a9eff" font-size="6">大限</text>`;fy+=7}
+            if(horoscope.yearly?.index===p.getIndex?.()||horoscope.yearly?.index===palaces.indexOf(p)){svg+=`<text x="${x+4}" y="${fy}" fill="#5cb85c" font-size="6">流年</text>`}
         }
     }
-    if(!activeStem&&palaceStem){
-        const fly=GAN_SIHUA[palaceStem];if(fly){
-            const idx=Object.values(fly).indexOf(star.name);
-            if(idx>=0)selfCls=` star-with-mutagen iztro-star-mutagen-${idx}`;
-        }
-    }
-    const nameCls=mutagenCls||selfCls||'';
-    // 亮度
-    let brHTML='';if(star.brightness){
-        const bc=star.brightness==='庙'?'#d4a843':star.brightness==='旺'?'#e8a860':star.brightness==='陷'?'#c62828':'#888';
-        brHTML=`<i class="iztro-star-brightness" style="color:${bc}">${star.brightness}</i>`;
-    }
-    // 四化
-    let muHTML='';if(star.mutagen){const mi=MUTAGEN_ORDER.indexOf(star.mutagen);if(mi>=0)muHTML=`<span class="iztro-star-mutagen mutagen-${mi}">${star.mutagen}</span>`}
-    return `<div class="iztro-star iztro-star-${tp}"><span class="${nameCls}">${star.name}</span>${brHTML}${muHTML}</div>`;
+    // 中心
+    const cx=pad+cellW,cy=pad+cellH,cw=cellW*2,ch=cellH*2;
+    svg+=`<rect x="${cx+1}" y="${cy+1}" width="${cw-2}" height="${ch-2}" rx="3" fill="#1e1e2c" stroke="#3a3a4a"/>`;
+    svg+=`<text x="${cx+cw/2}" y="${cy+30}" text-anchor="middle" fill="#d4a843" font-size="11" font-weight="700">紫微斗数</text>`;
+    svg+=`<text x="${cx+cw/2}" y="${cy+48}" text-anchor="middle" fill="#888" font-size="8">${fec} · 命宫: ${soulBr} / 身宫: ${bodyBr}</text>`;
+    svg+=`<text x="${cx+cw/2}" y="${cy+66}" text-anchor="middle" fill="#d4a843" font-size="8">${siHua.map(s=>s.star+'化'+s.hua).join(' · ')}</text>`;
+    sfSet.clear();if(selectedPalace!=null){const sp=palaces[selectedPalace];if(sp){svg+=`<text x="${cx+cw/2}" y="${cy+84}" text-anchor="middle" fill="#64b5f6" font-size="7.5">${sp.name} · 对宫 · 三合</text>`;svg+=`<text x="${cx+cw/2}" y="${cy+96}" text-anchor="middle" fill="#888" font-size="7">${[...sp.majorStars.map(s=>s.name),...sp.minorStars.slice(0,3).map(s=>s.name)].join('·')||'空宫'}</text>`}}
+    svg+='</svg>';
+    $('zw-chart').innerHTML=svg;
 }
 
-// ═══ 交互 ═══
-function selectPalace(i){selectedPalace=(selectedPalace===i)?null:i;renderChart()}
-function toggleStem(s){activeStem=(activeStem===s)?null:s;renderChart()}
+function selectPalace(br){selectedPalace=(selectedPalace===br)?null:br;renderChart()}
 $('horo-scope').addEventListener('change',()=>renderChart());
 
-// ═══ 飞星 ═══
 function toggleFlyStars(){
     if(!astrolabe)return;const el=$('flystar-panel');
-    if(!el.classList.contains('hidden')){el.classList.add('hidden');return}
-    el.classList.remove('hidden');
+    if(!el.classList.contains('hidden')){el.classList.add('hidden');return}el.classList.remove('hidden');
     const palaces=typeof astrolabe.palaces==='function'?astrolabe.palaces():Array.isArray(astrolabe.palaces)?astrolabe.palaces:[];
-    let html='<div style="font-weight:700;color:#d4a843;margin-bottom:6px">✈️ 十二宫飞星</div>';
+    let html='<div style="font-weight:700;color:#d4a843;margin-bottom:6px">✈️ 十二宫飞星全览</div>';
     for(const p of palaces){const gan=p.heavenlyStem;const fly=GAN_SIHUA[gan];if(!fly)continue;let items=[];for(const[mu,sn]of Object.entries(fly)){let tgt='?';for(const pp of palaces)for(const s of[...pp.majorStars,...pp.minorStars])if(s.name===sn){tgt=pp.name;break}items.push(`<span style="color:${mu==='禄'?'#2e7d32':mu==='权'?'#7b1fa2':mu==='科'?'#1565c0':'#c62828'}">化${mu}→${tgt}</span>`)}html+=`<div style="padding:2px 6px;border-left:2px solid #d4a843;margin-bottom:3px;font-size:.85em"><b style="color:#d4a843">${p.name}</b>(${gan}): ${items.join('·')}</div>`}
     el.innerHTML=html;
 }
 
-// ═══ 解读 ═══
 $('btn-analyze').addEventListener('click',async()=>{
     if(!astrolabe)return;$('btn-analyze').disabled=true;$('btn-analyze').textContent='⏳...';$('analysis-section').classList.remove('hidden');$('analysis-content').innerHTML='<p style="color:#888">AI解读中...</p>';
     const palaces=typeof astrolabe.palaces==='function'?astrolabe.palaces():Array.isArray(astrolabe.palaces)?astrolabe.palaces:[];
     const plateData={input:{birth_datetime:`${$('y').value}-${$('m').value}-${$('d').value} ${$('h').value}:${$('min').value}`,gender:$('g').value},five_elements_class:astrolabe.fiveElementsClass,soul_palace:astrolabe.earthlyBranchOfSoulPalace,body_palace:astrolabe.earthlyBranchOfBodyPalace,palaces:[],year_mutagens:[],patterns:[]};
-    for(const pp of palaces){const dec=pp.decadal||pp.stage||{};plateData.palaces.push({name:pp.name,dizhi:pp.heavenlyStem+pp.earthlyBranch,earthly_branch:pp.earthlyBranch,major_stars:pp.majorStars.map(s=>({name:s.name,type:s.type,brightness:s.brightness||''})),minor_stars:pp.minorStars.map(s=>({name:s.name,type:s.type})),mutagens:[],decadal_range:dec.range?`${dec.range[0]}-${dec.range[1]}`:'',decadal_dizhi:'',tags:[],is_empty:!pp.majorStars.length,grid_row:0,grid_col:0,index:0});for(const s of[...pp.majorStars,...pp.minorStars])if(s.mutagen)plateData.year_mutagens.push({star:s.name,mutagen:'化'+s.mutagen,palace:pp.name,branch:pp.earthlyBranch})}
+    for(const pp of palaces){plateData.palaces.push({name:pp.name,dizhi:pp.heavenlyStem+pp.earthlyBranch,earthly_branch:pp.earthlyBranch,major_stars:pp.majorStars.map(s=>({name:s.name,type:s.type,brightness:s.brightness||''})),minor_stars:pp.minorStars.map(s=>({name:s.name,type:s.type})),mutagens:[],decadal_range:'',decadal_dizhi:'',tags:[],is_empty:!pp.majorStars.length,grid_row:0,grid_col:0,index:0});for(const s of[...pp.majorStars,...pp.minorStars])if(s.mutagen)plateData.year_mutagens.push({star:s.name,mutagen:'化'+s.mutagen,palace:pp.name,branch:pp.earthlyBranch})}
     try{const r=await fetch('/api/ziwei/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData})});const d=await r.json();if(!d.success){$('analysis-content').innerHTML='<p style="color:#ef5350">分析失败</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='🧠 重试';return}$('analysis-content').innerHTML=formatCards(d.analysis);$('btn-analyze').textContent='🔄 重新解读';$('btn-analyze').disabled=false}catch(e){$('analysis-content').innerHTML='<p style="color:#ef5350">网络错误</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='🧠 重试'}
 });
-function formatCards(t){t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');const p=t.split(/^## /gm);if(p.length<2)return t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');let h='';for(let i=1;i<p.length;i++){const l=p[i].split('\n');const bd=l.slice(1).join('\n').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');h+=`<div class="a-card"><h2>${l[0].trim()}</h2><div class="body">${bd}</div></div>`}return h}
+function formatCards(t){t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');const p=t.split(/^## /gm);if(p.length<2)return t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');let h='';for(let i=1;i<p.length;i++){const l=p[i].split('\n');h+=`<div class="a-card"><h2>${l[0].trim()}</h2><div class="body">${l.slice(1).join('\n').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')}</div></div>`}return h}
 </script>
 </body>
 </html>
