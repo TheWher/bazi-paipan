@@ -114,6 +114,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
     <section id="analysis-section" class="hidden">
         <div class="floating-bar"><span class="bar-title">📜 命盘解读</span></div>
         <div id="analysis-content" class="analysis-content"></div>
+        <div id="chat-section" style="margin-top:14px">
+            <div class="floating-bar"><span class="bar-title">💬 追问</span></div>
+            <div id="chat-messages" style="margin-bottom:10px"></div>
+            <div style="display:flex;gap:8px">
+                <textarea id="chat-input" rows="2" placeholder="追问Agent，例如：我今年换工作合适吗？财运怎么样？" style="flex:1;padding:10px;border:1px solid var(--border-light);border-radius:var(--radius-sm);background:var(--card-bg);color:var(--text);font-size:.85em;resize:none;outline:none"></textarea>
+                <button id="btn-chat-send" class="btn btn-gold" style="align-self:flex-end;flex-shrink:0" onclick="sendChat()">发送</button>
+            </div>
+        </div>
     </section>
 </main>
 </div>
@@ -319,7 +327,7 @@ function renderChart(){
 function selectPalace(br){selectedPalace=(selectedPalace===br)?null:br;renderChart()}
 
 // AI analysis
-let _pwResolve=null;
+let _pwResolve=null,conversationMessages=null;
 function promptPassword(){return new Promise(r=>{_pwResolve=r;$('pw-overlay').classList.remove('hidden');$('pw-input').value='';$('pw-error').textContent='';$('pw-input').focus()})}
 $('btn-pw-confirm').addEventListener('click',()=>{if(_pwResolve){_pwResolve($('pw-input').value);$('pw-overlay').classList.add('hidden')}});
 $('btn-pw-cancel').addEventListener('click',()=>{if(_pwResolve){_pwResolve(null);$('pw-overlay').classList.add('hidden')}});
@@ -330,10 +338,29 @@ async function doAnalyze(password){
     try{const r=await fetch('/api/ziwei/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData,password:password||''})});const d=await r.json();
         if(d.need_password){const p=await promptPassword();if(!p){$('btn-analyze').disabled=false;$('btn-analyze').textContent='🧠 AI 解读';return}return doAnalyze(p)}
         if(!d.success){$('analysis-content').innerHTML='<p style="color:#ef5350">分析失败: '+(d.error||'')+'</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试';return}
-        $('analysis-content').innerHTML=formatCards(d.analysis);$('btn-analyze').textContent='重新解读';$('btn-analyze').disabled=false
+        $('analysis-content').innerHTML=formatCards(d.analysis);$('btn-analyze').textContent='重新解读';$('btn-analyze').disabled=false;
+        if(d.messages)conversationMessages=d.messages; // 保存对话历史
     }catch(e){$('analysis-content').innerHTML='<p style="color:#ef5350">网络错误</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试'}
 }
 $('btn-analyze').addEventListener('click',()=>{if(!plateData)return;$('btn-analyze').disabled=true;$('btn-analyze').textContent='分析中...';$('analysis-section').classList.remove('hidden');doAnalyze('')});
+
+// Chat
+async function sendChat(){
+    const input=$('chat-input'),reply=input.value.trim();if(!reply||!conversationMessages)return;
+    input.disabled=true;$('btn-chat-send').disabled=true;$('chat-messages').innerHTML+='<div style="margin:8px 0;padding:8px 12px;background:rgba(212,168,67,.06);border-radius:8px;font-size:.82em"><b style="color:var(--accent)">你：</b>'+reply+'</div>';
+    try{const r=await fetch('/api/ziwei/analyze/continue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:conversationMessages,reply:reply})});const d=await r.json();
+        if(d.need_password){const p=await promptPassword();if(!p){input.disabled=false;$('btn-chat-send').disabled=false;return};const r2=await fetch('/api/ziwei/analyze/continue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:conversationMessages,reply:reply,password:p})});const d2=await r2.json();if(d2.success)appendChatReply(d2.analysis)}
+        else if(d.success)appendChatReply(d.analysis);
+        else{$('chat-messages').innerHTML+='<div style="color:#ef5350;font-size:.78em">'+(d.error||'失败')+'</div>'}
+    }catch(e){$('chat-messages').innerHTML+='<div style="color:#ef5350;font-size:.78em">网络错误</div>'}
+    input.value='';input.disabled=false;$('btn-chat-send').disabled=false;
+}
+function appendChatReply(text){
+    $('chat-messages').innerHTML+='<div style="margin:8px 0;padding:8px 12px;background:var(--card-bg);border:1px solid var(--border-light);border-radius:8px;font-size:.82em"><b style="color:var(--accent)">Agent：</b>'+text.replace(/\n/g,'<br>')+'</div>';
+    conversationMessages.push({role:'user',content:$('chat-input').value.trim()});
+    conversationMessages.push({role:'assistant',content:text});
+}
+$('chat-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat()}});
 function formatCards(t){t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');const p=t.split(/^## /gm);if(p.length<2)return t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');let h='';for(let i=1;i<p.length;i++){const l=p[i].split('\n');h+='<div class="a-card"><h2>'+l[0].trim()+'</h2><div class="body">'+l.slice(1).join('\n').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</div></div>'}return h}
 </script>
 </body>

@@ -789,6 +789,33 @@ def api_ziwei_analyze():
         return jsonify({"success": False, "error": result["error"]}), 500
 
 
+@app.route("/api/ziwei/analyze/continue", methods=["POST"])
+def api_ziwei_analyze_continue():
+    """紫微斗数多轮对话续接"""
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求数据格式错误"}), 400
+
+    ip = request.remote_addr or 'unknown'
+    pw_err = check_password(ip, data)
+    if pw_err:
+        return jsonify({"error": pw_err, "need_password": True}), 403
+
+    messages = data.get("messages", [])
+    reply = data.get("reply", "")
+    if not messages or not reply:
+        return jsonify({"error": "缺少 messages 或 reply"}), 400
+
+    from analysis_service import continue_ziwei_analysis
+    result = continue_ziwei_analysis(messages, reply, timeout=300)
+
+    if result["success"]:
+        return jsonify({"success": True, "analysis": result["analysis"]})
+    else:
+        return jsonify({"success": False, "error": result["error"]}), 500
+
+
 @app.route("/api/pdf", methods=["POST"])
 def api_pdf():
     """生成 PDF 报告"""
