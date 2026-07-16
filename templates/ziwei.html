@@ -174,13 +174,26 @@ function renderChart(){
             if(horoscope.yearly&&horoscope.yearly.index===p.index){svg+='<text x="'+(x+3)+'" y="'+hy+'" fill="#5cb85c" font-size="6">流年</text>'}
         }
     }
-    //  中心
+    // 三方四正三角线（选中时）
+    if(selectedPalace){
+        const si=BR.indexOf(selectedPalace);if(si>=0){
+            const sfBranches=[BR[(si+4)%12],BR[(si+8)%12],BR[(si+6)%12]];
+            const spPos=GRID[selectedPalace];if(spPos){
+                const sxo=pad+spPos[0]*cellW+cellW/2,syo=pad+spPos[1]*cellH+30+cellH/2;
+                for(const sfb of sfBranches){
+                    const sfp=GRID[sfb];if(sfp){
+                        const txo=pad+sfp[0]*cellW+cellW/2,tyo=pad+sfp[1]*cellH+30+cellH/2;
+                        svg+='<line x1="'+sxo+'" y1="'+syo+'" x2="'+txo+'" y2="'+tyo+'" stroke="#7c4dff" stroke-width="1" opacity="0.4" stroke-dasharray="3,3"/>';
+                    }
+                }
+            }
+        }
+    }
     const cx=pad+cellW,cy=pad+cellH+30,cw=cellW*2,ch=cellH*2;
     svg+='<rect x="'+(cx+1)+'" y="'+(cy+1)+'" width="'+(cw-2)+'" height="'+(ch-2)+'" rx="4" fill="'+S.cell+'" stroke="#999"/>';
     svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+28)+'" text-anchor="middle" fill="#d4a843" font-size="12" font-weight="700">紫微斗数</text>';
     svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+46)+'" text-anchor="middle" fill="#888" font-size="8">'+fec+' · 命宫: '+soulBr+' / 身宫: '+bodyBr+'</text>';
     svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+64)+'" text-anchor="middle" fill="#d4a843" font-size="8">'+siHua.map(s=>s.star+'化'+s.hua).join(' · ')+'</text>';
-    if(selectedPalace){const sp=palaces.find(p=>p.earthlyBranch===selectedPalace);if(sp){svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+82)+'" text-anchor="middle" fill="#64b5f6" font-size="7.5">'+sp.name+' · 对宫·三合</text>';svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+94)+'" text-anchor="middle" fill="#888" font-size="7">'+[...sp.majorStars.map(s=>s.name),...sp.minorStars.slice(0,3).map(s=>s.name)].join('·')||'空宫'+'</text>'}}
     svg+='</svg>';
     $('zw-chart').innerHTML=svg;
 }
