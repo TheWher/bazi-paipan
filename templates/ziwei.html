@@ -266,17 +266,15 @@ function renderChart(){
     const huaLabel={'禄':'◈','权':'▲','科':'◎','忌':'✕'},huaColor={'禄':'#2e7d32','权':'#7b1fa2','科':'#1565c0','忌':'#c62828'};
     let hy2=cy+84;
     for(const sh of siHua){svg+='<text x="'+(cx+cw/2)+'" y="'+hy2+'" text-anchor="middle" fill="'+huaColor[sh.hua]+'" font-size="9">'+(huaLabel[sh.hua]||'')+' '+sh.star+'化'+sh.hua+' → '+sh.palace+'</text>';hy2+=14}
-    // 大限四化
+    // 大限四化 (用GAN_SIHUA从大限天干推算)
     if(horoscope&&activeScopes.has('decadal')&&horoscope.decadal){
-        const d=horoscope.decadal;const dGz=(d.heavenlyStem||'')+(d.earthlyBranch||'');
-        if(dGz&&(d.mutagen||d.mutagens)){
-            const dmuts=d.mutagens||d.mutagen||[];
-            const dmuStars=(typeof dmuts==='string'?[dmuts]:Array.isArray(dmuts)?dmuts:[]);
-            if(dmuStars.length){
-                svg+='<text x="'+(cx+cw/2)+'" y="'+hy2+'" text-anchor="middle" fill="#4a9eff" font-size="9">大限('+dGz+')四化:</text>';hy2+=14;
-                for(const sn of dmuStars.slice(0,4)){
+        const d=horoscope.decadal;const dGan=d.heavenlyStem||'',dBranch=d.earthlyBranch||'';
+        if(dGan){
+            const dFly=GAN_SIHUA[dGan];if(dFly){
+                svg+='<text x="'+(cx+cw/2)+'" y="'+hy2+'" text-anchor="middle" fill="#4a9eff" font-size="9">大限 '+dGan+dBranch+' 四化:</text>';hy2+=14;
+                for(const[mu,sn]of Object.entries(dFly)){
                     let tgtP='?';for(const pp of palaces)for(const s of[...pp.majorStars,...pp.minorStars])if(s.name===sn){tgtP=pp.name;break}
-                    svg+='<text x="'+(cx+cw/2)+'" y="'+hy2+'" text-anchor="middle" fill="#4a9eff" font-size="8">'+sn+' → '+tgtP+'</text>';hy2+=12;
+                    svg+='<text x="'+(cx+cw/2)+'" y="'+hy2+'" text-anchor="middle" fill="'+huaColor[mu]+'" font-size="8">'+(huaLabel[mu]||'')+' '+sn+' → '+tgtP+'</text>';hy2+=12;
                 }
             }
         }
