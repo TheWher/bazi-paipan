@@ -432,6 +432,12 @@ def ziwei():
     return render_template("ziwei.html")
 
 
+@app.route("/ziwei-react")
+def ziwei_react():
+    """紫微斗数 — react-iztro ESM 原生组件"""
+    return render_template("ziwei_react.html")
+
+
 @app.route("/api/geocode")
 def api_geocode():
     """地理编码：地名 → 经纬度"""
