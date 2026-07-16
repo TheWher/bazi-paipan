@@ -122,6 +122,7 @@ const $=id=>document.getElementById(id);
 let astrolabe=null,selectedPalace=null,activeStem=null,focusedIdx=null;
 const GRID=['巳','午','未','申','辰',null,'酉','卯',null,'戌','寅','丑','子','亥'];
 const P_NAMES_CN=['疾厄','財帛','子女','夫妻','兄弟','命宮','父母','福德','田宅','官祿','交友','遷移'];
+function pname(p){return typeof p.getName==='function'?p.name:p.name||p.getName||P_NAMES_CN[p.index]||'?'}
 const MUTAGEN_ORDER=['禄','权','科','忌'];
 const GAN_SIHUA={甲:{禄:'廉贞',权:'破军',科:'武曲',忌:'太阳'},乙:{禄:'天机',权:'天梁',科:'紫微',忌:'太阴'},丙:{禄:'天同',权:'天机',科:'文昌',忌:'廉贞'},丁:{禄:'太阴',权:'天同',科:'天机',忌:'巨门'},戊:{禄:'贪狼',权:'太阴',科:'右弼',忌:'天机'},己:{禄:'武曲',权:'贪狼',科:'天梁',忌:'文曲'},庚:{禄:'太阳',权:'武曲',科:'太阴',忌:'天同'},辛:{禄:'巨门',权:'太阳',科:'文曲',忌:'文昌'},壬:{禄:'天梁',权:'紫微',科:'左辅',忌:'武曲'},癸:{禄:'破军',权:'巨门',科:'太阴',忌:'贪狼'}};
 
@@ -203,7 +204,7 @@ function renderChart(){
             <div class="iztro-palace-fate">${fateHTML}</div>
             <div class="iztro-palace-footer">
                 <div class="iztro-palace-lft24"><div>${cs12}</div><div>${bs12}</div></div>
-                <div class="iztro-palace-name" style="text-align:center">${isSoul?'☯':''}${p.getName()}${isBody?`<span class="iztro-palace-name-body">·身宫</span>`:''}</div>
+                <div class="iztro-palace-name" style="text-align:center">${isSoul?'☯':''}${p.name}${isBody?`<span class="iztro-palace-name-body">·身宫</span>`:''}</div>
                 <div class="iztro-palace-rgt24"><div>${sq12}</div><div>${jq12}</div></div>
             </div>
             <div class="iztro-palace-scope" style="text-align:center"><div class="iztro-palace-scope-decadal">${decRange}</div></div>
@@ -247,7 +248,7 @@ function selectPalace(i){
         if(p){
             const stars=[...p.majorStars.map(s=>s.name),...p.minorStars.map(s=>s.name)];
             const sf=[(selectedPalace+4)%12,(selectedPalace+8)%12,(selectedPalace+6)%12];
-            $('sel-info').textContent=`${p.getName()}·对宫${pls[sf[2]].getName()}·三合${pls[sf[0]].getName()}${pls[sf[1]].getName()}·${stars.slice(0,4).join('+')||'空宫'}`;
+            $('sel-info').textContent=`${p.name}·对宫${pls[sf[2]].name}·三合${pls[sf[0]].name}${pls[sf[1]].name}·${stars.slice(0,4).join('+')||'空宫'}`;
         }
     }else{$('sel-info').textContent='点击宫位看详情'}
     renderChart();
@@ -262,7 +263,7 @@ function toggleFlyStars(){
     el.classList.remove('hidden');
     const palaces=typeof astrolabe.palaces==='function'?astrolabe.palaces():Array.isArray(astrolabe.palaces)?astrolabe.palaces:[]
     let html='<div style="font-weight:700;color:#d4a843;margin-bottom:6px">✈️ 十二宫飞星</div>';
-    for(const p of palaces){const gan=p.heavenlyStem;const fly=GAN_SIHUA[gan];if(!fly)continue;let items=[];for(const[mu,sn] of Object.entries(fly)){let tgt='?';for(const pp of palaces)for(const s of[...pp.majorStars,...pp.minorStars])if(s.name===sn){tgt=pp.getName();break}items.push(`<span style="color:${mu==='禄'?'#2e7d32':mu==='权'?'#7b1fa2':mu==='科'?'#1565c0':'#c62828'}">化${mu}→${tgt}</span>`)}html+=`<div style="padding:2px 6px;border-left:2px solid #d4a843;margin-bottom:3px;font-size:.85em"><b style="color:#d4a843">${p.getName()}</b>(${gan}): ${items.join('·')}</div>`}
+    for(const p of palaces){const gan=p.heavenlyStem;const fly=GAN_SIHUA[gan];if(!fly)continue;let items=[];for(const[mu,sn] of Object.entries(fly)){let tgt='?';for(const pp of palaces)for(const s of[...pp.majorStars,...pp.minorStars])if(s.name===sn){tgt=pp.name;break}items.push(`<span style="color:${mu==='禄'?'#2e7d32':mu==='权'?'#7b1fa2':mu==='科'?'#1565c0':'#c62828'}">化${mu}→${tgt}</span>`)}html+=`<div style="padding:2px 6px;border-left:2px solid #d4a843;margin-bottom:3px;font-size:.85em"><b style="color:#d4a843">${p.name}</b>(${gan}): ${items.join('·')}</div>`}
     el.innerHTML=html;
 }
 
@@ -271,7 +272,7 @@ $('btn-analyze').addEventListener('click',async()=>{
     if(!astrolabe)return;$('btn-analyze').disabled=true;$('btn-analyze').textContent='⏳...';$('analysis-section').classList.remove('hidden');$('analysis-content').innerHTML='<p style="color:#888">AI解读中...</p>';
     const palaces=typeof astrolabe.palaces==='function'?astrolabe.palaces():Array.isArray(astrolabe.palaces)?astrolabe.palaces:[]
     const plateData={input:{birth_datetime:`${$('y').value}-${$('m').value}-${$('d').value} ${$('h').value}:${$('min').value}`,gender:$('g').value},five_elements_class:astrolabe.fiveElementsClass,soul_palace:astrolabe.earthlyBranchOfSoulPalace,body_palace:astrolabe.earthlyBranchOfBodyPalace,palaces:[],year_mutagens:[],patterns:[]};
-    for(const pp of palaces){const dec=pp.decadal||pp.stage||{};plateData.palaces.push({name:pp.getName(),dizhi:pp.heavenlyStem+pp.earthlyBranch,earthly_branch:pp.earthlyBranch,major_stars:pp.majorStars.map(s=>({name:s.name,type:s.type,brightness:s.brightness||''})),minor_stars:pp.minorStars.map(s=>({name:s.name,type:s.type})),mutagens:[],decadal_range:dec.range?`${dec.range[0]}-${dec.range[1]}`:'',decadal_dizhi:'',tags:[],is_empty:!pp.majorStars.length,grid_row:0,grid_col:0,index:pp.getIndex?.()||0});for(const s of[...pp.majorStars,...pp.minorStars])if(s.mutagen)plateData.year_mutagens.push({star:s.name,mutagen:'化'+s.mutagen,palace:pp.getName(),branch:pp.earthlyBranch})}
+    for(const pp of palaces){const dec=pp.decadal||pp.stage||{};plateData.palaces.push({name:pp.name,dizhi:pp.heavenlyStem+pp.earthlyBranch,earthly_branch:pp.earthlyBranch,major_stars:pp.majorStars.map(s=>({name:s.name,type:s.type,brightness:s.brightness||''})),minor_stars:pp.minorStars.map(s=>({name:s.name,type:s.type})),mutagens:[],decadal_range:dec.range?`${dec.range[0]}-${dec.range[1]}`:'',decadal_dizhi:'',tags:[],is_empty:!pp.majorStars.length,grid_row:0,grid_col:0,index:pp.getIndex?.()||0});for(const s of[...pp.majorStars,...pp.minorStars])if(s.mutagen)plateData.year_mutagens.push({star:s.name,mutagen:'化'+s.mutagen,palace:pp.name,branch:pp.earthlyBranch})}
     try{const r=await fetch('/api/ziwei/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData})});const d=await r.json();if(!d.success){$('analysis-content').innerHTML='<p style="color:#ef5350">分析失败</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='🧠 重试';return}$('analysis-content').innerHTML=formatCards(d.analysis);$('btn-analyze').textContent='🔄 重新解读';$('btn-analyze').disabled=false}catch(e){$('analysis-content').innerHTML='<p style="color:#ef5350">网络错误</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='🧠 重试'}
 });
 function formatCards(t){t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');const p=t.split(/^## /gm);if(p.length<2)return t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');let h='';for(let i=1;i<p.length;i++){const l=p[i].split('\n');const bd=l.slice(1).join('\n').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');const bg=l[0].includes('感情')?'bg-pink':l[0].includes('大限')?'bg-blue':l[0].includes('流年')?'bg-purple':'';h+=`<div class="a-card ${bg}"><h2>${l[0].trim()}</h2><div class="body">${bd}</div></div>`}return h}
