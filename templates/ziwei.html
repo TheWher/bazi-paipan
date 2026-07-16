@@ -94,6 +94,7 @@ _:-ms-input-placeholder,:root .form-group{display:none}
         </div>
         <div id="flystar-panel" class="hidden" style="background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;font-size:.74em;max-height:260px;overflow-y:auto"></div>
         <div class="chart-wrapper" id="zw-chart"></div>
+        <div id="decadal-panel" style="background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:14px 18px;margin-top:14px;font-size:.78em"></div>
     </section>
     <section id="analysis-section" class="hidden">
         <div class="floating-bar"><span class="bar-title">📜 命盘解读</span></div>
@@ -179,9 +180,9 @@ function renderChart(){
         if(sha.length){
             svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#5a5a6e" font-size="6.5">'+sha.map(s=>s.name).join(' ')+'</text>';sy+=8;
         }
-        // 十二长生
-        const cs12=p.changsheng12||'';
-        if(cs12)svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#888" font-size="6">'+cs12+'</text>';
+        // 十二长生 + 博士十二神 + 岁前
+        const cs12=p.changsheng12||'',bs12=p.boshi12||'',sq12=p.suiqian12||'';
+        if(cs12)svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#888" font-size="5.5">'+cs12+(bs12?'·'+bs12:'')+(sq12?'·'+sq12:'')+'</text>';sy+=7;
         // 运限标记
         let hy=y+cellH-12;
         if(horoscope){
@@ -217,6 +218,18 @@ function renderChart(){
     }
     svg+='</svg>';
     $('zw-chart').innerHTML=svg;
+    // 大限时间轴面板
+    const birthY=parseInt(document.getElementById('y').value)||1991;
+    const curAge=new Date().getFullYear()-birthY;
+    let dp='<div style="font-weight:700;color:var(--accent);margin-bottom:8px">📅 大限时间轴 (当前 '+curAge+'岁)</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
+    for(const p of palaces){
+        const dec=p.decadal||p.stage||{};const dr=dec.range;if(!dr)continue;
+        const isCur=curAge>=dr[0]&&curAge<=dr[1];
+        const bg=isCur?'background:rgba(212,168,67,.12);border-color:var(--accent)':'';const fw=isCur?'font-weight:700':'';
+        dp+='<div style="padding:4px 10px;border:1px solid var(--border-light);border-radius:8px;font-size:.85em;'+bg+'"><span style="'+fw+';color:var(--accent)">'+(dec.heavenlyStem||'')+(dec.earthlyBranch||'')+'</span> '+p.name+' <span style="color:var(--text-muted)">'+dr[0]+'-'+dr[1]+'岁</span></div>';
+    }
+    dp+='</div>';
+    $('decadal-panel').innerHTML=dp;
 }
 function selectPalace(br){selectedPalace=(selectedPalace===br)?null:br;renderChart()}
 
