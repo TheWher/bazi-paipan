@@ -1248,10 +1248,24 @@ def _build_ziwei_user_message(plate_dict: dict) -> str:
             parts.append(f"- {m['star']} → {m['mutagen']}（{m['palace']}·{m['branch']}）")
         parts.append("")
 
+    # 古籍引用（格局→原文 RAG）
+    patterns = plate_dict.get('patterns', [])
+    if patterns:
+        classics = _load_json_kb("ziwei_classics.json")
+        if classics:
+            pat_refs = classics.get("patterns", {})
+            lines = ["## 📜 古籍引用（按需参考）", ""]
+            for pat in patterns:
+                name = pat.get('name', '')
+                if name in pat_refs:
+                    lines.append(f"- **{name}**：{pat_refs[name]}")
+            if len(lines) > 2:
+                parts.extend(lines)
+                parts.append("")
     # 分析要求
     parts.append("## 分析要求")
     parts.append("")
-    parts.append("请输出 Markdown 格式，语气亲切如与朋友聊天。按以下结构解读：")
+    parts.append("解读时可引用上述古籍原文增加权威性。按以下结构输出 Markdown：")
     parts.append("")
     parts.append("1. ## 🎯 命盘底色 — 命宫主星分析性格底层")
     parts.append("2. ## 💼 事业格局 — 官禄宫 + 财帛宫分析")

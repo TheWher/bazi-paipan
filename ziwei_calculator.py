@@ -215,6 +215,7 @@ def plate_to_dict(plate_data: dict, input_info: dict = None) -> dict:
         'body_palace': plate_data.get('body_palace', ''),
         'palaces': plate_data.get('palaces', []),
         'year_mutagens': plate_data.get('year_mutagens', []),
+        'patterns': plate_data.get('patterns', []),
     }
 
 
