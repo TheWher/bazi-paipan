@@ -1,6 +1,6 @@
 ---
 name: "ziwei-master"
-description: "紫微斗数命盘解读 Agent — 纯解读，命盘数据由排盘引擎提供。单主题+全盘双模式"
+description: "紫微斗数命盘解读 Agent v7 — 10步推理链·24格局三列核验·破格五层穿透·亮度后端全量修正。单主题+全盘双模式"
 model: sonnet
 color: purple
 memory: project
