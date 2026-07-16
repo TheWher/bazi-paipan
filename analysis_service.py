@@ -1317,7 +1317,50 @@ def analyze_ziwei(plate_dict: dict, timeout: int = 120) -> dict:
                        max_tokens=32768, temperature=0.7, timeout=timeout)
 
     if not result["success"]: return result
-    return {"success": True, "analysis": result["text"], "model": result.get("model", API_CONFIG["model"]), "usage": result.get("usage", {})}
+    return {
+        "success": True,
+        "analysis": result["text"],
+        "model": result.get("model", API_CONFIG["model"]),
+        "usage": result.get("usage", {}),
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+            {"role": "assistant", "content": result["text"]},
+        ],
+    }
+
+
+def continue_ziwei_analysis(messages: list[dict], user_reply: str, timeout: int = 600) -> dict:
+    """紫微斗数多轮对话续接"""
+    if not API_CONFIG.get("api_key"):
+        return {"success": False, "error": "未配置 API Key"}
+
+    url = f"{API_CONFIG['base_url']}/v1/messages"
+    headers = {"Content-Type": "application/json", "x-api-key": API_CONFIG["api_key"], "anthropic-version": "2023-06-01"}
+
+    api_messages = []; system_msg = None
+    for m in messages:
+        if m["role"] == "system": system_msg = m
+        else: api_messages.append({"role": m["role"], "content": m["content"]})
+    api_messages.append({"role": "user", "content": user_reply})
+
+    payload = {"model": API_CONFIG["model"], "max_tokens": 16384, "temperature": 0.7, "thinking": {"type": "disabled"}, "system": system_msg["content"] if system_msg else "", "messages": api_messages}
+
+    for attempt in range(2):
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
+            if resp.status_code != 200: return {"success": False, "error": f"API 错误({resp.status_code}): {resp.text[:200]}"}
+            data = resp.json(); text = ""
+            for block in data.get("content", []):
+                if block.get("type") == "text": text += block["text"]
+            if text: return {"success": True, "analysis": text}
+            if attempt == 0: time.sleep(3); continue
+            return {"success": False, "error": "API 返回空内容"}
+        except requests.Timeout: return {"success": False, "error": f"超时({timeout}s)"}
+        except Exception as e:
+            if attempt == 0: time.sleep(3); continue
+            return {"success": False, "error": str(e)}
+    return {"success": False, "error": "所有重试失败"}
 
 
 # ============================================================
