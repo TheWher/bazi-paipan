@@ -89,7 +89,15 @@ body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:#1a1a24;c
 <script src="https://cdn.jsdelivr.net/npm/iztro/dist/iztro.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-let astrolabe=null,siHuaInfo=null,patData=null;
+let astrolabe=null,patData=null,horoData=null,selectedPalace=null;
+const P_NAMES={0:'疾厄',1:'財帛',2:'子女',3:'夫妻',4:'兄弟',5:'命宮',6:'父母',7:'福德',8:'田宅',9:'官祿',10:'交友',11:'遷移'};
+const BR=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const GRID={'巳':[0,0],'午':[1,0],'未':[2,0],'申':[3,0],'辰':[0,1],'酉':[3,1],'卯':[0,2],'戌':[3,2],'寅':[0,3],'丑':[1,3],'子':[2,3],'亥':[3,3]};
+const BCLR={'庙':'#d4a843','旺':'#e8a860','得':'#7cb342','利':'#5c6bc0','平':'#888','不':'#78909c','陷':'#c62828'};
+const HCLR={'禄':'#2e7d32','权':'#7b1fa2','科':'#1565c0','忌':'#c62828'};
+// 三方四正映射: [对宫, 三合1, 三合2] 地支→地支差
+function sansifangIdx(br){const i=BR.indexOf(br);if(i<0)return[];return[BR[(i+6)%12],BR[(i+4)%12],BR[(i+8)%12]]}
+
 
 $('quick').addEventListener('input',function(){
     const v=this.value.replace(/\D/g,'');if(v.length<8)return;
@@ -146,59 +154,138 @@ function renderInfo(d){
     el.innerHTML=patData.map(p=>`<span class="pat-badge pat-${p.level==='上吉'?'ex':p.level==='吉'?'gd':p.level==='忌'?'ca':'ne'}">${p.name}</span>`).join('');
 }
 
-// ═══ SVG 命盘渲染 (react-iztro风格) ═══
+// ═══ 活盘渲染 ═══
 function renderChart(){
     if(!astrolabe)return;
     const palaces=astrolabe.palaces();
     const fec=astrolabe.fiveElementsClass;
-    const soulIdx=astrolabe.earthlyBranchOfSoulPalace; // e.g. '午'
+    const soulIdx=astrolabe.earthlyBranchOfSoulPalace;
     const bodyIdx=astrolabe.earthlyBranchOfBodyPalace;
+    const scope=$('horo-scope').value;
+
+    const W=640,H=680,pad=10,cellW=(W-2*pad)/4,cellH=(H-2*pad)/4;
+
+    // 收集四化
     const siHua=[];for(const p of palaces)for(const s of[...p.majorStars,...p.minorStars])if(s.siHua)siHua.push({star:s.name,hua:s.siHua,palace:p.getName()});
 
-    const W=640,H=640,pad=10,cellW=(W-2*pad)/4,cellH=(H-2*pad)/4;
-    const gridPos={'巳':[0,0],'午':[1,0],'未':[2,0],'申':[3,0],'辰':[0,1],'酉':[3,1],'卯':[0,2],'戌':[3,2],'寅':[0,3],'丑':[1,3],'子':[2,3],'亥':[3,3]};
-    const bClr={'庙':'#d4a843;color:#1a1a2e','旺':'#e8a860;color:#1a1a2e','得':'#7cb342;color:#fff','利':'#5c6bc0;color:#fff','平':'#888;color:#fff','不':'#78909c;color:#fff','陷':'#c62828;color:#fff'};
-    const hc={'禄':'#2e7d32','权':'#7b1fa2','科':'#1565c0','忌':'#c62828'};
+    // 运限叠盘
+    let overlay={stars:[],mutagens:[]}; // {branch->stars}
+    if(scope!=='origin'&&horoData){
+        // 用 horoscope API 获取运限星曜
+        try{
+            const h=astrolabe.horoscope(new Date(),parseInt($('h').value)||1);
+            if(scope==='decadal'&&h.decadal){const d=h.decadal;if(d.stars)overlay=parseScope(d,'decadal')}
+            if(scope==='yearly'&&h.yearly){const y=h.yearly;if(y.stars)overlay=parseScope(y,'yearly')}
+        }catch(e){console.log('horoscope not available:',e)}
+    }
+    function parseScope(item,scope){const r={stars:{},mutagens:[]};if(!item||!item.stars)return r;for(const s of item.stars){const b=s.palace?.earthlyBranch||'';if(b){if(!r.stars[b])r.stars[b]=[];r.stars[b].push({name:s.name,scope});if(s.siHua)r.mutagens.push({star:s.name,hua:s.siHua});}}return r}
 
-    let svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">`;
+    // 选中宫的三方四正
+    let sfSet=new Set();
+    if(selectedPalace){
+        const idxs=sansifangIdx(selectedPalace);
+        sfSet=new Set([selectedPalace,...idxs]);
+    }
+
+    let svg=`<svg id="zw-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">`;
     svg+=`<rect width="${W}" height="${H}" fill="#1a1a24" rx="8"/>`;
-    svg+=`<text x="${W/2}" y="22" text-anchor="middle" fill="#d4a843" font-size="14" font-weight="700">紫微斗数 · ${fec}</text>`;
+    svg+=`<text x="${W/2}" y="20" text-anchor="middle" fill="#d4a843" font-size="13" font-weight="700">紫微斗数 · ${fec}</text>`;
 
     for(const p of palaces){
         const br=p.earthlyBranch;const st=p.heavenlyStem;
-        const pos=gridPos[br];if(!pos)continue;
+        const pos=GRID[br];if(!pos)continue;
         const x=pad+pos[0]*cellW,y=pad+pos[1]*cellH;
         const isSoul=br===soulIdx,isBody=br===bodyIdx;
-        const stroke=isSoul?'#d4a843':isBody?'#7c4dff':'#3a3a4a';
+        const isSF=sfSet.has(br);const isSel=br===selectedPalace;
+        const stroke=isSel?'#d4a843':isSF?isSoul?'#d4a843':isBody?'#7c4dff':'#64b5f6':'#3a3a4a';
+        const fill=isSel?'#2a2a38':isSF?'#222238':'#1e1e2c';
+        const sw=isSel?2.5:isSF?2:isSoul||isBody?2:1;
 
-        svg+=`<rect x="${x+1}" y="${y+1}" width="${cellW-2}" height="${cellH-2}" rx="4" fill="#1e1e2c" stroke="${stroke}" stroke-width="${isSoul||isBody?2:1}"/>`;
-        svg+=`<text x="${x+cellW/2}" y="${y+16}" text-anchor="middle" fill="#888" font-size="15" font-weight="800">${br}</text>`;
-        svg+=`<text x="${x+cellW/2}" y="${y+cellH-5}" text-anchor="middle" fill="${isSoul?'#c62828':'#888'}" font-size="9" font-weight="600">${p.getName()}</text>`;
-        if(isSoul)svg+=`<text x="${x+cellW-5}" y="${y+10}" text-anchor="end" fill="#d4a843" font-size="7" font-weight="700">命</text>`;
-        if(isBody)svg+=`<text x="${x+cellW-5}" y="${y+18}" text-anchor="end" fill="#7c4dff" font-size="7" font-weight="700">身</text>`;
+        svg+=`<rect id="cell-${br}" x="${x+1}" y="${y+1}" width="${cellW-2}" height="${cellH-2}" rx="4" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" style="cursor:pointer" onclick="selectPalace('${br}')"/>`;
+        svg+=`<text x="${x+cellW/2}" y="${y+15}" text-anchor="middle" fill="#888" font-size="14" font-weight="800" style="pointer-events:none">${br}</text>`;
+        svg+=`<text x="${x+cellW/2}" y="${y+cellH-5}" text-anchor="middle" fill="${isSoul?'#c62828':'#888'}" font-size="8" font-weight="600" style="pointer-events:none">${p.getName()}</text>`;
+        if(isSoul)svg+=`<text x="${x+cellW-5}" y="${y+9}" text-anchor="end" fill="#d4a843" font-size="7" font-weight="700" style="pointer-events:none">命</text>`;
+        if(isBody)svg+=`<text x="${x+cellW-5}" y="${y+17}" text-anchor="end" fill="#7c4dff" font-size="7" font-weight="700" style="pointer-events:none">身</text>`;
 
         let sy=y+26;
-        for(const s of p.majorStars){
-            const clr=s.type==='major'?'#d4a843':s.type==='soft'?'#ce93d8':s.type==='tough'?'#5a5a6e':'#888';
-            svg+=`<text x="${x+cellW/2}" y="${sy}" text-anchor="middle" fill="${clr}" font-size="9" font-weight="600">${s.name}`;
-            if(s.brightness)svg+=`<tspan fill="${bClr[s.brightness]?.split(';')[0]||'#888'}" font-size="7">${s.brightness}</tspan>`;
-            if(s.siHua)svg+=`<tspan fill="${hc[s.siHua]||'#888'}" font-size="8">◈</tspan>`;
-            svg+=`</text>`;sy+=12;
+        const majorStars=[...p.majorStars];
+        // 叠盘星
+        if(overlay.stars[br])for(const os of overlay.stars[br]){if(!majorStars.find(s=>s.name===os.name))majorStars.push(os)}
+        for(const s of majorStars){
+            const isScope=(s.scope||'origin')!=='origin';
+            const clr=isScope?(s.scope==='decadal'?'#64b5f6':'#81c784'):(s.type==='major'?'#d4a843':s.type==='soft'?'#ce93d8':s.type==='tough'?'#5a5a6e':'#888');
+            svg+=`<text x="${x+cellW/2}" y="${sy}" text-anchor="middle" fill="${clr}" font-size="${isScope?7.5:9}" font-weight="${isScope?400:600}" style="cursor:pointer" onclick="event.stopPropagation();showStarDetail('${s.name}')">${s.name}`;
+            if(s.brightness)svg+=`<tspan fill="${BCLR[s.brightness]||'#888'}" font-size="6">${s.brightness}</tspan>`;
+            if(s.siHua)svg+=`<tspan fill="${HCLR[s.siHua]||'#888'}" font-size="7">◈</tspan>`;
+            svg+=`</text>`;sy+=11;
         }
-        for(const s of (p.minorStars||[]).slice(0,4)){
-            svg+=`<text x="${x+cellW/2}" y="${sy}" text-anchor="middle" fill="${s.type==='soft'?'#ce93d8':s.type==='tough'?'#5a5a6e':'#888'}" font-size="7">${s.name}</text>`;sy+=10;
+        for(const s of (p.minorStars||[]).slice(0,3)){
+            svg+=`<text x="${x+cellW/2}" y="${sy}" text-anchor="middle" fill="${s.type==='soft'?'#ce93d8':s.type==='tough'?'#5a5a6e':'#888'}" font-size="6.5" style="cursor:pointer" onclick="event.stopPropagation();showStarDetail('${s.name}')">${s.name}</text>`;sy+=9;
         }
     }
-
+    // 中心
     const cx=pad+cellW,cy=pad+cellH,cw=cellW*2,ch=cellH*2;
     svg+=`<rect x="${cx+1}" y="${cy+1}" width="${cw-2}" height="${ch-2}" rx="4" fill="#1e1e2c" stroke="#3a3a4a"/>`;
-    svg+=`<text x="${cx+cw/2}" y="${cy+28}" text-anchor="middle" fill="#d4a843" font-size="12" font-weight="700">紫微斗数</text>`;
-    svg+=`<text x="${cx+cw/2}" y="${cy+48}" text-anchor="middle" fill="#888" font-size="9">${fec}</text>`;
-    svg+=`<text x="${cx+cw/2}" y="${cy+66}" text-anchor="middle" fill="#888" font-size="9">命宫: ${soulIdx} / 身宫: ${bodyIdx}</text>`;
-    svg+=`<text x="${cx+cw/2}" y="${cy+84}" text-anchor="middle" fill="#d4a843" font-size="9">${siHua.map(s=>s.star+'化'+s.hua).join('·')}</text>`;
+    svg+=`<text x="${cx+cw/2}" y="${cy+24}" text-anchor="middle" fill="#d4a843" font-size="11" font-weight="700">紫微斗数</text>`;
+    svg+=`<text x="${cx+cw/2}" y="${cy+44}" text-anchor="middle" fill="#888" font-size="8.5">${fec}</text>`;
+    svg+=`<text x="${cx+cw/2}" y="${cy+62}" text-anchor="middle" fill="#888" font-size="8.5">命: ${soulIdx} / 身: ${bodyIdx}</text>`;
+    svg+=`<text x="${cx+cw/2}" y="${cy+82}" text-anchor="middle" fill="#d4a843" font-size="8.5">${siHua.map(s=>s.star+'化'+s.hua).join('·')}</text>`;
+    svg+=`<text id="sel-info" x="${cx+cw/2}" y="${cy+104}" text-anchor="middle" fill="#64b5f6" font-size="8"></text>`;
     svg+='</svg>';
     $('zw-chart').innerHTML=svg;
+    updateSelectedInfo();
 }
+
+// ═══ 宫位交互 ═══
+function selectPalace(br){
+    selectedPalace=(selectedPalace===br)?null:br;
+    renderChart();
+}
+function updateSelectedInfo(){
+    if(!selectedPalace||!astrolabe)return;
+    const p=astrolabe.palaces().find(pp=>pp.earthlyBranch===selectedPalace);
+    if(!p)return;
+    const sf=sansifangIdx(selectedPalace);
+    const stars=[...p.majorStars.map(s=>s.name),...p.minorStars.map(s=>s.name)];
+    const muts=[];
+    for(const s of[...p.majorStars,...p.minorStars])if(s.siHua)muts.push(s.name+'化'+s.siHua);
+    const txt=`${p.getName()} · 对宫${sf[0]} · 三合${sf[1]}${sf[2]} · ${stars.length?stars.slice(0,4).join('+'):'空宫'}${muts.length?' ['+muts.join(',')+']':''}`;
+    const el=$('sel-info');if(el)el.textContent=txt;
+    $('horo-result').textContent=p.getName()+': '+stars.slice(0,5).join('·')+(p.majorStars.length===0?' (空宫)':'')+(muts.length?' | '+muts.join('·'):'');
+}
+
+// ═══ 星曜详情 ═══
+function showStarDetail(name){
+    if(!astrolabe)return;
+    const starInfo=astrolabe.star(name);
+    if(!starInfo)return;
+    const palaces=starInfo.palaces?.()||[];
+    const opp=starInfo.oppositePalace?.();
+    const sf=starInfo.surroundedPalaces?.()||[];
+    const hasHua=starInfo.hasMutagen?.();
+    const bright=starInfo.isBright?.();
+    let msg=`⭐ ${name}\n`;
+    if(bright!==undefined)msg+=`亮度: ${bright?'庙旺':'落陷'}\n`;
+    if(hasHua)msg+=`四化: ${hasHua}\n`;
+    msg+=`所在宫位: ${palaces.map(p=>p.getName()).join(',')}\n`;
+    if(opp)msg+=`对宫: ${opp.getName()}\n`;
+    if(sf.length)msg+=`三方四正: ${sf.map(p=>p.getName()).join(',')}`;
+    alert(msg);
+}
+
+// ═══ 运限切换 ═══
+$('horo-scope').addEventListener('change',()=>{
+    if(!astrolabe)return;
+    const scope=$('horo-scope').value;
+    if(scope==='origin'){horoData=null;renderChart();$('horo-result').textContent='';return}
+    try{
+        const h=astrolabe.horoscope(new Date(),parseInt($('h').value)||1);
+        horoData=h;
+        if(scope==='decadal')$('horo-result').textContent='大限: '+h.decadal?.heavenlyStem+h.decadal?.earthlyBranch;
+        if(scope==='yearly')$('horo-result').textContent='流年: '+h.yearly?.heavenlyStem+h.yearly?.earthlyBranch;
+        renderChart();
+    }catch(e){$('horo-result').textContent='运限数据暂不可用';horoData=null;}
+});
 
 // ═══ LLM解读 (复用后端) ═══
 $('btn-analyze').addEventListener('click',async()=>{
