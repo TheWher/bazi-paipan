@@ -88,8 +88,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
         </div>
     </section>
     <div style="margin-top:auto;padding:12px 0;border-top:1px solid var(--border-light)">
-            <details id="session-details"><summary style="cursor:pointer;font-size:.78em;color:var(--text-muted);margin-bottom:8px">💬 会话记录 (<span id="session-count">0</span>)</summary>
-            <div id="session-list" style="max-height:200px;overflow-y:auto;font-size:.74em"></div>
+            <details id="session-details" open><summary style="cursor:pointer;font-size:.82em;color:var(--accent);margin-bottom:8px;font-weight:600">💬 历史会话 (<span id="session-count">0</span>)</summary>
+            <div id="session-list" style="max-height:240px;overflow-y:auto;font-size:.78em;line-height:1.6"></div>
             </details>
         </div>
     <div class="sticky-actions">
@@ -367,11 +367,12 @@ let _pwResolve=null,conversationMessages=null,currentSessionId=null;
 // Session management
 async function loadSessions(){
     try{const r=await fetch('/api/ziwei/sessions');const sessions=await r.json();$('session-count').textContent=sessions.length;
-        $('session-list').innerHTML=sessions.map(s=>`<div style="padding:4px 6px;margin:2px 0;border-radius:4px;cursor:pointer;${s.id===currentSessionId?'background:rgba(212,168,67,.08);':''}" onclick="switchSession('${s.id}')">
-            <span style="color:var(--accent);font-weight:600">${s.title||'未命名'}</span>
-            <span style="color:var(--text-muted);font-size:.85em;margin-left:6px">${s.message_count}条</span>
-            <button onclick="event.stopPropagation();deleteSession('${s.id}')" style="float:right;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.8em">✕</button>
-        </div>`).join('')||'<div style="color:var(--text-muted)">暂无会话</div>'}
+        if(sessions.length>0){$('session-details').open=true}
+        $('session-list').innerHTML=sessions.map(s=>`<div style="padding:6px 8px;margin:3px 0;border-radius:6px;cursor:pointer;${s.id===currentSessionId?'background:rgba(212,168,67,.12);border:1px solid rgba(212,168,67,.2);':''}" onclick="switchSession('${s.id}')">
+            <span style="color:var(--accent);font-weight:600">📝 ${s.title||'未命名'}</span>
+            <span style="color:var(--text-muted);font-size:.8em;margin-left:4px">${s.message_count||0}条</span>
+            <button onclick="event.stopPropagation();deleteSession('${s.id}')" style="float:right;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.85em" title="删除">✕</button>
+        </div>`).join('')||'<div style="color:var(--text-muted);padding:8px;text-align:center">暂无历史会话。进行AI分析后会自动保存。</div>'}
     catch(e){}
 }
 async function saveSession(){
@@ -387,10 +388,16 @@ async function saveSession(){
 async function switchSession(id){
     try{const r=await fetch('/api/ziwei/sessions/'+id);const s=await r.json();if(!s||s.error)return;
         currentSessionId=id;conversationMessages=s.messages||[];
-        // Show chat history
-        $('analysis-section').classList.remove('hidden');$('analysis-content').innerHTML='';
+        $('analysis-section').classList.remove('hidden');
+        // 恢复分析文本（第一条 assistant 消息）
+        const firstAsst=s.messages?.find(m=>m.role==='assistant');
+        if(firstAsst)$('analysis-content').innerHTML=formatCards(firstAsst.content);
+        else $('analysis-content').innerHTML='';
+        // 恢复对话历史
         $('chat-messages').innerHTML=conversationMessages.filter(m=>m.role!=='system').map(m=>`<div style="margin:4px 0;padding:6px 10px;border-radius:6px;font-size:.8em;${m.role==='user'?'background:rgba(212,168,67,.06);':'background:var(--card-bg);border:1px solid var(--border-light);'}"><b style="color:${m.role==='user'?'var(--accent)':'var(--text-muted)'}">${m.role==='user'?'你':'Agent'}：</b>${m.content.replace(/\n/g,'<br>')}</div>`).join('');
-        loadSessions();
+        loadSessions();$('btn-analyze').textContent='重新解读';$('btn-analyze').disabled=false;
+        // 滚动到分析区
+        $('analysis-section').scrollIntoView({behavior:'smooth'});
     }catch(e){}
 }
 async function deleteSession(id){
