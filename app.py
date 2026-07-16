@@ -789,6 +789,35 @@ def api_ziwei_analyze():
         return jsonify({"success": False, "error": result["error"]}), 500
 
 
+@app.route("/api/ziwei/analyze/stream", methods=["POST"])
+def api_ziwei_analyze_stream():
+    """紫微斗数 SSE 流式解读"""
+    try: data = request.get_json(force=True)
+    except Exception: return jsonify({"error": "请求数据格式错误"}), 400
+
+    ip = request.remote_addr or 'unknown'
+    pw_err = check_password(ip, data)
+    if pw_err: return jsonify({"error": pw_err, "need_password": True}), 403
+
+    if "plate" not in data: return jsonify({"error": "缺少 plate"}), 400
+    plate_dict = data["plate"]
+
+    if not check_rate_limit(ip, max_requests=3, window_minutes=60):
+        return jsonify({"error": "请求过于频繁（3次/时）"}), 429
+
+    from flask import Response
+    from analysis_service import _load_ziwei_system_prompt, _build_ziwei_user_message, _call_api_stream
+
+    def generate():
+        sp = _load_ziwei_system_prompt()
+        um = _build_ziwei_user_message(plate_dict)
+        for chunk in _call_api_stream(sp, [{"role": "user", "content": um}], 32768, 0.7, 600):
+            yield chunk
+
+    return Response(generate(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 @app.route("/api/ziwei/analyze/continue", methods=["POST"])
 def api_ziwei_analyze_continue():
     """紫微斗数多轮对话续接"""

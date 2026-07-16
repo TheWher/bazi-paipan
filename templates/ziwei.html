@@ -33,7 +33,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
 .a-card{background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow-sm);margin-bottom:14px}
 .a-card h2{font-size:.85em;font-weight:600;color:#8b6914;margin-bottom:10px}[data-theme="dark"] .a-card h2{color:var(--accent)}
 .a-card .body{font-size:.9rem;line-height:1.85;color:var(--text)}.a-card .body strong{color:var(--accent)}
-.loading{text-align:center;padding:60px;color:var(--text-muted)}.spinner{width:32px;height:32px;margin:0 auto 12px;border:3px solid var(--border-light);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.loading{text-align:center;padding:60px;color:var(--text-muted)}.spinner{width:32px;height:32px;margin:0 auto 12px;border:3px solid var(--border-light);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}
 .pattern-row{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}.pat-badge{padding:3px 10px;border-radius:12px;font-size:.7em;font-weight:600}.pat-ex{background:linear-gradient(135deg,#d4a843,#8b6914);color:#fff;font-size:.75em}.pat-gd{background:rgba(46,125,50,.12);color:#2e7d32;border:1px solid rgba(46,125,50,.2);font-size:.72em}.pat-ne{background:rgba(120,120,120,.06);color:var(--text-muted);font-size:.68em}.pat-ca{background:rgba(198,40,40,.12);color:#ef5350;border:1px solid rgba(198,40,40,.2);font-size:.72em}
 @media(max-width:860px){.app-layout{flex-direction:column}.app-sidebar{width:100%;min-width:0;height:auto;position:static;border-right:none;padding:20px 16px 16px}.app-main{padding:20px 16px 80px}.sticky-actions{width:100%}}
 </style>
@@ -377,12 +377,20 @@ $('pw-input').addEventListener('keydown',e=>{if(e.key==='Enter')$('btn-pw-confir
 
 async function doAnalyze(password){
     $('analysis-content').innerHTML='<p style="text-align:center;color:var(--text-muted)">AI 正在解读你的紫微命盘...</p>';
-    try{const r=await fetch('/api/ziwei/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData,password:password||''})});const d=await r.json();
-        if(d.need_password){const p=await promptPassword();if(!p){$('btn-analyze').disabled=false;$('btn-analyze').textContent='🧠 AI 解读';return}return doAnalyze(p)}
-        if(!d.success){$('analysis-content').innerHTML='<p style="color:#ef5350">分析失败: '+(d.error||'')+'</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试';return}
-        $('analysis-content').innerHTML=formatCards(d.analysis);$('btn-analyze').textContent='重新解读';$('btn-analyze').disabled=false;
-        if(d.messages){conversationMessages=d.messages;saveSession()}
-    }catch(e){$('analysis-content').innerHTML='<p style="color:#ef5350">网络错误</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试'}
+    // 优先用 SSE 流式
+    try{const r=await fetch('/api/ziwei/analyze/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData,password:password||''})});
+        if(r.status===403){const d=await r.json();if(d.need_password){const p=await promptPassword();if(!p){$('btn-analyze').disabled=false;$('btn-analyze').textContent='🧠 AI 解读';return}return doAnalyze(p)}}
+        if(!r.ok){const d=await r.json();$('analysis-content').innerHTML='<p style="color:#ef5350">分析失败: '+(d.error||'')+'</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试';return}
+        const reader=r.body.getReader();const decoder=new TextDecoder();let fullText='';let buf='';$('analysis-content').innerHTML='';
+        while(true){const{value,done}=await reader.read();if(done)break;buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+            for(const line of lines){if(line.startsWith('data: ')){try{const d=JSON.parse(line.slice(6));if(d.error){$('analysis-content').innerHTML='<p style="color:#ef5350">'+d.error+'</p>';return}
+                        if(d.type==='content_block_delta'&&d.delta?.text){fullText+=d.delta.text;$('analysis-content').innerHTML=formatCards(fullText)+'<span style="animation:blink 1s infinite">▌</span>'}else if(d.type==='message_stop'){}
+                    }catch(e){}}}
+        }$('analysis-content').innerHTML=formatCards(fullText);$('btn-analyze').textContent='重新解读';$('btn-analyze').disabled=false;
+        // 模拟 messages 数组给会话
+        const sp=conversationMessages?conversationMessages.find(m=>m.role==='system'):null;
+        conversationMessages=[{role:'system',content:sp?.content||''},{role:'user',content:'请解读命盘'},{role:'assistant',content:fullText}];saveSession();
+    }catch(e){$('analysis-content').innerHTML='<p style="color:#ef5350">流式失败，请重试</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试'}
 }
 $('btn-analyze').addEventListener('click',()=>{if(!plateData)return;$('btn-analyze').disabled=true;$('btn-analyze').textContent='分析中...';$('analysis-section').classList.remove('hidden');doAnalyze('')});
 

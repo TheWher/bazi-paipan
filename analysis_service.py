@@ -1022,6 +1022,40 @@ def _call_api(system_prompt: str, messages: list[dict], max_tokens: int,
     return {"success": False, "error": "API 调用失败：所有重试均未成功"}
 
 
+def _call_api_stream(system_prompt: str, messages: list[dict], max_tokens: int,
+                     temperature: float, timeout: int):
+    """流式 API 调用，yield SSE data: 行"""
+    url = f"{API_CONFIG['base_url']}/v1/messages"
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": API_CONFIG["api_key"],
+        "anthropic-version": "2023-06-01",
+    }
+    payload = {
+        "model": API_CONFIG["model"],
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "thinking": {"type": "disabled"},
+        "system": system_prompt,
+        "messages": messages,
+        "stream": True,
+    }
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=timeout, stream=True)
+        if resp.status_code != 200:
+            yield f"data: {json.dumps({'error': f'API {resp.status_code}'})}\n\n"
+            return
+        for line in resp.iter_lines():
+            if not line: continue
+            line = line.decode("utf-8") if isinstance(line, bytes) else line
+            if line.startswith("data: "):
+                yield f"{line}\n\n"
+    except requests.Timeout:
+        yield f"data: {json.dumps({'error': '超时'})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+
 def analyze_bazi(plate_dict: dict, timeout: int = 120, known_events: list = None) -> dict:
     """对命盘进行深度分析（含 stop_sequences 截停 + 后处理硬校验）
 
