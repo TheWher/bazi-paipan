@@ -165,7 +165,7 @@ function renderChart(){
     if(scope!=='origin')try{horoscope=astrolabe.horoscope(new Date(),parseInt(document.getElementById('h').value)||1)}catch(e){}
     const siHua=[];for(const p of palaces)for(const s of[...p.majorStars,...p.minorStars])if(s.mutagen)siHua.push({star:s.name,hua:s.mutagen,palace:p.name});
 
-    const W=640,H=780,pad=10,cellW=(W-2*pad)/4,cellH=(H-2*pad-20)/4;
+    const W=720,H=880,pad=12,cellW=(W-2*pad)/4,cellH=(H-2*pad-24)/4;
     const GRID={'巳':[0,0],'午':[1,0],'未':[2,0],'申':[3,0],'辰':[0,1],'酉':[3,1],'卯':[0,2],'戌':[3,2],'寅':[0,3],'丑':[1,3],'子':[2,3],'亥':[3,3]};
     const BR=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
     const sfSet=new Set();if(selectedPalace){const i=BR.indexOf(selectedPalace);if(i>=0){sfSet.add(selectedPalace);sfSet.add(BR[(i+6)%12]);sfSet.add(BR[(i+4)%12]);sfSet.add(BR[(i+8)%12])}}
@@ -180,33 +180,33 @@ function renderChart(){
         const isSoul=br===soulBr,isBody=br===bodyBr,isSF=sfSet.has(br),isSel=br===selectedPalace;
         const stroke=isSel?'#d4a843':isSF?'#64b5f6':isSoul?'#d4a843':isBody?'#7c4dff':'#999';
         svg+='<rect x="'+(x+1)+'" y="'+(y+1)+'" width="'+(cellW-2)+'" height="'+(cellH-2)+'" rx="4" fill="'+S.cell+'" stroke="'+stroke+'" stroke-width="'+(isSel?2.5:isSF||isSoul||isBody?2:1)+'" style="cursor:pointer" onclick="selectPalace(\''+br+'\')"/>';
-        svg+='<text x="'+(x+cellW/2)+'" y="'+(y+14)+'" text-anchor="middle" fill="#888" font-size="13" font-weight="800" style="pointer-events:none">'+br+'</text>';
-        svg+='<text x="'+(x+cellW/2)+'" y="'+(y+cellH-5)+'" text-anchor="middle" fill="'+(isSoul?'#c62828':'#888')+'" font-size="8" font-weight="600" style="pointer-events:none">'+p.name+'</text>';
-        if(isSoul)svg+='<text x="'+(x+cellW-6)+'" y="'+(y+9)+'" text-anchor="end" fill="#d4a843" font-size="7" font-weight="700" style="pointer-events:none">命</text>';
+        svg+='<text x="'+(x+cellW/2)+'" y="'+(y+14)+'" text-anchor="middle" fill="#888" font-size="15" font-weight="800" style="pointer-events:none">'+br+'</text>';
+        svg+='<text x="'+(x+cellW/2)+'" y="'+(y+cellH-5)+'" text-anchor="middle" fill="'+(isSoul?'#c62828':'#888')+'" font-size="10" font-weight="600" style="pointer-events:none">'+p.name+'</text>';
+        if(isSoul)svg+='<text x="'+(x+cellW-6)+'" y="'+(y+9)+'" text-anchor="end" fill="#d4a843" font-size="9" font-weight="700" style="pointer-events:none">命</text>';
         if(isBody)svg+='<text x="'+(x+cellW-6)+'" y="'+(y+16)+'" text-anchor="end" fill="#7c4dff" font-size="7" font-weight="700" style="pointer-events:none">身</text>';
 
-        let sy=y+26;
+        let sy=y+32;
         // 主星（大字）
         for(const s of p.majorStars){
             const clr=s.type==='major'?'#d4a843':s.type==='soft'?'#ce93d8':s.type==='tough'?'#5a5a6e':'#888';
-            svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="'+clr+'" font-size="9" font-weight="600">'+s.name;
-            if(s.brightness)svg+='<tspan fill="'+(s.brightness==='庙'?'#d4a843':s.brightness==='旺'?'#e8a860':s.brightness==='陷'?'#c62828':'#888')+'" font-size="6">'+s.brightness+'</tspan>';
+            svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="'+clr+'" font-size="11" font-weight="600">'+s.name;
+            if(s.brightness)svg+='<tspan fill="'+(s.brightness==='庙'?'#d4a843':s.brightness==='旺'?'#e8a860':s.brightness==='陷'?'#c62828':'#888')+'" font-size="8">'+s.brightness+'</tspan>';
             if(s.mutagen)svg+='<tspan fill="'+(s.mutagen==='禄'?'#2e7d32':s.mutagen==='权'?'#7b1fa2':s.mutagen==='科'?'#1565c0':'#c62828')+'" font-size="7">◈</tspan>';
-            svg+='</text>';sy+=11;
+            svg+='</text>';sy+=14;
         }
         // 辅星——全显示，吉星紫色/煞星灰色分行
         const minors=p.minorStars||[];
         const ausp=minors.filter(s=>s.type==='soft'||s.type==='tianma'||s.type==='lucun');
         const sha=minors.filter(s=>s.type==='tough');
         if(ausp.length){
-            svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#ce93d8" font-size="6.5">'+ausp.map(s=>s.name).join(' ')+'</text>';sy+=8;
+            svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#ce93d8" font-size="8">'+ausp.map(s=>s.name).join(' ')+'</text>';sy+=10;
         }
         if(sha.length){
-            svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#5a5a6e" font-size="6.5">'+sha.map(s=>s.name).join(' ')+'</text>';sy+=8;
+            svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#5a5a6e" font-size="8">'+sha.map(s=>s.name).join(' ')+'</text>';sy+=10;
         }
         // 十二长生 + 博士十二神 + 岁前
         const cs12=p.changsheng12||'',bs12=p.boshi12||'',sq12=p.suiqian12||'';
-        if(cs12)svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#888" font-size="5.5">'+cs12+(bs12?'·'+bs12:'')+(sq12?'·'+sq12:'')+'</text>';sy+=7;
+        if(cs12)svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#888" font-size="7">'+cs12+(bs12?'·'+bs12:'')+(sq12?'·'+sq12:'')+'</text>';sy+=10;
         // 运限标记
         let hy=y+cellH-12;
         if(horoscope){
