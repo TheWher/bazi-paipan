@@ -87,6 +87,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
             <div id="geocode-status" style="display:none;padding:4px 16px 10px;font-size:.74em;color:#4caf50"></div>
         </div>
     </section>
+    <div style="margin-top:auto;padding:12px 0;border-top:1px solid var(--border-light)">
+            <details id="session-details"><summary style="cursor:pointer;font-size:.78em;color:var(--text-muted);margin-bottom:8px">💬 会话记录 (<span id="session-count">0</span>)</summary>
+            <div id="session-list" style="max-height:200px;overflow-y:auto;font-size:.74em"></div>
+            </details>
+        </div>
     <div class="sticky-actions">
         <button id="btn-render" class="btn btn-gold">🔮 排盘</button>
         <button id="btn-analyze" class="btn btn-gold" disabled>🧠 AI 解读</button>
@@ -327,7 +332,44 @@ function renderChart(){
 function selectPalace(br){selectedPalace=(selectedPalace===br)?null:br;renderChart()}
 
 // AI analysis
-let _pwResolve=null,conversationMessages=null;
+let _pwResolve=null,conversationMessages=null,currentSessionId=null;
+
+// Session management
+async function loadSessions(){
+    try{const r=await fetch('/api/ziwei/sessions');const sessions=await r.json();$('session-count').textContent=sessions.length;
+        $('session-list').innerHTML=sessions.map(s=>`<div style="padding:4px 6px;margin:2px 0;border-radius:4px;cursor:pointer;${s.id===currentSessionId?'background:rgba(212,168,67,.08);':''}" onclick="switchSession('${s.id}')">
+            <span style="color:var(--accent);font-weight:600">${s.title||'未命名'}</span>
+            <span style="color:var(--text-muted);font-size:.85em;margin-left:6px">${s.message_count}条</span>
+            <button onclick="event.stopPropagation();deleteSession('${s.id}')" style="float:right;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.8em">✕</button>
+        </div>`).join('')||'<div style="color:var(--text-muted)">暂无会话</div>'}
+    catch(e){}
+}
+async function saveSession(){
+    if(!conversationMessages||!conversationMessages.length)return;
+    const title=$('y').value+'-'+$('m').value+'-'+$('d').value+' '+($('g').value||'男');
+    const body={title:title,messages:conversationMessages,plate_summary:title};
+    try{
+        if(currentSessionId){await fetch('/api/ziwei/sessions/'+currentSessionId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}
+        else{const r=await fetch('/api/ziwei/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();currentSessionId=d.id}
+        loadSessions();
+    }catch(e){}
+}
+async function switchSession(id){
+    try{const r=await fetch('/api/ziwei/sessions/'+id);const s=await r.json();if(!s||s.error)return;
+        currentSessionId=id;conversationMessages=s.messages||[];
+        // Show chat history
+        $('analysis-section').classList.remove('hidden');$('analysis-content').innerHTML='';
+        $('chat-messages').innerHTML=conversationMessages.filter(m=>m.role!=='system').map(m=>`<div style="margin:4px 0;padding:6px 10px;border-radius:6px;font-size:.8em;${m.role==='user'?'background:rgba(212,168,67,.06);':'background:var(--card-bg);border:1px solid var(--border-light);'}"><b style="color:${m.role==='user'?'var(--accent)':'var(--text-muted)'}">${m.role==='user'?'你':'Agent'}：</b>${m.content.replace(/\n/g,'<br>')}</div>`).join('');
+        loadSessions();
+    }catch(e){}
+}
+async function deleteSession(id){
+    if(!confirm('删除此会话？'))return;
+    await fetch('/api/ziwei/sessions/'+id,{method:'DELETE'});
+    if(currentSessionId===id){currentSessionId=null;conversationMessages=null;$('chat-messages').innerHTML=''}
+    loadSessions();
+}
+loadSessions();
 function promptPassword(){return new Promise(r=>{_pwResolve=r;$('pw-overlay').classList.remove('hidden');$('pw-input').value='';$('pw-error').textContent='';$('pw-input').focus()})}
 $('btn-pw-confirm').addEventListener('click',()=>{if(_pwResolve){_pwResolve($('pw-input').value);$('pw-overlay').classList.add('hidden')}});
 $('btn-pw-cancel').addEventListener('click',()=>{if(_pwResolve){_pwResolve(null);$('pw-overlay').classList.add('hidden')}});
@@ -339,7 +381,7 @@ async function doAnalyze(password){
         if(d.need_password){const p=await promptPassword();if(!p){$('btn-analyze').disabled=false;$('btn-analyze').textContent='🧠 AI 解读';return}return doAnalyze(p)}
         if(!d.success){$('analysis-content').innerHTML='<p style="color:#ef5350">分析失败: '+(d.error||'')+'</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试';return}
         $('analysis-content').innerHTML=formatCards(d.analysis);$('btn-analyze').textContent='重新解读';$('btn-analyze').disabled=false;
-        if(d.messages)conversationMessages=d.messages; // 保存对话历史
+        if(d.messages){conversationMessages=d.messages;saveSession()}
     }catch(e){$('analysis-content').innerHTML='<p style="color:#ef5350">网络错误</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试'}
 }
 $('btn-analyze').addEventListener('click',()=>{if(!plateData)return;$('btn-analyze').disabled=true;$('btn-analyze').textContent='分析中...';$('analysis-section').classList.remove('hidden');doAnalyze('')});
@@ -359,6 +401,7 @@ function appendChatReply(text){
     $('chat-messages').innerHTML+='<div style="margin:8px 0;padding:8px 12px;background:var(--card-bg);border:1px solid var(--border-light);border-radius:8px;font-size:.82em"><b style="color:var(--accent)">Agent：</b>'+text.replace(/\n/g,'<br>')+'</div>';
     conversationMessages.push({role:'user',content:$('chat-input').value.trim()});
     conversationMessages.push({role:'assistant',content:text});
+    saveSession();
 }
 $('chat-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat()}});
 function formatCards(t){t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');const p=t.split(/^## /gm);if(p.length<2)return t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');let h='';for(let i=1;i<p.length;i++){const l=p[i].split('\n');h+='<div class="a-card"><h2>'+l[0].trim()+'</h2><div class="body">'+l.slice(1).join('\n').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</div></div>'}return h}

@@ -816,6 +816,44 @@ def api_ziwei_analyze_continue():
         return jsonify({"success": False, "error": result["error"]}), 500
 
 
+# ============================================================
+# 紫微会话管理
+# ============================================================
+import uuid as _uuid
+_ziwei_sessions = {}  # {session_id: {id, title, messages, plate_summary, created_at}}
+
+@app.route("/api/ziwei/sessions", methods=["GET", "POST"])
+def api_ziwei_sessions():
+    """会话列表 / 创建"""
+    if request.method == "GET":
+        items = [{"id": s["id"], "title": s.get("title",""), "plate_summary": s.get("plate_summary",""), "created_at": s.get("created_at",""), "message_count": len(s.get("messages",[]))} for s in _ziwei_sessions.values()]
+        return jsonify(sorted(items, key=lambda x: x["created_at"], reverse=True))
+
+    data = request.get_json(force=True) if request.method == "POST" else {}
+    sid = str(_uuid.uuid4())[:8]
+    _ziwei_sessions[sid] = {
+        "id": sid, "title": data.get("title", "新会话"),
+        "messages": data.get("messages", []), "plate_summary": data.get("plate_summary", ""),
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    return jsonify(_ziwei_sessions[sid])
+
+@app.route("/api/ziwei/sessions/<sid>", methods=["GET", "PUT", "DELETE"])
+def api_ziwei_session(sid):
+    """获取 / 更新 / 删除单个会话"""
+    if request.method == "GET":
+        s = _ziwei_sessions.get(sid); return jsonify(s) if s else (jsonify({"error": "not found"}), 404)
+    if request.method == "PUT":
+        if sid not in _ziwei_sessions: return jsonify({"error": "not found"}), 404
+        data = request.get_json(force=True)
+        if "title" in data: _ziwei_sessions[sid]["title"] = data["title"]
+        if "messages" in data: _ziwei_sessions[sid]["messages"] = data["messages"]
+        return jsonify({"ok": True})
+    if request.method == "DELETE":
+        if sid in _ziwei_sessions: del _ziwei_sessions[sid]
+        return jsonify({"ok": True})
+
+
 @app.route("/api/pdf", methods=["POST"])
 def api_pdf():
     """生成 PDF 报告"""
