@@ -76,8 +76,10 @@ body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:#1a1a24;c
         <div class="horo-bar">
             <label>📅 运限</label>
             <select id="horo-scope"><option value="origin">本命</option><option value="decadal">大限</option><option value="yearly">流年</option></select>
+            <button id="btn-flystar" class="btn" style="font-size:.7em;padding:4px 10px" onclick="toggleFlyStars()">✈️ 飞星全览</button>
             <span class="horo-result" id="horo-result"></span>
         </div>
+        <div id="flystar-panel" class="hidden" style="background:#1e1e2c;border:1px solid #3a3a4a;border-radius:8px;padding:12px;margin-bottom:10px;font-size:.75em;max-height:300px;overflow-y:auto"></div>
         <div id="zw-chart"></div>
     </div>
     <div id="analysis-section" class="hidden">
@@ -95,8 +97,15 @@ const BR=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥
 const GRID={'巳':[0,0],'午':[1,0],'未':[2,0],'申':[3,0],'辰':[0,1],'酉':[3,1],'卯':[0,2],'戌':[3,2],'寅':[0,3],'丑':[1,3],'子':[2,3],'亥':[3,3]};
 const BCLR={'庙':'#d4a843','旺':'#e8a860','得':'#7cb342','利':'#5c6bc0','平':'#888','不':'#78909c','陷':'#c62828'};
 const HCLR={'禄':'#2e7d32','权':'#7b1fa2','科':'#1565c0','忌':'#c62828'};
-// 三方四正映射: [对宫, 三合1, 三合2] 地支→地支差
+// 三方四正映射: [对宫, 三合1, 三合2]
 function sansifangIdx(br){const i=BR.indexOf(br);if(i<0)return[];return[BR[(i+6)%12],BR[(i+4)%12],BR[(i+8)%12]]}
+// 宫干四化表: 天干→{禄,权,科,忌}
+const GAN_SIHUA={甲:{禄:'廉贞',权:'破军',科:'武曲',忌:'太阳'},乙:{禄:'天机',权:'天梁',科:'紫微',忌:'太阴'},
+丙:{禄:'天同',权:'天机',科:'文昌',忌:'廉贞'},丁:{禄:'太阴',权:'天同',科:'天机',忌:'巨门'},
+戊:{禄:'贪狼',权:'太阴',科:'右弼',忌:'天机'},己:{禄:'武曲',权:'贪狼',科:'天梁',忌:'文曲'},
+庚:{禄:'太阳',权:'武曲',科:'太阴',忌:'天同'},辛:{禄:'巨门',权:'太阳',科:'文曲',忌:'文昌'},
+壬:{禄:'天梁',权:'紫微',科:'左辅',忌:'武曲'},癸:{禄:'破军',权:'巨门',科:'太阴',忌:'贪狼'}};
+const GAN_ORDER='甲乙丙丁戊己庚辛壬癸'.split('');
 
 
 $('quick').addEventListener('input',function(){
@@ -230,7 +239,24 @@ function renderChart(){
     svg+=`<text x="${cx+cw/2}" y="${cy+44}" text-anchor="middle" fill="#888" font-size="8.5">${fec}</text>`;
     svg+=`<text x="${cx+cw/2}" y="${cy+62}" text-anchor="middle" fill="#888" font-size="8.5">命: ${soulIdx} / 身: ${bodyIdx}</text>`;
     svg+=`<text x="${cx+cw/2}" y="${cy+82}" text-anchor="middle" fill="#d4a843" font-size="8.5">${siHua.map(s=>s.star+'化'+s.hua).join('·')}</text>`;
-    svg+=`<text id="sel-info" x="${cx+cw/2}" y="${cy+104}" text-anchor="middle" fill="#64b5f6" font-size="8"></text>`;
+    // 飞星信息
+    if(selectedPalace){
+        const selP=palaces.find(pp=>pp.earthlyBranch===selectedPalace);
+        if(selP){
+            const gan=selP.heavenlyStem;const fly=GAN_SIHUA[gan];
+            if(fly){
+                let fy=cy+100;
+                svg+=`<text x="${cx+cw/2}" y="${fy}" text-anchor="middle" fill="#d4a843" font-size="8" font-weight="700">${selP.getName()}宫干${gan}→飞星:</text>`;fy+=14;
+                for(const[mu,starName] of Object.entries(fly)){
+                    const hc=HCLR[mu]||'#888';const em={禄:'◈',权:'▲',科:'◎',忌:'✕'};
+                    // 找这颗星在哪
+                    let target='?';for(const pp of palaces)for(const s of[...pp.majorStars,...pp.minorStars])if(s.name===starName){target=pp.getName();break}
+                    svg+=`<text x="${cx+cw/2}" y="${fy}" text-anchor="middle" fill="${hc}" font-size="7.5">${em[mu]||''} 化${mu}入${target}(${starName})</text>`;fy+=12;
+                }
+            }
+        }
+    }
+    svg+=`<text id="sel-info" x="${cx+cw/2}" y="${cy+160}" text-anchor="middle" fill="#64b5f6" font-size="8"></text>`;
     svg+='</svg>';
     $('zw-chart').innerHTML=svg;
     updateSelectedInfo();
@@ -286,6 +312,30 @@ $('horo-scope').addEventListener('change',()=>{
         renderChart();
     }catch(e){$('horo-result').textContent='运限数据暂不可用';horoData=null;}
 });
+
+// ═══ 飞星全览 ═══
+function toggleFlyStars(){
+    if(!astrolabe)return;
+    const el=$('flystar-panel');
+    if(!el.classList.contains('hidden')){el.classList.add('hidden');return}
+    el.classList.remove('hidden');
+    const palaces=astrolabe.palaces();
+    const em={禄:'◈',权:'▲',科:'◎',忌:'✕'};
+    let html='<div style="font-weight:700;color:#d4a843;margin-bottom:8px">✈️ 十二宫飞星全览</div>';
+    for(const p of palaces){
+        const gan=p.heavenlyStem;const fly=GAN_SIHUA[gan];
+        if(!fly)continue;
+        let items=[];
+        for(const[mu,starName] of Object.entries(fly)){
+            let target='?';for(const pp of palaces)for(const s of[...pp.majorStars,...pp.minorStars])if(s.name===starName){target=pp.getName();break}
+            items.push(`<span style="color:${HCLR[mu]||'#888'}">${em[mu]||''}化${mu}→${target}(${starName})</span>`);
+        }
+        html+=`<div style="margin-bottom:4px;padding:4px 8px;border-left:2px solid #d4a843;font-size:.8em"><span style="color:#d4a843;font-weight:600">${p.getName()}</span>(${gan}): ${items.join(' · ')}</div>`;
+    }
+    const jiStars=[];for(const p of palaces)for(const s of[...p.majorStars,...p.minorStars])if(s.siHua==='忌'){const t=P_NAMES[p.getIndex()]||p.getName();jiStars.push(`${s.name}化忌入${t}`)}
+    if(jiStars.length)html+=`<div style="margin-top:8px;padding:6px 8px;background:rgba(198,40,40,.08);border-radius:6px;font-size:.78em;color:#ef5350">⚠️ 全局化忌: ${jiStars.join(' · ')}</div>`;
+    el.innerHTML=html;
+}
 
 // ═══ LLM解读 (复用后端) ═══
 $('btn-analyze').addEventListener('click',async()=>{
