@@ -381,167 +381,261 @@ def calculate_liuyao(liunian_gan: str, liunian_zhi: str, palaces: list) -> dict:
 
 
 def detect_patterns(plate_data: dict) -> list[dict]:
-    """自动检测命盘格局，返回命名的格局列表。
+    """自动检测命盘格局，基于 ziwei-doushu patterns.ts 体系。
 
-    三类格局：
-    1. 命宫星曜组合 (双星/三星同度)
-    2. 跨宫格局 (特定星曜落在特定宫位/地支)
-    3. 四化格局 (化禄/权/科/忌落宫)
+    Level: 上吉=excellent, 吉=good, 中=neutral, 忌=caution
+    每格局含 conditions required/bonus/breaking 三层 + 古籍出处 source
     """
     palaces = plate_data.get('palaces', [])
     patterns = []
 
     by_name = {p['name']: p for p in palaces}
+    by_branch = {p.get('earthly_branch', ''): p for p in palaces}
     major_names = lambda p: [s['name'] if isinstance(s, dict) else s for s in p.get('major_stars', [])]
     minor_names = lambda p: [s['name'] if isinstance(s, dict) else s for s in p.get('minor_stars', [])]
-    all_stars = lambda p: set(major_names(p) + minor_names(p))
+    all_star_names = lambda p: set(major_names(p) + minor_names(p))
 
-    ming = by_name.get('命宮', {})
-    ming_stars = major_names(ming)
-    ming_set = set(ming_stars)
+    def _brightness(p, star_name):
+        for s in p.get('major_stars', []) + p.get('minor_stars', []):
+            n = s['name'] if isinstance(s, dict) else s
+            if n == star_name and isinstance(s, dict):
+                b = s.get('brightness', '')
+                if b in ('庙', '旺'): return True
+                if b in ('陷',): return False
+        return None
+
+    def _si_hua(p, star_name):
+        for m in p.get('mutagens', []):
+            if m.get('star') == star_name:
+                return m.get('mutagen', '')
+        return ''
+
+    def _has_star(p, name):
+        return name in all_star_names(p)
+
+    def _find_star_palace(name):
+        for p in palaces:
+            if name in all_star_names(p): return p
+        return None
+
+    def _get_palace_by_branch(branch):
+        return by_branch.get(branch, {})
+
+    ZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
+
+    def _sansifang_branches(ming_branch):
+        if ming_branch not in ZHI: return set()
+        idx = ZHI.index(ming_branch)
+        return {ZHI[(idx) % 12], ZHI[(idx+4) % 12], ZHI[(idx+8) % 12], ZHI[(idx+6) % 12]}
+
+    def _sansifang_stars(ming_branch):
+        sf_b = _sansifang_branches(ming_branch)
+        stars = set()
+        for p in palaces:
+            if p.get('earthly_branch', '') in sf_b:
+                stars |= all_star_names(p)
+        return stars
+
+    def _jiagong(branch):
+        if branch not in ZHI: return {}, {}
+        idx = ZHI.index(branch)
+        prev = _get_palace_by_branch(ZHI[(idx-1)%12])
+        next_p = _get_palace_by_branch(ZHI[(idx+1)%12])
+        return prev or {}, next_p or {}
+
+    def _sha_count(p, sha_list=None):
+        if sha_list is None: sha_list = {'擎羊', '陀罗', '火星', '铃星'}
+        return sum(1 for s in all_star_names(p) if s in sha_list)
+    SHA_NAMES = {'擎羊', '陀罗', '火星', '铃星', '地空', '地劫'}
+    SHA_HARD = {'擎羊', '陀罗', '火星', '铃星'}
+    SHA_KONG = {'地空', '地劫'}
+    ZUO_YOU = {'左辅', '右弼'}
+    CHANG_QU = {'文昌', '文曲'}
+    KUI_YUE = {'天魁', '天钺'}
+    JYTL = {'天机', '太阴', '天同', '天梁'}
+
+    def _has_sha(p, sha_list=None):
+        if sha_list is None: sha_list = SHA_NAMES
+        return bool(all_star_names(p) & sha_list)
+
+    # 命宫 = soul palace（tag 为 '命宫' 的宫），不是固定 12 宫名
+    ming = next((p for p in palaces if '命宫' in p.get('tags', [])), by_name.get('命宮', {}))
     ming_branch = ming.get('earthly_branch', '')
-
+    sf_set = _sansifang_stars(ming_branch)
+    sf_palaces = [p for p in palaces if p.get('earthly_branch', '') in _sansifang_branches(ming_branch)]
+    sf_sha_count = sum(_sha_count(p, SHA_HARD) for p in sf_palaces)
     ym = plate_data.get('year_mutagens', [])
 
-    def add_pat(name, desc, level='中'):
+    def add_pat(name, desc, level='中', conditions=None, source=''):
         if not any(p['name'] == name for p in patterns):
-            patterns.append({'name': name, 'desc': desc, 'level': level})
+            p = {'name': name, 'desc': desc, 'level': level}
+            if conditions: p['conditions'] = conditions
+            if source: p['source'] = source
+            patterns.append(p)
 
-    # ═══ 一、命宫星曜组合 ═══
-    # 注：iztro-py zh-CN 输出简体中文，以下用简体匹配
-    COMBOS = [
-        ('紫微', '天府', '紫府同宫', '紫微天府同守命宫，帝王+库星，格局宏大，有领导力和管理才能', '上吉'),
-        ('紫微', '天相', '紫微天相', '紫微天相在命，稳重有贵气，善于协调，适合体制内/大平台', '吉'),
-        ('紫微', '破军', '紫微破军', '紫破在命，有开创精神，不甘现状，一生变动中成大事', '中'),
-        ('紫微', '七杀', '紫微七杀', '紫杀在命，魄力十足，刚猛果断，适合军警/创业/外科', '中'),
-        ('紫微', '贪狼', '紫微贪狼', '紫贪在命，桃花泛水，社交能力强，多才多艺但需节制', '中'),
-        ('天机', '天梁', '机梁善谈', '天机天梁在命，善谈有谋，适合咨询/策划/教育', '吉'),
-        ('天机', '巨门', '机巨同宫', '天机巨门在命，聪明善辩，适合研究/写作/法律', '中'),
-        ('天机', '太阴', '机月同宫', '天机太阴在命，心思细腻直觉敏锐，适合文艺/咨询', '吉'),
-        ('太阳', '太阴', '日月并明', '太阳太阴同守命宫，阴阳调和，光明磊落，人缘极好', '上吉'),
-        ('太阳', '巨门', '巨日同宫', '太阳巨门在命，口才出众，适合法律/教育/传媒', '中'),
-        ('武曲', '天府', '府武同宫', '武曲天府在命，实干型领袖，执行力强，适合金融/管理', '吉'),
-        ('武曲', '天相', '武相同宫', '武曲天相在命，刚柔并济，执行力+协调力兼备', '吉'),
-        ('武曲', '七杀', '武杀同宫', '武曲七杀在命，刚猛果决，适合竞技/军警/外科', '中'),
-        ('武曲', '破军', '武破同宫', '武曲破军在命，变革+执行力，折腾中求财', '中'),
-        ('天同', '太阴', '同月同宫', '天同太阴在命，温和细腻人缘好，适合服务/艺术', '吉'),
-        ('天同', '天梁', '同梁同宫', '天同天梁在命，福寿双星，性格温和有长者缘', '吉'),
-        ('天同', '巨门', '同巨同宫', '天同巨门在命，表面温和内心犀利，适合深度沟通工作', '中'),
-        ('廉贞', '天相', '廉相同宫', '廉贞天相在命，才艺+协调，适合技术管理/艺术策划', '中'),
-        ('廉贞', '天府', '廉府同宫', '廉贞天府在命，组织力+执行力，适合大机构/体制内', '吉'),
-        ('廉贞', '贪狼', '廉贪同宫', '廉贞贪狼在命，双桃花星，才艺出众但感情需谨慎', '中'),
-        ('廉贞', '七杀', '廉杀同宫', '廉贞七杀在命，刚烈果敢，适合法律/军警/竞技', '中'),
-        ('廉贞', '破军', '廉破同宫', '廉贞破军在命，执着+变革，一生多变，适合科技/创业', '中'),
-        ('太阴', '天同', '月同同宫', '太阴天同在命，温和优雅，适合文艺/服务行业', '吉'),
-        ('贪狼', '七杀', '贪杀同宫', '贪狼七杀在命，欲望+魄力，动力强但需把控方向', '中'),
-        ('天梁', '太阳', '阳梁同宫', '太阳天梁在命，正直光明，有长者风范，适合教育/医疗', '吉'),
-    ]
-    for s1, s2, name, desc, lv in COMBOS:
-        if s1 in ming_set and s2 in ming_set:
-            add_pat(name, desc, lv)
+    # ═══ 紫微系 ═══
+    if _has_star(ming, '紫微'):
+        if _has_star(ming, '天府'):
+            add_pat('紫府同宫', '紫微天府同守命宫，帝王+库星，格局宏大', '上吉',
+                    {'required': ['紫微天府同守命宫']}, '《紫微斗数全书》')
+        elif _has_star(ming, '天相'):
+            add_pat('紫微天相', '紫微天相在命，稳重贵气，善于协调', '吉', None, '《紫微斗数全书》')
+        elif _has_star(ming, '破军'):
+            add_pat('紫微破军', '紫破在命，开创精神，变动中成大事', '中')
+        elif _has_star(ming, '七杀'):
+            add_pat('紫微七杀', '紫杀在命，魄力十足，适合军警/创业', '中')
+        elif _has_star(ming, '贪狼'):
+            add_pat('紫微贪狼', '紫贪在命，社交强多才艺但需节制', '中')
+        elif len(set(major_names(ming))) == 1:
+            add_pat('紫微独坐', '紫微独坐命宫，帝王孤星，需辅星来朝', '中', None, '《紫微斗数全书》')
+        # 君臣庆会
+        if bool(sf_set & ZUO_YOU):
+            breaking = []
+            if _has_sha(ming, SHA_HARD): breaking.append('命宫坐煞')
+            if sf_sha_count >= 3: breaking.append('三方煞重')
+            add_pat('君臣庆会', '紫微入命辅弼同会三方，帝王得贤臣辅佐',
+                    '吉' if breaking else '上吉',
+                    {'required': ['紫微在命宫', '辅弼在命三方四正'], 'bonus': [], 'breaking': breaking},
+                    '《紫微斗数全书·君臣庆会格》')
 
-    # 杀破狼格
-    sp_set = {'七杀', '破军', '贪狼'} & ming_set
-    if sp_set:
-        add_pat('杀破狼格', f'命宫坐{"·".join(sorted(sp_set))}，一生大起大落，变动中求发展', '中')
-
-    # 机月同梁格
-    jy_set = {'天机', '太阴', '天同', '天梁'} & ming_set
-    if len(jy_set) >= 2:
-        add_pat('机月同梁格', f'命宫有{"·".join(sorted(jy_set))}，适合文职/公务员，做事有条理', '吉')
-
-    # 紫微独坐
-    if ming_set == {'紫微'}:
-        add_pat('紫微独坐', '紫微独坐命宫，帝王孤星，有领导力但可能孤独，需要辅星来朝才好', '中')
-
-    # 命无正曜
-    if ming.get('is_empty') or not ming_set:
-        add_pat('命无正曜', '命宫无主星，借对宫迁移宫星曜来看。适应力强但方向感弱，一生可能多变动', '中')
-
-    # ═══ 二、跨宫格局 ═══
-    # 府相朝垣 (天府在官禄或天相在财帛)
-    guanlu = by_name.get('官祿', {})
-    caibo = by_name.get('財帛', {})
-    if '天府' in major_names(guanlu) or '天相' in major_names(caibo):
-        add_pat('府相朝垣', '天府在官禄或天相在财帛，事业财运有格局，稳扎稳打型', '吉')
-
-    # 月朗天门 (太阴在亥宫)
+    # ═══ 日月系 ═══
+    if _has_star(ming, '太阳') and _has_star(ming, '太阴'):
+        add_pat('日月并明', '太阳太阴同守命宫，阴阳调和', '上吉', None, '《紫微斗数全书》')
+    if _has_star(ming, '太阳') and _has_star(ming, '巨门'):
+        add_pat('巨日同宫', '太阳巨门在命，口才出众，适合法律/教育/传媒', '中')
     for p in palaces:
-        if '太阴' in major_names(p) and p.get('earthly_branch') == '亥':
-            add_pat('月朗天门', '太阴在亥宫庙旺，月朗天门。情感丰富直觉敏锐，文艺天赋高', '上吉')
-    # 日照雷门 (太阳在卯宫)
-    for p in palaces:
-        if '太阳' in major_names(p) and p.get('earthly_branch') == '卯':
-            add_pat('日照雷门', '太阳在卯宫庙旺，日照雷门。热情开朗光明磊落', '上吉')
+        if _has_star(p, '太阴') and p.get('earthly_branch') == '亥':
+            b = _brightness(p, '太阴')
+            add_pat('月朗天门', '太阴在亥宫庙旺，月朗天门。情感丰富文艺天赋',
+                    '上吉' if b else '吉', None, '《骨髓赋》')
+        if _has_star(p, '太阳') and p.get('earthly_branch') == '卯':
+            b = _brightness(p, '太阳')
+            add_pat('日照雷门', '太阳在卯宫庙旺，日照雷门。热情开朗',
+                    '上吉' if b else '吉', None, '《骨髓赋》')
 
-    # 禄马交驰 (禄存+天马同宫)
-    for p in palaces:
-        all_s = all_stars(p)
-        if '祿存' in all_s and '天馬' in all_s:
-            add_pat('禄马交驰', f'禄存天马同守{p["name"]}，财从远方来，适合外出发展/外贸/物流', '吉')
+    # ═══ 杀破狼 ═══
+    sp = {'七杀', '破军', '贪狼'} & sf_set
+    if len(sp) >= 3:
+        bonus = []; breaking = []
+        if sf_set & {'化禄', '化权'}: bonus.append('三方有化禄/权')
+        if (sf_set & ZUO_YOU) == ZUO_YOU: bonus.append('辅弼同会')
+        if sf_sha_count >= 3: breaking.append('煞重')
+        if sf_set & SHA_KONG: breaking.append('坐空劫')
+        add_pat('杀破狼格', '七杀破军贪狼三方齐聚，大起大落，变动中求发展',
+                '中', {'required': ['杀破狼三星齐入三方四正'], 'bonus': bonus, 'breaking': breaking},
+                '《紫微斗数全书》')
+    elif sp:
+        add_pat('杀破狼格', f'命三方坐{"·".join(sorted(sp))}（不全），有变动倾向', '中')
 
-    # 三奇嘉会 (化禄+化权+化科落在三方四正范围)
-    ji_lu = [m for m in ym if m.get('mutagen') == '化禄']
-    ji_quan = [m for m in ym if m.get('mutagen') == '化权']
-    ji_ke = [m for m in ym if m.get('mutagen') == '化科']
-    if ji_lu and ji_quan and ji_ke:
-        # 三方四正 = 本宫 + 对宫(相差6) + 三合(相差4)
-        all_idx = set()
-        for m in ji_lu + ji_quan + ji_ke:
-            pn = m.get('palace', '')
-            for pp in palaces:
-                if pp.get('name') == pn or (pn in ('官禄', '官祿') and pp.get('name') == '官祿'):
-                    all_idx.add(pp.get('index', -1))
-        # 检查是否任意两宫互为三方四正
-        def is_sansifang(a, b):
-            diff = abs(a - b) % 12
-            return diff in (0, 4, 6, 8)
-        sansi = False
-        indices = list(all_idx)
-        for i in range(len(indices)):
-            for j in range(i+1, len(indices)):
-                if is_sansifang(indices[i], indices[j]):
-                    sansi = True
-        if sansi and len(all_idx) <= 5:
-            palace_names = set()
-            for m in ji_lu + ji_quan + ji_ke:
-                palace_names.add(m.get('palace', ''))
-            add_pat('三奇嘉会', f'化禄+化权+化科会聚({",".join(sorted(palace_names))})，少见的好格局', '上吉')
+    # ═══ 机月同梁 ═══
+    jy = JYTL & sf_set
+    if len(jy) >= 4:
+        breaking = []
+        if sf_sha_count >= 3: breaking.append('煞重')
+        if _has_sha(ming, SHA_HARD): breaking.append('命坐煞')
+        add_pat('机月同梁格', '天机太阴天同天梁四星齐入命三方四正，宜文职',
+                '吉' if breaking else '上吉',
+                {'required': ['机月同梁四星齐入三方四正'], 'bonus': [], 'breaking': breaking},
+                '《紫微斗数全书》')
+    elif len(jy) >= 2:
+        add_pat('机月同梁格', f'命三方有{",".join(sorted(jy))}（不全），偏文职', '吉')
 
-    # ═══ 三、四化格局 ═══
-    # 按宫位分类四化
+    # ═══ 府相朝垣 ═══
+    tf = _find_star_palace('天府'); tx = _find_star_palace('天相')
+    if tf and tx and tf != tx:
+        if tf.get('earthly_branch','') in _sansifang_branches(ming_branch) and            tx.get('earthly_branch','') in _sansifang_branches(ming_branch):
+            add_pat('府相朝垣', '天府天相分守命宫三方四正，权印双辉',
+                    '上吉', None, '《紫微斗数全书·府相朝垣格》')
+
+    # ═══ 火贪/铃贪 ═══
+    tan = _find_star_palace('贪狼')
+    if tan:
+        for sha_name, sha in [('火星', '火贪格'), ('铃星', '铃贪格')]:
+            sha_p = _find_star_palace(sha_name)
+            if sha_p and (sha_p.get('earthly_branch') == tan.get('earthly_branch') or
+                          sha_p.get('earthly_branch') in _sansifang_branches(tan.get('earthly_branch',''))):
+                adj = '同宫' if sha_p.get('earthly_branch') == tan.get('earthly_branch') else '会照'
+                bonus = []
+                if _brightness(tan, '贪狼'): bonus.append('贪狼庙旺')
+                sihua = _si_hua(tan, '贪狼')
+                if sihua in ('禄', '权'): bonus.append(f'贪狼化{sihua}')
+                add_pat(sha, f'贪狼{adj}{sha_name}，爆发力强，横发之格',
+                        '吉' if bonus else '中',
+                        {'required': [f'贪狼{adj}{sha_name}'], 'bonus': bonus}, '《骨髓赋》')
+
+    # ═══ 四化格局 ═══
     for m in ym:
-        mu = m.get('mutagen', '')
-        star = m.get('star', '')
-        pal = m.get('palace', '')
-        if not pal:
-            continue
-
+        mu = m.get('mutagen', ''); star = m.get('star', ''); pal = m.get('palace', '')
+        if not pal: continue
         if mu == '化忌':
             if pal in ('命宮', '命宫'):
-                add_pat('命宫化忌', f'{star}化忌在命宫，内心有放不下的执念，一生核心课题是自我和解', '忌')
+                add_pat('命宫化忌', f'{star}化忌在命宫，内心执念，一生课题是自我和解', '忌')
             elif pal == '夫妻':
-                add_pat('夫妻宫化忌', f'{star}化忌在夫妻宫，感情是人生大课题，可能晚婚或感情波折多', '忌')
+                add_pat('夫妻宫化忌', f'{star}化忌在夫妻宫，感情是人生大课题', '忌')
             elif pal == '財帛':
-                add_pat('财帛宫化忌', f'{star}化忌在财帛宫，财运需格外经营，忌投机，宜守成', '忌')
+                add_pat('财帛宫化忌', f'{star}化忌在财帛宫，财运需格外经营', '忌')
             elif pal in ('官祿', '官禄'):
-                add_pat('官禄宫化忌', f'{star}化忌在官禄宫，事业需经历波折才能成长，不宜频繁跳槽', '忌')
-            elif pal == '疾厄':
-                add_pat('疾厄宫化忌', f'{star}化忌在疾厄宫，需注意身体健康，尤其心理压力管理', '忌')
+                add_pat('官禄宫化忌', f'{star}化忌在官禄宫，事业需经历波折成长', '忌')
+        elif mu == '化禄' and pal in ('命宮', '命宫'):
+            add_pat('命宫化禄', f'{star}化禄在命宫，天生福气，人缘好', '上吉')
+        elif mu == '化禄' and pal == '財帛':
+            add_pat('财帛化禄', f'{star}化禄在财帛宫，财运亨通', '吉')
+        elif mu == '化权' and pal in ('命宮','命宫','官祿','官禄'):
+            add_pat(f'{pal}化权', f'{star}化权在{pal}，有领导力和掌控欲', '吉')
 
-        if mu == '化禄':
-            if pal in ('命宮', '命宫'):
-                add_pat('命宫化禄', f'{star}化禄在命宫，天生有福气，人缘好，做事顺利', '上吉')
-            elif pal == '財帛':
-                add_pat('财帛化禄', f'{star}化禄在财帛宫，财运亨通，收入稳定或有意外之财', '吉')
+    # ═══ 三奇嘉会 ═══
+    lu_s = [m for m in ym if m.get('mutagen') == '化禄']
+    quan_s = [m for m in ym if m.get('mutagen') == '化权']
+    ke_s = [m for m in ym if m.get('mutagen') == '化科']
+    if lu_s and quan_s and ke_s:
+        sf_b = _sansifang_branches(ming_branch)
+        qi = set()
+        for m in lu_s + quan_s + ke_s:
+            for pp in palaces:
+                if pp.get('name') == m.get('palace','') and pp.get('earthly_branch','') in sf_b:
+                    qi.add(m.get('palace',''))
+        if len(qi) >= 2:
+            add_pat('三奇嘉会', f'化禄化权化科会于命三方({"·".join(sorted(qi))})，好格局',
+                    '上吉', None, '《紫微斗数全书》')
 
-        if mu == '化权' and pal in ('命宮', '命宫', '官祿', '官禄'):
-            add_pat(f'{pal}化权', f'{star}化权在{pal}，有领导力和掌控欲，适合做管理或创业', '吉')
+    # ═══ 禄马交驰 ═══
+    for p in palaces:
+        if _has_star(p, '禄存') and _has_star(p, '天马'):
+            add_pat('禄马交驰', f'禄存天马同守{p["name"]}，财从远方来', '吉')
 
-        if mu == '化科' and pal in ('命宮', '命宫'):
-            add_pat('命宫化科', f'{star}化科在命宫，有学识气质，贵人运好，名声不错', '吉')
+    # ═══ 夹宫格 ═══
+    prev, next_p = _jiagong(ming_branch)
+    jia_stars = all_star_names(prev) | all_star_names(next_p)
+    if '火星' in jia_stars and '铃星' in jia_stars:
+        add_pat('火铃夹命', '火星铃星分居命宫前后夹命，性急冲动', '忌', None, '《紫微斗数全书》')
+    if ZUO_YOU <= jia_stars:
+        add_pat('辅弼夹命', '左辅右弼夹命，贵人运极强', '上吉')
+    if CHANG_QU <= jia_stars:
+        add_pat('昌曲夹命', '文昌文曲夹命，学术才艺出众', '吉')
+    if KUI_YUE <= jia_stars:
+        add_pat('魁钺夹命', '天魁天钺夹命，社会贵人提携', '吉')
 
-    return patterns[:12]  # cap at 12
+    # ═══ 命无正曜 + 基础双星 ═══
+    if not set(major_names(ming)):
+        add_pat('命无正曜', '命宫无主星，借对宫迁移宫来看', '中')
+
+    for s1, s2, nm, desc, lv in [
+        ('武曲', '天府', '府武同宫', '实干型领袖', '吉'),
+        ('武曲', '七杀', '武杀同宫', '刚猛果决', '中'),
+        ('天机', '天梁', '机梁善谈', '善谈有谋', '吉'),
+        ('天同', '太阴', '同月同宫', '温和细腻', '吉'),
+        ('天同', '天梁', '同梁同宫', '福寿双星', '吉'),
+        ('廉贞', '天相', '廉相同宫', '才艺+协调', '中'),
+        ('廉贞', '贪狼', '廉贪同宫', '双桃花星', '中'),
+        ('廉贞', '七杀', '廉杀同宫', '刚烈果敢', '中'),
+        ('廉贞', '破军', '廉破同宫', '执着变革', '中'),
+        ('天梁', '太阳', '阳梁同宫', '正直光明', '吉'),
+    ]:
+        if _has_star(ming, s1) and _has_star(ming, s2):
+            add_pat(nm, desc, lv)
+
+    return patterns[:12]
+
 
 
 # ---- 自检 ----
