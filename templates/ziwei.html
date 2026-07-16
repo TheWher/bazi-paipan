@@ -209,6 +209,9 @@ function renderChart(){
         svg+='<rect x="'+(x+1)+'" y="'+(y+1)+'" width="'+(cellW-2)+'" height="'+(cellH-2)+'" rx="4" fill="'+S.cell+'" stroke="'+stroke+'" stroke-width="'+(isSel?2.5:isSF||isSoul||isBody?2:1)+'" style="cursor:pointer" onclick="selectPalace(\''+br+'\')"/>';
         svg+='<text x="'+(x+cellW/2)+'" y="'+(y+16)+'" text-anchor="middle" fill="#888" font-size="18" font-weight="800" style="pointer-events:none">'+br+'</text>';
         svg+='<text x="'+(x+cellW/2)+'" y="'+(y+cellH-4)+'" text-anchor="middle" fill="'+(isSoul?'#c62828':'#888')+'" font-size="11" font-weight="600" style="pointer-events:none">'+p.name+'</text>';
+        // 宫干 (点击触飞化线)
+        var gzCls=activeStem===st?'font-weight:700;fill:#d4a843':'fill:#d4a843';
+        svg+='<text x="'+(x+cellW-6)+'" y="'+(y+cellH-12)+'" text-anchor="end" style="cursor:pointer;'+gzCls+'" font-size="9" onclick="event.stopPropagation();toggleStem(\''+st+'\')">'+st+br+'</text>';
         if(isSoul)svg+='<text x="'+(x+cellW-6)+'" y="'+(y+12)+'" text-anchor="end" fill="#d4a843" font-size="10" font-weight="700" style="pointer-events:none">命</text>';
         if(isBody)svg+='<text x="'+(x+cellW-6)+'" y="'+(y+22)+'" text-anchor="end" fill="#7c4dff" font-size="10" font-weight="700" style="pointer-events:none">身</text>';
 
