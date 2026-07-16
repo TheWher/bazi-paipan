@@ -98,6 +98,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
     <section id="chart-section" class="hidden">
         <div class="floating-bar"><span class="bar-title">🔮 紫微命盘</span>
             <span style="font-size:.72em;color:var(--text-muted)">运限:</span>
+            <input type="number" id="horo-year" value="2026" min="1900" max="2100" style="width:60px;padding:3px 4px;font-size:.68em;border:1px solid var(--border);border-radius:4px;background:var(--card-bg);color:var(--text)" onchange="if(astrolabe&&activeScopes.size>0){fetchLiuyao();renderChart()}">
             <button id="btn-decadal" class="btn" style="font-size:.68em;padding:3px 8px" onclick="toggleScope('decadal')">大限</button>
             <button id="btn-yearly" class="btn" style="font-size:.68em;padding:3px 8px" onclick="toggleScope('yearly')">流年</button>
             <button id="btn-monthly" class="btn" style="font-size:.68em;padding:3px 8px" onclick="toggleScope('monthly')">流月</button>
@@ -162,15 +163,16 @@ $('btn-render').addEventListener('click',()=>{
 
 // Horoscope scope toggle (independent, can stack)
 let liuyaoCache=null;
+function fetchLiuyao(){
+    if(!astrolabe)return;
+    const b=getB(),ty=parseInt($('horo-year').value)||new Date().getFullYear();
+    fetch('/api/ziwei/horoscope',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:b.h,minute:b.min,gender:b.gender,target_year:ty})}).then(r=>r.json()).then(d=>{liuyaoCache=d;renderChart()}).catch(()=>{});
+}
 function toggleScope(scope){
     if(activeScopes.has(scope))activeScopes.delete(scope);else activeScopes.add(scope);
     ['decadal','yearly','monthly','daily'].forEach(s=>{const btn=$('btn-'+s);if(btn)btn.style.cssText=activeScopes.has(s)?'font-size:.68em;padding:3px 8px;border:1px solid var(--accent);border-radius:6px;background:rgba(212,168,67,.12);color:var(--accent);font-weight:600':'font-size:.68em;padding:3px 8px'});
     renderChart();
-    // 异步获取流曜 (CDN horoscope stars为空)
-    if(activeScopes.size>0&&astrolabe){
-        const b=getB();
-        fetch('/api/ziwei/horoscope',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:b.h,minute:b.min,gender:b.gender,target_year:new Date().getFullYear()})}).then(r=>r.json()).then(d=>{liuyaoCache=d;renderChart()}).catch(()=>{});
-    }
+    if(activeScopes.size>0)fetchLiuyao();
 }
 
 // GAN_SIHUA table
@@ -189,7 +191,7 @@ function renderChart(){
     const palaces=Array.isArray(astrolabe.palaces)?astrolabe.palaces:typeof astrolabe.palaces==='function'?astrolabe.palaces():[];
     const soulBr=astrolabe.earthlyBranchOfSoulPalace,bodyBr=astrolabe.earthlyBranchOfBodyPalace,fec=astrolabe.fiveElementsClass;
     let horoscope=null;
-    if(activeScopes.size>0)try{horoscope=astrolabe.horoscope(new Date(),parseInt($('h').value)||1)}catch(e){}
+    if(activeScopes.size>0)try{const hy=parseInt($('horo-year').value)||new Date().getFullYear();horoscope=astrolabe.horoscope(hy+'-07-01',parseInt($('h').value)||1)}catch(e){}
     const siHua=[];for(const p of palaces)for(const s of[...p.majorStars,...p.minorStars])if(s.mutagen)siHua.push({star:s.name,hua:s.mutagen,palace:p.name});
 
     const W=780,H=960,pad=14,cellW=(W-2*pad)/4,cellH=(H-2*pad-24)/4;
