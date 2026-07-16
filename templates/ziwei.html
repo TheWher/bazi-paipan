@@ -57,7 +57,7 @@ _:-ms-input-placeholder,:root .form-group{display:none}
     <section class="form-section">
         <input type="text" id="quick" class="quick-input" maxlength="12" inputmode="numeric" placeholder="200508190135">
         <p class="quick-hint">快捷输入 200508190135 → 自动填表</p>
-        <div style="background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);overflow:hidden;margin:14px 0">
+        <div style="background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);overflow:visible;margin:14px 0">
             <div style="padding:14px 16px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;gap:12px">
                 <span style="font-weight:600;font-size:.8em;color:var(--accent);min-width:32px">历法</span>
                 <div class="radio-group" style="flex:1"><label class="radio-label"><input type="radio" name="cal" value="solar" checked> 公历</label><label class="radio-label" style="margin-left:16px"><input type="radio" name="cal" value="lunar"> 农历</label></div>
@@ -79,7 +79,7 @@ _:-ms-input-placeholder,:root .form-group{display:none}
         <label class="radio-label" style="margin-bottom:6px;display:flex;align-items:center;gap:8px;font-size:.9em;font-weight:600;color:var(--accent)"><input type="checkbox" id="use-true-solar" style="width:18px;height:18px"> ⏱ 真太阳时校正</label>
         <p style="font-size:.72em;color:var(--text-muted);margin-bottom:8px;line-height:1.5">北京时间以东经120°为准，出生地经度不同会产生时间偏差，可能跨过时辰分界线从而改变命盘。勾选后输入出生地经度，系统自动计算校正后的时辰。</p>
         <div id="solar-info" style="display:none;font-size:.8em;color:var(--accent);margin-bottom:8px;line-height:1.6"></div>
-        <div id="solar-row" style="display:none;background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);overflow:hidden;margin-bottom:10px">
+        <div id="solar-row" style="display:none;background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);overflow:visible;margin-bottom:10px;position:relative">
             <div style="padding:14px 16px">
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
                     <span style="font-weight:600;font-size:.82em;color:var(--accent);min-width:32px">经度</span>
