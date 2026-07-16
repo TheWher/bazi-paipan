@@ -122,7 +122,7 @@ _:-ms-input-placeholder,:root .form-group{display:none}
     </section>
 </main>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/iztro/dist/iztro.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/iztro/dist/iztro.min.js" defer onerror="document.getElementById('chart-section')&&(document.getElementById('chart-section').innerHTML='<p style=color:#ef5350;text-align:center;padding:60px>iztro 排盘库加载失败，请刷新或检查网络</p>')"></script>
 <script>
 const $=id=>document.getElementById(id);
 let astrolabe=null,plateData=null,selectedPalace=null;
