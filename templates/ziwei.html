@@ -28,27 +28,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue
 /* 图表容器 */
 .chart-wrapper{background:#1a1a20;border:1px solid #2a2a3a;border-radius:12px;padding:16px;margin-bottom:4px;box-shadow:0 2px 20px rgba(0,0,0,.2)}
 /* ═══ react-iztro 盘面 CSS (移植) ═══ */
-.iztro-astrolabe{display:grid;position:relative;width:100%;max-width:740px;gap:3px;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;aspect-ratio:1;grid-template-areas:"g3 g4 g5 g6" "g2 ct ct g7" "g1 ct ct g8" "g0 g11 g10 g9"}
-.iztro-palace{padding:3px;display:grid;text-transform:capitalize;grid-template-rows:auto auto auto 50px;grid-template-columns:repeat(3,1fr);grid-template-areas:"major minor adj" "horo horo adj" "fate fate fate" "ft ft ft";transition:all .25s;grid-auto-flow:column;border:1px solid transparent}
+.iztro-astrolabe{display:grid;position:relative;width:100%;max-width:740px;gap:2px;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;aspect-ratio:1;grid-template-areas:"a3 a4 a5 a6" "a2 ct ct a7" "a1 ct ct a8" "a0 a11 a10 a9";background:#111;padding:2px;border-radius:4px}
+.iztro-astrolabe>*{background:#1e1e2c;border-radius:2px;min-width:0;min-height:0}
+.iztro-palace{padding:3px 4px;display:flex;flex-direction:column;gap:1px;transition:all .25s;border:1px solid transparent;overflow:hidden}
 .iztro-palace.focused-palace{background-color:rgba(170,184,211,.12);border-color:#d4a843}
 .iztro-palace.opposite-palace{background-color:rgba(147,247,61,.06);border-color:#93f73d}
 .iztro-palace.surrounded-palace{background-color:rgba(175,244,111,.04);border-color:#aff46f}
-.iztro-palace-major{grid-area:major}
-.iztro-palace-minor{grid-area:minor;justify-self:center}
-.iztro-palace-adj{grid-area:adj;display:inline-flex;justify-self:flex-end;gap:2px;white-space:nowrap;text-align:right;font-size:9px}
-.iztro-palace-horo-star{grid-area:horo;align-self:center}.iztro-palace-horo-star .stars{display:flex;gap:3px}
-.iztro-palace-scope{white-space:nowrap;text-align:center;font-size:9px}.iztro-palace-scope-decadal{font-weight:700}
-.iztro-palace-fate{grid-area:fate;align-self:flex-end;white-space:nowrap;justify-content:center;display:flex;gap:3px;height:15px;font-size:9px}
-.iztro-palace-fate .iztro-palace-decadal-active{background-color:var(--iztro-color-decadal);color:#fff;padding:0 3px;border-radius:3px}
-.iztro-palace-fate .iztro-palace-yearly-active{background-color:var(--iztro-color-yearly);color:#fff;padding:0 3px;border-radius:3px}
-.iztro-palace-footer{grid-area:ft;display:grid;grid-template-columns:auto auto auto;align-self:flex-start}
-.iztro-palace-lft24{text-align:left;font-size:8px;color:#666}.iztro-palace-rgt24{text-align:right;font-size:8px;color:#666}
-.iztro-palace-name{cursor:pointer;text-wrap:nowrap;font-size:10px;font-weight:700;color:#c62828;text-align:center;position:relative}
-.iztro-palace-name-body{color:#7c4dff;font-size:8px;margin-left:2px}
-.iztro-palace-gz{text-align:right;cursor:pointer}.iztro-palace-gz span{display:inline-block;padding:0 1px;text-wrap:nowrap;font-size:11px;font-weight:600;color:#d4a843}
 .iztro-palace-gz-active{background:rgba(212,168,67,.15)!important;border-radius:3px}
-.iztro-palace-dynamic-name{text-align:center;display:flex;white-space:nowrap;gap:3px;justify-content:center;font-size:8px}
-.iztro-star{display:block;font-size:11px;line-height:1.2;white-space:nowrap}
+.iztro-star{display:inline-block;font-size:10px;line-height:1.15;white-space:nowrap;margin-right:2px}
 .iztro-star-major{color:#d4a843;font-weight:700}.iztro-star-soft{color:#ce93d8}.iztro-star-tough{color:#5a5a6e}.iztro-star-tianma{color:#81c784}.iztro-star-lucun{color:#ff9800}.iztro-star-flower{color:#f48fb1}
 .iztro-star-brightness{font-size:8px;font-style:normal;margin-left:1px}
 .iztro-star-mutagen{font-weight:400;font-size:9px;border-radius:3px;color:#fff;display:inline-block;margin-left:1px;padding:0 2px}
@@ -142,7 +129,6 @@ $('btn-paipan').addEventListener('click',()=>{
     fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:b.h,minute:b.min,gender:b.g,is_lunar:b.cal==='lunar'})}).then(r=>r.json()).then(d=>{const p=d.patterns||[];$('patterns').innerHTML=p.map(pp=>`<span class="pat-badge pat-${pp.level==='上吉'?'ex':pp.level==='吉'?'gd':pp.level==='忌'?'ca':'ne'}">${pp.name}</span>`).join('');}).catch(()=>{});
 });
 
-// ═══ react-iztro DOM 渲染 ═══
 function renderChart(){
     if(!astrolabe)return;
     const palaces=typeof astrolabe.palaces==='function'?astrolabe.palaces():Array.isArray(astrolabe.palaces)?astrolabe.palaces:[]
@@ -152,74 +138,45 @@ function renderChart(){
     let horoscope=null;
     if(scope!=='origin')try{horoscope=astrolabe.horoscope(new Date(),parseInt($('h').value)||1);}catch(e){}
 
-    let html=`<div class="iztro-astrolabe" id="iztro-astrolabe">`;
+    let html=`<div class="iztro-astrolabe">`;
     for(let i=0;i<12;i++){
         const p=palaces[i];if(!p)continue;
-        const br=p.earthlyBranch;const st=p.heavenlyStem;
+        const br=p.earthlyBranch||'';const st=p.heavenlyStem||'';
         const isSoul=br===soulBr,isBody=br===bodyBr;
-        const oppIdx=(i+6)%12,fcs=i===focusedIdx;
-        const isOpp=focusedIdx!=null&&i===oppIdx;
-        const isSF=focusedIdx!=null&&(i===(focusedIdx+4)%12||i===(focusedIdx-4+12)%12);
         let cls='iztro-palace';
-        if(fcs)cls+=' focused-palace';if(isOpp)cls+=' opposite-palace';if(isSF)cls+=' surrounded-palace';
-
-        // 十二长生等
-        const cs12=p.changsheng12||'';const bs12=p.boshi12||'';
-        const sq12=p.suiqian12||'';const jq12=p.jiangqian12||'';
+        if(selectedPalace===i)cls+=' focused-palace';
 
         // 主星
         let majorHTML='';for(const s of p.majorStars)majorHTML+=renderStarHTML(s,st);
         // 辅星
-        let minorHTML='';for(const s of (p.minorStars||[]).slice(0,3))minorHTML+=renderStarHTML(s,st);
-        // 杂曜
-        const adj=p.adjectiveStars||[];
-        let adjL='',adjR='';for(let k=0;k<adj.length;k++){if(k<5)adjL+=`<span class="iztro-star" style="font-size:8px;color:#666">${adj[k].name}</span>`;else adjR+=`<span class="iztro-star" style="font-size:8px;color:#666">${adj[k].name}</span>`}
-
-        // 运限流曜
-        let horoStarsHTML='';
-        if(horoscope){for(const scopeKey of['decadal','yearly']){const hs=horoscope[scopeKey];if(hs&&hs.stars&&hs.stars[i]){for(const s of hs.stars[i])horoStarsHTML+=`<span class="iztro-star" style="font-size:9px;color:${scopeKey==='decadal'?'#4a9eff':'#5cb85c'}">${s.name}</span>`;}}}
-
-        // 运限标签
-        let fateHTML='';
-        if(horoscope){
-            if(horoscope.decadal?.index===i)fateHTML+=`<span class="iztro-palace-${scope==='decadal'?'decadal-active':''}" style="cursor:pointer" onclick="event.stopPropagation();$('horo-scope').value='decadal';$('horo-scope').dispatchEvent(new Event('change'))">大限·${horoscope.decadal.heavenlyStem||''}${horoscope.decadal.earthlyBranch||''}</span>`;
-            if(horoscope.yearly?.index===i)fateHTML+=`<span class="iztro-palace-${scope==='yearly'?'yearly-active':''}" style="cursor:pointer" onclick="event.stopPropagation();$('horo-scope').value='yearly';$('horo-scope').dispatchEvent(new Event('change'))">流年·${horoscope.yearly.heavenlyStem||''}${horoscope.yearly.earthlyBranch||''}</span>`;
-        }
-        // 小限
-        if(p.ages&&p.ages.length)fateHTML+=`<span style="font-size:8px;color:#666">${p.ages.slice(0,3).join(' ')}</span>`;
-
+        let minorHTML='';for(const s of (p.minorStars||[]).slice(0,4))minorHTML+=renderStarHTML(s,st);
         // 大限范围
         const dec=p.decadal||p.stage||{};
         const decRange=dec.range?`${dec.range[0]}-${dec.range[1]}`:'';
-        const decGZ=(dec.heavenlyStem||'')+(dec.earthlyBranch||'');
+        // 运限标记
+        let fateHTML='';
+        if(horoscope){
+            if(horoscope.decadal?.index===i)fateHTML+=`<span style="background:#4a9eff;color:#fff;padding:0 3px;border-radius:2px;font-size:8px">大限</span> `;
+            if(horoscope.yearly?.index===i)fateHTML+=`<span style="background:#5cb85c;color:#fff;padding:0 3px;border-radius:2px;font-size:8px">流年</span> `;
+        }
 
-        // 飞星交互：宫干点击
         const ganCls=activeStem===st?'iztro-palace-gz-active':'';
-
-        html+=`<div class="${cls}" style="grid-area:g${i}" onclick="selectPalace(${i})" data-palace="${i}"
-            <div class="iztro-palace-major">${majorHTML}</div>
-            <div class="iztro-palace-minor">${minorHTML}</div>
-            <div class="iztro-palace-adj"><div>${adjL}</div><div>${adjR}</div></div>
-            <div class="iztro-palace-horo-star"><div class="stars">${horoStarsHTML}</div></div>
-            <div class="iztro-palace-fate">${fateHTML}</div>
-            <div class="iztro-palace-footer">
-                <div class="iztro-palace-lft24"><div>${cs12}</div><div>${bs12}</div></div>
-                <div class="iztro-palace-name" style="text-align:center">${isSoul?'☯':''}${p.name}${isBody?`<span class="iztro-palace-name-body">·身宫</span>`:''}</div>
-                <div class="iztro-palace-rgt24"><div>${sq12}</div><div>${jq12}</div></div>
+        html+=`<div class="${cls}" style="grid-area:a${i};padding:3px 4px;display:flex;flex-direction:column;gap:1px;overflow:hidden" onclick="selectPalace(${i})">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:11px;font-weight:700;color:${isSoul?'#c62828':'#888'}">${isSoul?'☯':''}${p.name}</span>
+                <span class="${ganCls}" style="font-size:9px;font-weight:600;color:#d4a843;cursor:pointer" onclick="event.stopPropagation();toggleStem('${st}')">${st}${br}</span>
             </div>
-            <div class="iztro-palace-scope" style="text-align:center"><div class="iztro-palace-scope-decadal">${decRange}</div></div>
-            <div class="iztro-palace-dynamic-name"></div>
-            <div class="iztro-palace-gz ${ganCls}" style="text-align:right" onclick="event.stopPropagation();toggleStem('${st}')"><span>${st}${br}</span></div>
+            <div style="flex:1;font-size:10px;line-height:1.2;word-break:break-all">${majorHTML}${minorHTML}</div>
+            <div style="font-size:8px;color:#666">${fateHTML}${decRange}</div>
         </div>`;
     }
-    // 中心
     html+=`<div class="iztro-center-palace">
         <div class="center-title">紫微斗数</div>
-        <ul class="basic-info"><li>五行局: ${fec}</li><li>命宫: ${soulBr}</li><li>身宫: ${bodyBr}</li><li id="sel-info">点击宫位看详情</li></ul>
+        <ul class="basic-info"><li>五行局: ${fec}</li><li>命宫: ${soulBr}</li><li>身宫: ${bodyBr}</li><li id="sel-info" style="font-size:9px">点击宫位看详情</li></ul>
         <div class="horo-buttons">
-            <span class="center-button ${scope==='origin'?'active':''}" onclick="$('horo-scope').value='origin';$('horo-scope').dispatchEvent(new Event('change'))">本命</span>
-            <span class="center-button ${scope==='decadal'?'active':''}" onclick="$('horo-scope').value='decadal';$('horo-scope').dispatchEvent(new Event('change'))">大限</span>
-            <span class="center-button ${scope==='yearly'?'active':''}" onclick="$('horo-scope').value='yearly';$('horo-scope').dispatchEvent(new Event('change'))">流年</span>
+            <span class="center-button ${scope==='origin'?'active':''}" onclick="document.getElementById('horo-scope').value='origin';document.getElementById('horo-scope').dispatchEvent(new Event('change'))">本命</span>
+            <span class="center-button ${scope==='decadal'?'active':''}" onclick="document.getElementById('horo-scope').value='decadal';document.getElementById('horo-scope').dispatchEvent(new Event('change'))">大限</span>
+            <span class="center-button ${scope==='yearly'?'active':''}" onclick="document.getElementById('horo-scope').value='yearly';document.getElementById('horo-scope').dispatchEvent(new Event('change'))">流年</span>
         </div></div>`;
     html+='</div>';
     $('zw-chart').innerHTML=html;
