@@ -19,7 +19,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue
 .btn-gold{background:linear-gradient(135deg,#c8a850,#8b6914);color:#fff;border:none}
 .quick{width:100%;padding:7px;font-size:.76em;border:1px solid #3a3a4a;border-radius:5px;background:#1e1e2c;color:#c8c8d0;font-family:monospace;margin-bottom:6px}
 /* ═══ react-iztro 完整 CSS (从源码移植) ═══ */
-.iztro-astrolabe{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue,Arial,Noto Sans,sans-serif;display:grid;position:relative;width:100%;max-width:720px;gap:3px;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;grid-template-areas:"g3 g4 g5 g6" "g2 ct ct g7" "g1 ct ct g8" "g0 g11 g10 g9";aspect-ratio:1}
+.iztro-astrolabe{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue,Arial,Noto Sans,sans-serif;display:grid;position:relative;width:100%;max-width:720px;gap:3px;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;grid-template-areas:"g3 g4 g5 g6" "g2 ct ct g7" "g1 ct ct g8" "g0 g11 g10 g9";min-height:580px;height:calc(100vw - 350px);max-height:720px}
 .iztro-palace{padding:3px;display:grid;text-transform:capitalize;grid-template-rows:auto auto auto auto auto;grid-template-columns:repeat(3,1fr);grid-template-areas:"major minor adj" "horo horo adj" "fate fate fate" "ft  ft  ft";transition:all .25s;border:1px solid transparent}
 .iztro-palace:hover,.iztro-palace.focused-palace{background-color:rgba(170,184,211,.12);border-color:#d4a843}
 .iztro-palace-major{grid-area:major}
