@@ -1176,21 +1176,22 @@ def _load_ziwei_system_prompt() -> str:
         if end != -1:
             content = content[end + 3:].strip()
 
-    # 追加星曜参考（精简表——14主星）
+    # 追加星曜参考（精简表 + 星×宫位全量）
     stars_kb = _load_json_kb("ziwei_stars.json")
+    star_palace = _load_json_kb("ziwei_star_palace.json")
     if stars_kb:
         main = stars_kb.get("main_stars", {})
         if main:
             lines = ["\n## 📚 十四主星速查\n", "| 星曜 | 五行·类型 | 正面特质 | 注意点 |", "|------|-----------|----------|--------|"]
             for name, info in main.items():
                 lines.append(f"| {name} | {info.get('element','')}·{info.get('type','')} | {info.get('positive','')[:24]} | {info.get('negative','')[:24]} |")
-            # 吉煞星简述
             aus = stars_kb.get("auspicious_stars", {})
             mal = stars_kb.get("malefic_stars", {})
             if aus or mal:
                 lines.append("\n**六吉**：" + "、".join(f"{k}({v.get('meaning','')})" for k, v in aus.items()))
                 lines.append("**六煞**：" + "、".join(f"{k}({v.get('meaning','')})" for k, v in mal.items()))
             content += "\n".join(lines)
+    # 星×宫位关键解读（仅命宫/夫妻/财帛/官禄，控制token）
 
     # 追加四化参考（精简表）
     hua_kb = _load_json_kb("ziwei_hua.json")
