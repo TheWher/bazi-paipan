@@ -202,7 +202,7 @@ function renderChart(){
     svg+='<text x="'+W/2+'" y="24" text-anchor="middle" fill="#d4a843" font-size="18" font-weight="700">紫微斗数 · '+fec+'</text>';
 
     for(const p of palaces){
-        const br=p.earthlyBranch;if(!br)continue;const pos=GRID[br];if(!pos)continue;
+        const br=p.earthlyBranch,st=p.heavenlyStem;if(!br)continue;const pos=GRID[br];if(!pos)continue;
         const x=pad+pos[0]*cellW,y=pad+pos[1]*cellH+34;
         const isSoul=br===soulBr,isBody=br===bodyBr,isSF=sfSet.has(br),isSel=br===selectedPalace;
         const stroke=isSel?'#d4a843':isSF?'#64b5f6':isSoul?'#d4a843':isBody?'#7c4dff':'#999';
