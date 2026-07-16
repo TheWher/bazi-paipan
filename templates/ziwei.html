@@ -127,7 +127,7 @@ function renderChart(){
     const sfSet=new Set();if(selectedPalace){const i=BR.indexOf(selectedPalace);if(i>=0){sfSet.add(selectedPalace);sfSet.add(BR[(i+6)%12]);sfSet.add(BR[(i+4)%12]);sfSet.add(BR[(i+8)%12])}}
 
     let svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'">';
-    svg+='<rect width="'+W+'" height="'+H+'" fill="var(--card-bg)" rx="8"/>';
+    svg+='<rect width="'+W+'" height="'+H+'" fill="#19192b" rx="8"/>';
     svg+='<text x="'+W/2+'" y="20" text-anchor="middle" fill="#d4a843" font-size="13" font-weight="700">紫微斗数 · '+fec+'</text>';
 
     for(const p of palaces){
@@ -135,7 +135,7 @@ function renderChart(){
         const x=pad+pos[0]*cellW,y=pad+pos[1]*cellH+30;
         const isSoul=br===soulBr,isBody=br===bodyBr,isSF=sfSet.has(br),isSel=br===selectedPalace;
         const stroke=isSel?'#d4a843':isSF?'#64b5f6':isSoul?'#d4a843':isBody?'#7c4dff':'#999';
-        svg+='<rect x="'+(x+1)+'" y="'+(y+1)+'" width="'+(cellW-2)+'" height="'+(cellH-2)+'" rx="4" fill="var(--bg)" stroke="'+stroke+'" stroke-width="'+(isSel?2.5:isSF||isSoul||isBody?2:1)+'" style="cursor:pointer" onclick="document.querySelector(\'#select-info\').textContent=\'选中: '+p.name+'\';selectPalace(\''+br+'\')"/>';
+        svg+='<rect x="'+(x+1)+'" y="'+(y+1)+'" width="'+(cellW-2)+'" height="'+(cellH-2)+'" rx="4" fill="#1a1a2e" stroke="'+stroke+'" stroke-width="'+(isSel?2.5:isSF||isSoul||isBody?2:1)+'" style="cursor:pointer" onclick="document.querySelector(\'#select-info\').textContent=\'选中: '+p.name+'\';selectPalace(\''+br+'\')"/>';
         svg+='<text x="'+(x+cellW/2)+'" y="'+(y+14)+'" text-anchor="middle" fill="#888" font-size="13" font-weight="800" style="pointer-events:none">'+br+'</text>';
         svg+='<text x="'+(x+cellW/2)+'" y="'+(y+cellH-5)+'" text-anchor="middle" fill="'+(isSoul?'#c62828':'#888')+'" font-size="8" font-weight="600" style="pointer-events:none">'+p.name+'</text>';
         if(isSoul)svg+='<text x="'+(x+cellW-6)+'" y="'+(y+9)+'" text-anchor="end" fill="#d4a843" font-size="7" font-weight="700" style="pointer-events:none">命</text>';
@@ -155,7 +155,7 @@ function renderChart(){
     }
     //  中心
     const cx=pad+cellW,cy=pad+cellH+30,cw=cellW*2,ch=cellH*2;
-    svg+='<rect x="'+(cx+1)+'" y="'+(cy+1)+'" width="'+(cw-2)+'" height="'+(ch-2)+'" rx="4" fill="var(--bg)" stroke="#999"/>';
+    svg+='<rect x="'+(cx+1)+'" y="'+(cy+1)+'" width="'+(cw-2)+'" height="'+(ch-2)+'" rx="4" fill="#1a1a2e" stroke="#999"/>';
     svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+28)+'" text-anchor="middle" fill="#d4a843" font-size="12" font-weight="700">紫微斗数</text>';
     svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+46)+'" text-anchor="middle" fill="#888" font-size="8">'+fec+' · 命宫: '+soulBr+' / 身宫: '+bodyBr+'</text>';
     svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+64)+'" text-anchor="middle" fill="#d4a843" font-size="8">'+siHua.map(s=>s.star+'化'+s.hua).join(' · ')+'</text>';
