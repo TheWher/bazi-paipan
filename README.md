@@ -29,9 +29,9 @@
 
 ### 🧠 AI 深度分析
 - 梁湘润体系 9 级递进推理链
-- 42 个核心概念
-- 13 条盲测发现错误模式防御
-- 双模式分流验盘（极端命局冲合信号 / 均衡命局大运主题确认）
+- 42 个核心概念 · 13 条盲测错误模式防御
+- 双模式分流验盘（极端冲合信号 / 均衡大运主题确认）
+- 🆕 紫微 Agent v5：8 步推理链 · 四层四化权重 · 8 格局核验 · 风险过滤
 
 </td>
 <td width="50%">
@@ -54,22 +54,23 @@
 <tr>
 <td width="50%">
 
-### 🔮 紫微斗数（2026-07 新增）
-- iztro-py 纯 Python 排盘引擎
-- 文墨天机风格十二宫 Grid（本命+大限+流年三层叠盘）
-- 25种格局自动判读 + 10种流曜实时计算
-- 流年聚焦 LLM 解读（本命+大限+流年三层 prompt）
-- 星曜点击详情弹窗 + 术语高亮
+### 🔮 紫微斗数（2026-07 新增，v5 Agent）
+- iztro-py 纯 Python 排盘引擎 · 文墨天机风格十二宫 Grid
+- **8 步强制推理链**（观命宫→定格→扫四化→查煞忌→联宫位→判大限→看流年→综合）
+- **四层四化权重体系**（生年★★★★★/大限★★★★/本宫自化★★★/流年★★）· 5 条叠加规则
+- **星曜四档分类**（主星/六煞/辅星/杂曜）· 六煞分析模板 · 亮度优先
+- **8 核心格局**（杀破狼/机月同梁/日月并明等）· 必要条件+否决条件核验 · ✅/❌ 判定流程
+- **多轮对话规则** · 结尾强制引导追问 · 风险话术过滤（5 禁+5 缓冲+化忌安全模板）
+- 星曜点击详情弹窗（宫位+对宫+三方四正+四化+亮度）· 术语高亮
 
 </td>
 <td width="50%">
 
 ### 🗂️ 双系统架构
-- Landing 页双按钮分流（八字 / 紫微）
-- 独立页面 `/app`（八字）`/ziwei`（紫微）
-- 共享表单输入 + 各自独立分析管道
-- 7+2 JSON 知识库（八字 7 个 + 紫微 2 个）
-- 24 条八字测试 + 全端点验证
+- Landing 页双按钮分流（八字 `/app` · 紫微 `/ziwei`）
+- 独立页面 + 共享表单输入复用出生信息
+- **紫微数据管道 v4**：GAN_SIHUA 对照表注入 → 大限四化表+流年数据引擎预计算 → 亮度字段+身宫标记
+- 9+5 JSON 知识库 + 24 条八字测试 + 50 条紫微测试
 
 </td>
 </tr>
@@ -102,6 +103,7 @@ python test_paipan.py              # 24 条全量
 python test_paipan.py --verbose    # 详细输出
 python test_paipan.py --smoke      # 5 条冒烟
 python blind_test_balanced.py      # 均衡命局专项盲测
+python test_ziwei.py               # 紫微 50 条全量
 ```
 
 ---
@@ -129,7 +131,7 @@ flowchart TB
     subgraph AI["🤖 AI 推理层"]
         H[three_channel.py<br/>GPT-5.5 三通道管道]
         I[analysis_service.py<br/>传统单次调用]
-        J["Agent 定义 52KB<br/>9级推理链 + 42概念"]
+        J["Agent 定义 133KB<br/>八字 123KB + 紫微 10KB<br/>双 Agent 体系"]
     end
 
     subgraph Output["📤 输出"]
@@ -215,8 +217,8 @@ sequenceDiagram
 | `/api/verify` | POST | 验盘反馈保存 |
 | `/api/pdf` | POST | PDF 报告 |
 | `/api/feedback/list` | GET | 反馈日志列表 |
-| `/api/ziwei/paipan` | POST | 🔮 紫微斗数排盘 |
-| `/api/ziwei/analyze` | POST | 🔮 紫微全盘 AI 解读（32K token） |
+| `/api/ziwei/paipan` | POST | 🔮 紫微斗数排盘（iztro-py 引擎） |
+| `/api/ziwei/analyze` | POST | 🔮 紫微全盘 AI 解读（数据契约含5源：十二宫+生年四化+大限四化+当前大限+流年） |
 | `/api/ziwei/analyze/yearly` | POST | 🔮 紫微流年聚焦解读（三层叠盘） |
 | `/api/ziwei/horoscope` | POST | 🔮 紫微流年盘 + 流曜计算 |
 
@@ -228,7 +230,7 @@ sequenceDiagram
 |:---:|---|
 | **后端** | `Flask` `fpdf2` `requests` `zhdate` `iztro-py` |
 | **前端** | 原生 JS · 零框架 · 桌面分栏 · 移动端自适应 |
-| **AI** | `DeepSeek v4-pro[1m]` · Anthropic 兼容端点 · 八字+紫微双 Agent |
+| **AI** | `DeepSeek v4-pro[1m]` · Anthropic 兼容端点 · 八字 Agent (123KB) + 紫微 Agent v5 (10KB) |
 | **排盘** | sxtwl C++ (八字) · Meeus 回退 · iztro-py (紫微) |
 | **部署** | PythonAnywhere · Render 备用 |
 
