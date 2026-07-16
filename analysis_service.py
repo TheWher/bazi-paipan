@@ -1249,20 +1249,36 @@ def _build_ziwei_user_message(plate_dict: dict) -> str:
             parts.append(f"- {m['star']} → {m['mutagen']}（{m['palace']}·{m['branch']}）")
         parts.append("")
 
-    # 古籍引用（格局→原文 RAG）
+    # 古籍引用（格局→原文 + 全本匹配）
     patterns = plate_dict.get('patterns', [])
     if patterns:
         classics = _load_json_kb("ziwei_classics.json")
-        if classics:
-            pat_refs = classics.get("patterns", {})
-            lines = ["## 📜 古籍引用（按需参考）", ""]
-            for pat in patterns:
+        full_classics = _load_json_kb("ziwei_classics_full.json")
+        pat_refs = classics.get("patterns", {}) if classics else {}
+        lines = ["## 📜 古籍引用（按需参考）", ""]
+        added = set()
+        for pat in patterns:
+            name = pat.get('name', '')
+            if name in pat_refs and name not in added:
+                lines.append(f"- **{name}**：{pat_refs[name]}")
+                added.add(name)
+        # 全本匹配：搜古籍原文中含格局关键词的段落
+        if full_classics and len(lines) < 8:
+            full_paras = full_classics.get("paragraphs", [])
+            for pat in patterns[:4]:
                 name = pat.get('name', '')
-                if name in pat_refs:
-                    lines.append(f"- **{name}**：{pat_refs[name]}")
-            if len(lines) > 2:
-                parts.extend(lines)
-                parts.append("")
+                # 切掉格/同宫等后缀做关键词
+                kw = name.replace('格','').replace('同宫','').replace('在命','')
+                matches = [p for p in full_paras if kw[:2] in p.get('text','')][:2]
+                for p in matches:
+                    k = p.get('text','')[:60]
+                    if k not in added:
+                        src = p.get('source','')
+                        lines.append(f"- 《{'骨髓赋' if src=='gusuifu' else '紫微全集' if src=='quanji' else '紫微全书'}》：{p.get('text','')[:80]}...")
+                        added.add(k)
+        if len(lines) > 2:
+            parts.extend(lines)
+            parts.append("")
     # 分析要求
     parts.append("## 分析要求")
     parts.append("")
