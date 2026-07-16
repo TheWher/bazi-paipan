@@ -117,6 +117,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
     </section>
 </main>
 </div>
+<div id="pw-overlay" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center">
+    <div style="background:var(--card-bg);border-radius:14px;padding:28px;width:340px;max-width:90vw;text-align:center">
+        <h3 style="margin-bottom:8px;color:var(--accent)">🔐 深度分析需要密码</h3>
+        <p style="font-size:.8em;color:var(--text-muted);margin-bottom:16px">API 调用成本较高，请向管理员获取密码</p>
+        <input type="password" id="pw-input" placeholder="请输入密码" style="width:100%;padding:10px;font-size:.9em;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;background:var(--bg);color:var(--text)">
+        <div id="pw-error" style="color:#ef5350;font-size:.78em;margin-bottom:8px"></div>
+        <div style="display:flex;gap:8px"><button id="btn-pw-cancel" class="btn" style="flex:1">取消</button><button id="btn-pw-confirm" class="btn btn-gold" style="flex:1">确认</button></div>
+    </div>
+</div>
 <div id="city-suggestions" style="display:none;position:fixed;z-index:99999;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;max-height:280px;overflow-y:auto;font-size:.82em;line-height:1.8;box-shadow:0 4px 24px rgba(0,0,0,.35)"></div>
 <script src="https://cdn.jsdelivr.net/npm/iztro/dist/iztro.min.js" defer></script>
 <script>
@@ -310,10 +319,21 @@ function renderChart(){
 function selectPalace(br){selectedPalace=(selectedPalace===br)?null:br;renderChart()}
 
 // AI analysis
-$('btn-analyze').addEventListener('click',async()=>{
-    if(!plateData)return;$('btn-analyze').disabled=true;$('btn-analyze').textContent='分析中...';$('analysis-section').classList.remove('hidden');$('analysis-content').innerHTML='<p style="text-align:center;color:var(--text-muted)">AI 正在解读你的紫微命盘...</p>';
-    try{const r=await fetch('/api/ziwei/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData})});const d=await r.json();if(!d.success){$('analysis-content').innerHTML='<p style="color:#ef5350">分析失败: '+(d.error||'')+'</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试';return}$('analysis-content').innerHTML=formatCards(d.analysis);$('btn-analyze').textContent='重新解读';$('btn-analyze').disabled=false}catch(e){$('analysis-content').innerHTML='<p style="color:#ef5350">网络错误</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试'}
-});
+let _pwResolve=null;
+function promptPassword(){return new Promise(r=>{_pwResolve=r;$('pw-overlay').classList.remove('hidden');$('pw-input').value='';$('pw-error').textContent='';$('pw-input').focus()})}
+$('btn-pw-confirm').addEventListener('click',()=>{if(_pwResolve){_pwResolve($('pw-input').value);$('pw-overlay').classList.add('hidden')}});
+$('btn-pw-cancel').addEventListener('click',()=>{if(_pwResolve){_pwResolve(null);$('pw-overlay').classList.add('hidden')}});
+$('pw-input').addEventListener('keydown',e=>{if(e.key==='Enter')$('btn-pw-confirm').click()});
+
+async function doAnalyze(password){
+    $('analysis-content').innerHTML='<p style="text-align:center;color:var(--text-muted)">AI 正在解读你的紫微命盘...</p>';
+    try{const r=await fetch('/api/ziwei/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData,password:password||''})});const d=await r.json();
+        if(d.need_password){const p=await promptPassword();if(!p){$('btn-analyze').disabled=false;$('btn-analyze').textContent='🧠 AI 解读';return}return doAnalyze(p)}
+        if(!d.success){$('analysis-content').innerHTML='<p style="color:#ef5350">分析失败: '+(d.error||'')+'</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试';return}
+        $('analysis-content').innerHTML=formatCards(d.analysis);$('btn-analyze').textContent='重新解读';$('btn-analyze').disabled=false
+    }catch(e){$('analysis-content').innerHTML='<p style="color:#ef5350">网络错误</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试'}
+}
+$('btn-analyze').addEventListener('click',()=>{if(!plateData)return;$('btn-analyze').disabled=true;$('btn-analyze').textContent='分析中...';$('analysis-section').classList.remove('hidden');doAnalyze('')});
 function formatCards(t){t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');const p=t.split(/^## /gm);if(p.length<2)return t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');let h='';for(let i=1;i<p.length;i++){const l=p[i].split('\n');h+='<div class="a-card"><h2>'+l[0].trim()+'</h2><div class="body">'+l.slice(1).join('\n').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</div></div>'}return h}
 </script>
 </body>
