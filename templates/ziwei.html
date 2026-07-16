@@ -225,8 +225,11 @@ function renderChart(){
             svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="'+clr+'" font-size="12" font-weight="600">'+s.name;
             if(s.brightness)svg+='<tspan fill="'+(s.brightness==='庙'?'#d4a843':s.brightness==='旺'?'#e8a860':s.brightness==='陷'?'#c62828':'#888')+'" font-size="9">'+s.brightness+'</tspan>';
             if(s.mutagen){const hc={'禄':'#2e7d32','权':'#7b1fa2','科':'#1565c0','忌':'#c62828'};svg+='<tspan fill="'+hc[s.mutagen]+'" font-size="9">◈</tspan>'}
+            // 自化标记：本宫天干四化包含此星
+            if(st&&GAN_SIHUA[st]){const selfMu=Object.entries(GAN_SIHUA[st]).find(([mu,sn])=>sn===s.name);if(selfMu&&!s.mutagen){const hc={'禄':'#2e7d32','权':'#7b1fa2','科':'#1565c0','忌':'#c62828'};svg+='<tspan fill="'+hc[selfMu[0]]+'" font-size="8">自化'+selfMu[0]+'</tspan>'}}
             svg+='</text>';sy+=16;
         }
+        const minors=p.minorStars||[];
         // 吉星
         const ausp=(p.minorStars||[]).filter(s=>s.type==='soft'||s.type==='tianma'||s.type==='lucun');
         if(ausp.length){svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#ce93d8" font-size="9">'+ausp.map(s=>s.name).join(' ')+'</text>';sy+=12}
