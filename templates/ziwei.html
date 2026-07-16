@@ -82,7 +82,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
     <section id="welcome-section"><div style="text-align:center;padding:120px 40px;color:var(--text-muted)"><div style="font-size:3em;margin-bottom:16px">🔮</div><p style="font-size:1em;margin-bottom:8px">输入出生信息，点击「排盘」开始分析</p><p style="font-size:.75em">iztro JS 原版引擎 · 紫微斗数命盘解读</p></div></section>
     <section id="loading-section" class="hidden"><div class="loading-spinner"><div class="spinner"></div><p>紫微排盘中...</p></div></section>
     <section id="chart-section" class="hidden">
-        <div class="floating-bar"><span class="bar-title">🔮 紫微命盘</span><div class="pattern-row" id="patterns"></div></div>
+        <div class="floating-bar"><span class="bar-title">🔮 紫微命盘</span>
+            <select id="horo-scope" style="padding:4px 8px;font-size:.74em;border:1px solid var(--border);border-radius:6px;background:var(--card-bg);color:var(--text)"><option value="origin">本命</option><option value="decadal">大限</option><option value="yearly">流年</option></select>
+            <button id="btn-flystar" class="btn" style="font-size:.7em;padding:3px 10px" onclick="toggleFlyStars()">✈️ 飞星</button>
+            <span id="horo-result" style="font-size:.7em;color:var(--accent)"></span>
+            <div class="pattern-row" id="patterns"></div>
+        </div>
+        <div id="flystar-panel" class="hidden" style="background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;font-size:.74em;max-height:260px;overflow-y:auto"></div>
         <div class="chart-wrapper" id="zw-chart"></div>
     </section>
     <section id="analysis-section" class="hidden">
@@ -97,6 +103,10 @@ const $=id=>document.getElementById(id);
 let astrolabe=null,plateData=null,selectedPalace=null;
 (function(){const t=localStorage.getItem('bazi_theme');document.getElementById('btn-theme').textContent=t==='dark'?'☀️':'🌙'})();
 function toggleTheme(){const c=document.documentElement.getAttribute('data-theme'),n=c==='dark'?'':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('bazi_theme',n);document.getElementById('btn-theme').textContent=n==='dark'?'☀️':'🌙';if(astrolabe)renderChart()}
+document.getElementById('horo-scope').addEventListener('change',()=>{if(astrolabe)renderChart()});
+
+const GAN_SIHUA={甲:{禄:'廉贞',权:'破军',科:'武曲',忌:'太阳'},乙:{禄:'天机',权:'天梁',科:'紫微',忌:'太阴'},丙:{禄:'天同',权:'天机',科:'文昌',忌:'廉贞'},丁:{禄:'太阴',权:'天同',科:'天机',忌:'巨门'},戊:{禄:'贪狼',权:'太阴',科:'右弼',忌:'天机'},己:{禄:'武曲',权:'贪狼',科:'天梁',忌:'文曲'},庚:{禄:'太阳',权:'武曲',科:'太阴',忌:'天同'},辛:{禄:'巨门',权:'太阳',科:'文曲',忌:'文昌'},壬:{禄:'天梁',权:'紫微',科:'左辅',忌:'武曲'},癸:{禄:'破军',权:'巨门',科:'太阴',忌:'贪狼'}};
+function toggleFlyStars(){if(!astrolabe)return;const el=$('flystar-panel');if(!el.classList.contains('hidden')){el.classList.add('hidden');return}el.classList.remove('hidden');const palaces=Array.isArray(astrolabe.palaces)?astrolabe.palaces:typeof astrolabe.palaces==='function'?astrolabe.palaces():[];let html='<div style="font-weight:700;color:var(--accent);margin-bottom:6px">✈️ 十二宫飞星</div>';for(const p of palaces){const gan=p.heavenlyStem;const fly=GAN_SIHUA[gan];if(!fly)continue;let items=[];for(const[mu,sn]of Object.entries(fly)){let tgt='?';for(const pp of palaces)for(const s of[...pp.majorStars,...pp.minorStars])if(s.name===sn){tgt=pp.name;break}items.push('<span style="color:'+(mu==='禄'?'#2e7d32':mu==='权'?'#7b1fa2':mu==='科'?'#1565c0':'#c62828')+'">化'+mu+'→'+tgt+'</span>')}html+='<div style="padding:2px 6px;border-left:2px solid var(--accent);margin-bottom:3px;font-size:.85em"><b style="color:var(--accent)">'+p.name+'</b>('+gan+'): '+items.join('·')+'</div>'}el.innerHTML=html}
 
 document.getElementById('quick').addEventListener('input',function(){const v=this.value.replace(/\D/g,'');if(v.length<8)return;document.getElementById('y').value=v.slice(0,4);document.getElementById('m').value=parseInt(v.slice(4,6));document.getElementById('d').value=parseInt(v.slice(6,8));if(v.length>=10)document.getElementById('h').value=parseInt(v.slice(8,10));if(v.length>=12)document.getElementById('min').value=parseInt(v.slice(10,12))});
 document.getElementById('quick').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-render').click()});
@@ -122,6 +132,8 @@ function renderChart(){
     const S={bg:isDark?'#19192b':'#fff',cell:isDark?'#1a1a2e':'#fafafa',border:isDark?'#999':'#ccc',text:isDark?'#888':'#666',gold:'#d4a843'};
     const palaces=Array.isArray(astrolabe.palaces)?astrolabe.palaces:typeof astrolabe.palaces==='function'?astrolabe.palaces():[];
     const soulBr=astrolabe.earthlyBranchOfSoulPalace,bodyBr=astrolabe.earthlyBranchOfBodyPalace,fec=astrolabe.fiveElementsClass;
+    const scope=document.getElementById('horo-scope').value;let horoscope=null;
+    if(scope!=='origin')try{horoscope=astrolabe.horoscope(new Date(),parseInt(document.getElementById('h').value)||1)}catch(e){}
     const siHua=[];for(const p of palaces)for(const s of[...p.majorStars,...p.minorStars])if(s.mutagen)siHua.push({star:s.name,hua:s.mutagen,palace:p.name});
 
     const W=640,H=680,pad=10,cellW=(W-2*pad)/4,cellH=(H-2*pad-20)/4;
@@ -154,6 +166,12 @@ function renderChart(){
         }
         for(const s of(p.minorStars||[]).slice(0,4)){
             svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="'+(s.type==='soft'?'#ce93d8':s.type==='tough'?'#5a5a6e':'#888')+'" font-size="7">'+s.name+'</text>';sy+=9;
+        }
+        // 运限标记
+        let hy=y+cellH-15;
+        if(horoscope){
+            if(horoscope.decadal&&horoscope.decadal.index===p.index){svg+='<text x="'+(x+3)+'" y="'+hy+'" fill="#4a9eff" font-size="6">大限</text>';hy-=7}
+            if(horoscope.yearly&&horoscope.yearly.index===p.index){svg+='<text x="'+(x+3)+'" y="'+hy+'" fill="#5cb85c" font-size="6">流年</text>'}
         }
     }
     //  中心
