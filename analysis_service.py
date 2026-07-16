@@ -1266,7 +1266,7 @@ def _build_ziwei_user_message(plate_dict: dict) -> str:
     parts.append("| 宫位 | 干支 | 主星 | 辅星 | 四化 | 大限 | 标记 |")
     parts.append("|------|------|------|------|------|------|------|")
     for pal in palaces:
-        stars_str = '、'.join(s['name'] if isinstance(s, dict) else s for s in pal['major_stars']) if pal['major_stars'] else '空宫'
+        stars_str = '、'.join(f"{s['name']}[{s['brightness']}]" if isinstance(s, dict) and s.get('brightness') else (s['name'] if isinstance(s, dict) else s) for s in pal['major_stars']) if pal['major_stars'] else '空宫'
         minor_str = '、'.join(s['name'] if isinstance(s, dict) else s for s in pal['minor_stars'][:3]) if pal['minor_stars'] else '—'
         mut_str = '、'.join(f"{m['star']}{m['mutagen']}" for m in pal['mutagens']) if pal['mutagens'] else '—'
         tags_str = '、'.join(pal['tags']) if pal['tags'] else ''
@@ -1282,6 +1282,96 @@ def _build_ziwei_user_message(plate_dict: dict) -> str:
         for m in year_mutagens:
             parts.append(f"- {m['star']} → {m['mutagen']}（{m['palace']}·{m['branch']}）")
         parts.append("")
+
+    # ═══ 大限四化 + 流年数据（引擎计算，禁止 LLM 自行推算） ═══
+    GAN_SIHUA = {
+        '甲': {'化禄': '廉贞', '化权': '破军', '化科': '武曲', '化忌': '太阳'},
+        '乙': {'化禄': '天机', '化权': '天梁', '化科': '紫微', '化忌': '太阴'},
+        '丙': {'化禄': '天同', '化权': '天机', '化科': '文昌', '化忌': '廉贞'},
+        '丁': {'化禄': '太阴', '化权': '天同', '化科': '天机', '化忌': '巨门'},
+        '戊': {'化禄': '贪狼', '化权': '太阴', '化科': '右弼', '化忌': '天机'},
+        '己': {'化禄': '武曲', '化权': '贪狼', '化科': '天梁', '化忌': '文曲'},
+        '庚': {'化禄': '太阳', '化权': '武曲', '化科': '太阴', '化忌': '天同'},
+        '辛': {'化禄': '巨门', '化权': '太阳', '化科': '文曲', '化忌': '文昌'},
+        '壬': {'化禄': '天梁', '化权': '紫微', '化科': '左辅', '化忌': '武曲'},
+        '癸': {'化禄': '破军', '化权': '巨门', '化科': '太阴', '化忌': '贪狼'},
+    }
+    GAN = '甲乙丙丁戊己庚辛壬癸'
+    ZHI = '子丑寅卯辰巳午未申酉戌亥'
+
+    import datetime as _dt
+    current_year = _dt.date.today().year
+    liunian_gan = GAN[(current_year - 4) % 10]
+    liunian_zhi = ZHI[(current_year - 4) % 12]
+    liunian_gz = liunian_gan + liunian_zhi
+
+    # 前后一年
+    prev_gz = GAN[(current_year - 5) % 10] + ZHI[(current_year - 5) % 12]
+    next_gz = GAN[(current_year - 3) % 10] + ZHI[(current_year - 3) % 12]
+
+    # 当前年龄
+    birth_str = info.get('birth_datetime', '')
+    birth_year = int(birth_str[:4]) if birth_str and birth_str[:4].isdigit() else 0
+    current_age = current_year - birth_year if birth_year else 0
+
+    # 大限四化表
+    parts.append("## 大限四化（宫干飞化，引擎已算好，直接引用）")
+    parts.append("")
+    parts.append("| 宫位 | 大限干支 | 化禄 | 化权 | 化科 | 化忌 |")
+    parts.append("|------|----------|------|------|------|------|")
+    current_decadal = None
+    for pal in palaces:
+        dz = pal.get('decadal_dizhi', '')
+        gan = dz[0] if dz and len(dz) >= 1 else ''
+        fly = GAN_SIHUA.get(gan, {})
+        parts.append(f"| {pal['name']} | {dz or '—'} | {fly.get('化禄','—')} | {fly.get('化权','—')} | {fly.get('化科','—')} | {fly.get('化忌','—')} |")
+        # 找当前大限
+        dr = pal.get('decadal_range', '')
+        if dr and '-' in dr and current_age > 0:
+            try:
+                lo, hi = dr.split('-')
+                if int(lo) <= current_age <= int(hi):
+                    current_decadal = pal
+            except ValueError:
+                pass
+    parts.append("")
+
+    # 当前大限
+    if current_decadal:
+        parts.append("## 当前大限")
+        parts.append("")
+        cd_name = current_decadal['name']
+        cd_range = current_decadal['decadal_range']
+        cd_dz = current_decadal.get('decadal_dizhi', '?')
+        cd_gan = cd_dz[0] if cd_dz and len(cd_dz) >= 1 else ''
+        cd_fly = GAN_SIHUA.get(cd_gan, {})
+        parts.append(f"- 当前 {current_age} 岁，正行 **{cd_name}** 大限（{cd_range}岁），大限干支 **{cd_dz}**")
+        if cd_fly:
+            parts.append(f"- 大限四化：{'、'.join(f'{mu}→{star}' for mu, star in cd_fly.items())}")
+            # 找四化落在哪个宫
+            for mu, star in cd_fly.items():
+                for pal in palaces:
+                    for s in pal.get('major_stars', []) + pal.get('minor_stars', []):
+                        sn = s['name'] if isinstance(s, dict) else s
+                        if sn == star:
+                            parts.append(f"  - {mu} **{star}** 在 **{pal['name']}** 宫")
+                            break
+        parts.append("")
+
+    # 流年
+    parts.append("## 当前流年（引擎已算好干支，禁止自行推算）")
+    parts.append("")
+    parts.append(f"| 年份 | 干支 | 流年四化 |")
+    parts.append(f"|------|------|----------|")
+    for offset, label in [(-1, f'{current_year-1}年'), (0, f'{current_year}年（当前）'), (1, f'{current_year+1}年')]:
+        yg = GAN[(current_year + offset - 4) % 10]
+        yz = ZHI[(current_year + offset - 4) % 12]
+        y_fly = GAN_SIHUA.get(yg, {})
+        fly_str = '、'.join(f'{mu}→{star}' for mu, star in y_fly.items()) if y_fly else '—'
+        parts.append(f"| {label} | {yg}{yz} | {fly_str} |")
+    parts.append("")
+    parts.append("**⛔ 以上所有干支、四化均为排盘引擎精确计算结果。不要自行推算干支，不要编造年份。直接引用上表。**")
+    parts.append("")
 
     # 古籍引用（格局→原文 + 全本匹配）
     patterns = plate_dict.get('patterns', [])
