@@ -200,8 +200,8 @@ def ziwei_paipan(year: int, month: int, day: int, hour: int, minute: int = 0,
         'year_mutagens': year_mutagens,
         'shichen': SHICHEN_NAMES[shichen_idx] + '时' if shichen_idx < 12 else '子时',
     }
-    # 格局判读
-    result['patterns'] = detect_patterns(result)
+    # 格局判读交由 Agent v6 严格规则执行，后端不做预判
+    result['patterns'] = []
     return result
 
 

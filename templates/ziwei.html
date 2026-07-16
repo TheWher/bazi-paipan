@@ -110,7 +110,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
             <button id="btn-daily" class="btn" style="font-size:.68em;padding:3px 8px" onclick="toggleScope('daily')">流日</button>
             <button id="btn-flystar" class="btn" style="font-size:.7em;padding:3px 10px" onclick="toggleFlyStars()">✈️ 飞星</button>
             <span id="horo-result" style="font-size:.7em;color:var(--accent)"></span>
-            <div class="pattern-row" id="patterns"></div>
+            <!-- 格局判定交由 Agent v6 分析，此处不显示预设徽章 -->
         </div>
         <div id="flystar-panel" class="hidden" style="background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;font-size:.74em;max-height:260px;overflow-y:auto"></div>
         <div class="chart-wrapper" id="zw-chart"></div>
@@ -182,7 +182,7 @@ $('btn-render').addEventListener('click',()=>{
     catch(e){$('loading-section').innerHTML='<p style="color:#ef5350;text-align:center;padding:60px">排盘失败: '+e.message+'</p>';return}
     try{renderChart()}catch(e){$('loading-section').innerHTML='<p style="color:#ef5350;text-align:center;padding:60px">渲染失败: '+e.message+'</p>';return}
     $('loading-section').classList.add('hidden');$('chart-section').classList.remove('hidden');$('btn-analyze').disabled=false;
-    fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:hh,minute:mm,gender:b.gender,is_lunar:b.cal==='lunar',longitude:parseFloat($('longitude').value)||120,location:$('location').value||''})}).then(r=>r.json()).then(d=>{plateData=d;$('patterns').innerHTML=(d.patterns||[]).map(pp=>{const lv=pp.level||'中';const pre=lv==='上吉'?'⭐ ':lv==='吉'?'✅ ':lv==='忌'?'⚠️ ':'';return'<span class="pat-badge pat-'+(lv==='上吉'?'ex':lv==='吉'?'gd':lv==='忌'?'ca':'ne')+'" title="'+(pp.desc||'')+'">'+pre+pp.name+'</span>'}).join('')}).catch(()=>{});
+    fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:hh,minute:mm,gender:b.gender,is_lunar:b.cal==='lunar',longitude:parseFloat($('longitude').value)||120,location:$('location').value||''})}).then(r=>r.json()).then(d=>{plateData=d}).catch(()=>{});
 });
 
 // Horoscope scope toggle (independent, can stack)
