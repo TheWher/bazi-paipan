@@ -79,8 +79,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
     </div>
 </aside>
 <main class="app-main">
-    <section id="loading-section"><div class="loading-spinner"><div class="spinner"></div><p>紫微排盘中...</p></div></section>
-    <section id="chart-section" class="hidden">
+    <section id="loading-section" class="hidden"><div class="loading-spinner"><div class="spinner"></div><p>紫微排盘中...</p></div></section>
+    <section id="chart-section">
         <div class="floating-bar"><span class="bar-title">🔮 紫微命盘</span><div class="pattern-row" id="patterns"></div></div>
         <div class="chart-wrapper" id="zw-chart"></div>
     </section>
@@ -94,6 +94,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
 <script>
 const $=id=>document.getElementById(id);
 let astrolabe=null,plateData=null,selectedPalace=null;
+
+// 默认渲染1991-8-15命盘
+(function(){try{astrolabe=iztro.astro.bySolar('1991-8-15',1,'男',true,'zh-CN');renderChart()}catch(e){};fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:1991,month:8,day:15,hour:1,minute:0,gender:'男',is_lunar:false})}).then(r=>r.json()).then(d=>{plateData=d;const p=d.patterns||[];$('patterns').innerHTML=p.map(pp=>'<span class="pat-badge pat-'+(pp.level==='上吉'?'ex':pp.level==='吉'?'gd':pp.level==='忌'?'ca':'ne')+'">'+pp.name+'</span>').join('');$('btn-analyze').disabled=false}).catch(()=>{});})();
 (function(){const t=localStorage.getItem('bazi_theme');document.getElementById('btn-theme').textContent=t==='dark'?'☀️':'🌙'})();
 function toggleTheme(){const c=document.documentElement.getAttribute('data-theme'),n=c==='dark'?'':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('bazi_theme',n);document.getElementById('btn-theme').textContent=n==='dark'?'☀️':'🌙'}
 
