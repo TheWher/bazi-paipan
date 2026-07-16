@@ -165,11 +165,12 @@ let liuyaoCache=null;
 function toggleScope(scope){
     if(activeScopes.has(scope))activeScopes.delete(scope);else activeScopes.add(scope);
     ['decadal','yearly','monthly','daily'].forEach(s=>{const btn=$('btn-'+s);if(btn)btn.style.cssText=activeScopes.has(s)?'font-size:.68em;padding:3px 8px;border:1px solid var(--accent);border-radius:6px;background:rgba(212,168,67,.12);color:var(--accent);font-weight:600':'font-size:.68em;padding:3px 8px'});
-    // Fetch 流曜 from backend (CDN doesn't provide yearly/monthly stars)
+    renderChart();
+    // 异步获取流曜 (CDN horoscope stars为空)
     if(activeScopes.size>0&&astrolabe){
         const b=getB();
-        fetch('/api/ziwei/horoscope',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:b.h,minute:b.min,gender:b.gender,target_year:new Date().getFullYear()})}).then(r=>r.json()).then(d=>{liuyaoCache=d;renderChart()}).catch(()=>renderChart());
-    }else{renderChart()}
+        fetch('/api/ziwei/horoscope',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:b.h,minute:b.min,gender:b.gender,target_year:new Date().getFullYear()})}).then(r=>r.json()).then(d=>{liuyaoCache=d;renderChart()}).catch(()=>{});
+    }
 }
 
 // GAN_SIHUA table
