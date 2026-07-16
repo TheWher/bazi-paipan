@@ -80,15 +80,19 @@ _:-ms-input-placeholder,:root .form-group{display:none}
         <p style="font-size:.72em;color:var(--text-muted);margin-bottom:8px;line-height:1.5">北京时间以东经120°为准，出生地经度不同会产生时间偏差，可能跨过时辰分界线从而改变命盘。勾选后输入出生地经度，系统自动计算校正后的时辰。</p>
         <div id="solar-info" style="display:none;font-size:.8em;color:var(--accent);margin-bottom:8px;line-height:1.6"></div>
         <div id="solar-row" style="display:none;background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);overflow:hidden;margin-bottom:10px">
-            <div style="padding:12px 16px;display:flex;align-items:center;gap:8px">
-                <span style="font-weight:600;font-size:.82em;color:var(--accent);white-space:nowrap">经度</span>
-                <input type="number" id="longitude" step="0.01" placeholder="120" value="120" style="width:60px;border:none;padding:6px 0;font-size:.9em;background:transparent;color:var(--text);outline:none">
-                <span style="font-weight:600;font-size:.82em;color:var(--accent);white-space:nowrap;margin-left:4px">出生地</span>
-                <div style="flex:1;position:relative">
-                    <input type="text" id="location" placeholder="城市名，如：东莞" autocomplete="off" style="width:100%;border:none;padding:6px 0;font-size:.9em;background:transparent;color:var(--text);outline:none">
-                    <div id="city-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;max-height:200px;overflow-y:auto;z-index:20;font-size:.78em"></div>
+            <div style="padding:14px 16px">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+                    <span style="font-weight:600;font-size:.82em;color:var(--accent);min-width:32px">经度</span>
+                    <input type="number" id="longitude" step="0.01" placeholder="120" value="120" style="flex:1;border:1px solid var(--border-light);border-radius:6px;padding:7px 10px;font-size:.88em;background:var(--bg);color:var(--text);outline:none">
                 </div>
-                <button id="btn-geocode" class="btn" style="font-size:.78em;padding:4px 10px;border-radius:6px" onclick="geocodeCity()">🔍</button>
+                <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-weight:600;font-size:.82em;color:var(--accent);min-width:32px">出生地</span>
+                    <div style="flex:1;position:relative">
+                        <input type="text" id="location" placeholder="城市名，如：东莞" autocomplete="off" style="width:100%;border:1px solid var(--border-light);border-radius:6px;padding:7px 10px;font-size:.88em;background:var(--bg);color:var(--text);outline:none">
+                        <div id="city-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;max-height:200px;overflow-y:auto;z-index:20;font-size:.78em"></div>
+                    </div>
+                    <button id="btn-geocode" class="btn" style="font-size:.78em;padding:5px 12px;border-radius:6px;flex-shrink:0" onclick="geocodeCity()">🔍 定位</button>
+                </div>
             </div>
             <div id="geocode-status" style="display:none;padding:4px 16px 10px;font-size:.74em;color:#4caf50"></div>
         </div>
