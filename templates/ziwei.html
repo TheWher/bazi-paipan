@@ -114,6 +114,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
         </div>
         <div id="flystar-panel" class="hidden" style="background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;font-size:.74em;max-height:260px;overflow-y:auto"></div>
         <div class="chart-wrapper" id="zw-chart"></div>
+        <div id="star-detail" class="hidden" style="background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:16px;margin-bottom:14px;font-size:.8em;line-height:1.7"></div>
         <div id="decadal-panel" style="background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:14px 18px;margin-top:14px;font-size:.78em"></div>
     </section>
     <section id="analysis-section" class="hidden">
@@ -244,7 +245,7 @@ function renderChart(){
         // 主星
         for(const s of p.majorStars){
             const clr=s.type==='major'?'#d4a843':'#ce93d8';
-            svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="'+clr+'" font-size="12" font-weight="600">'+s.name;
+            svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="'+clr+'" font-size="12" font-weight="600" style="cursor:pointer" onclick="event.stopPropagation();showStarDetail(\''+s.name+'\')">'+s.name;
             if(s.brightness)svg+='<tspan fill="'+(s.brightness==='庙'?'#d4a843':s.brightness==='旺'?'#e8a860':s.brightness==='陷'?'#c62828':'#888')+'" font-size="9">'+s.brightness+'</tspan>';
             if(s.mutagen){const hc={'禄':'#2e7d32','权':'#7b1fa2','科':'#1565c0','忌':'#c62828'};svg+='<tspan fill="'+hc[s.mutagen]+'" font-size="9">◈</tspan>'}
             // 自化标记：本宫天干四化包含此星
@@ -329,6 +330,26 @@ function renderChart(){
     $('decadal-panel').innerHTML=dp+'</div>';
 }
 
+function showStarDetail(name){
+    if(!astrolabe||!name)return;const el=$('star-detail');
+    try{const star=astrolabe.star(name);if(!star){el.classList.add('hidden');return}
+        const palaces=star.palaces?star.palaces():[];const opp=star.oppositePalace?star.oppositePalace():null;
+        const sf=star.surroundedPalaces?star.surroundedPalaces():[];const hasHua=star.hasMutagen?star.hasMutagen():null;
+        const bright=star.isBright?star.isBright():undefined;
+        let h='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><b style="color:#d4a843;font-size:1.1em">⭐ '+name+'</b>';
+        if(bright!==undefined)h+='<span style="font-size:.75em;padding:2px 6px;border-radius:4px;background:'+(bright?'#d4a843':'#888')+';color:#fff">'+(bright?'庙旺':'落陷')+'</span>';
+        if(hasHua)h+='<span style="font-size:.75em;color:#c62828">化'+hasHua+'</span>';
+        h+=' <button onclick="$(\'star-detail\').classList.add(\'hidden\')" style="margin-left:auto;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2em">✕</button></div>';
+        if(palaces.length)h+='<div>📍 所在宫位: <b>'+palaces.map(p=>p.name||p.getName?.()||'?').join('、')+'</b></div>';
+        if(opp)h+='<div>🔁 对宫: <b>'+(opp.name||opp.getName?.()||'?')+'</b></div>';
+        if(sf.length)h+='<div>△ 三方四正: <b>'+sf.map(p=>p.name||p.getName?.()||'?').join('、')+'</b></div>';
+        if(sf.length){
+            const sfHasHua=sf.some(p=>{const sts=[...p.majorStars||[],...p.minorStars||[]];return sts.some(s=>s.mutagen)});
+            if(sfHasHua){const huaStars=[];for(const p of sf)for(const s of[...p.majorStars||[],...p.minorStars||[]])if(s.mutagen)huaStars.push(s.name+'化'+s.mutagen+'('+(p.name||'')+')');if(huaStars.length)h+='<div>✨ 三方四化: <b>'+huaStars.join('、')+'</b></div>'}
+        }
+        el.innerHTML=h;el.classList.remove('hidden');
+    }catch(e){console.error('star detail:',e);el.classList.add('hidden')}
+}
 function selectPalace(br){selectedPalace=(selectedPalace===br)?null:br;renderChart()}
 
 // AI analysis
