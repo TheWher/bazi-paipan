@@ -1241,6 +1241,25 @@ def _load_ziwei_system_prompt() -> str:
     return content
 
 
+def _match_combo(combo_key: str, pal: dict, plate_dict: dict, branch_order: str) -> bool:
+    """检查中州派组合规则是否匹配当前命盘"""
+    if '夹' in combo_key:
+        branch_to_pal = {p['earthly_branch']: p for p in plate_dict.get('palaces', [])}
+        br = pal.get('earthly_branch', '')
+        idx = branch_order.find(br)
+        if idx < 0:
+            return False
+        prev_br = branch_order[(idx - 1) % 12]
+        next_br = branch_order[(idx + 1) % 12]
+        return prev_br in branch_to_pal and next_br in branch_to_pal
+    if '对拱' in combo_key or '对星' in combo_key:
+        return True
+    if '单星' in combo_key:
+        has_peer = len(pal.get('minor_stars', [])) > 1
+        return not has_peer
+    return True
+
+
 def _build_ziwei_user_message(plate_dict: dict) -> str:
     """构造紫微斗数分析请求"""
     p = plate_dict
@@ -1372,6 +1391,41 @@ def _build_ziwei_user_message(plate_dict: dict) -> str:
     parts.append("")
     parts.append("**⛔ 以上所有干支、四化均为排盘引擎精确计算结果。不要自行推算干支，不要编造年份。直接引用上表。**")
     parts.append("")
+
+    # ═══ 中州派辅佐煞曜选择性注入 ═══
+    fuzuo_kb = _load_json_kb("ziwei_fuzuo.json")
+    if fuzuo_kb:
+        relevant_entries = []
+        BRANCH_ORDER = '子丑寅卯辰巳午未申酉戌亥'
+        for pal in plate_dict.get('palaces', []):
+            pname = pal.get('name', '')
+            tags = pal.get('tags', [])
+            if '命宫' in tags:
+                pri = 3
+            elif '身宫' in tags:
+                pri = 3
+            elif pname in ('迁移', '夫妻', '財帛', '官祿', '疾厄'):
+                pri = 2
+            else:
+                pri = 1
+            for s in pal.get('minor_stars', []):
+                name = s.get('name', '')
+                if name not in fuzuo_kb:
+                    continue
+                star_data = fuzuo_kb[name]
+                if '分宫' in star_data and pname in star_data['分宫']:
+                    entry = star_data['分宫'][pname]
+                    if entry and entry != '—':
+                        relevant_entries.append((pri, f"- {name}在{pname}：{entry}"))
+                if '组合' in star_data:
+                    for combo_key, combo_desc in star_data['组合'].items():
+                        if _match_combo(combo_key, pal, plate_dict, BRANCH_ORDER):
+                            relevant_entries.append((2, f"- 组合：{combo_key}——{combo_desc}"))
+        relevant_entries.sort(key=lambda x: -x[0])
+        top = [text for _, text in relevant_entries[:6]]
+        if top:
+            parts.append("\n## 中州派辅佐煞曜参考（按命盘实际星曜引用）")
+            parts.extend(top)
 
     # 古籍引用（格局→原文 + 全本匹配）
     patterns = plate_dict.get('patterns', [])
