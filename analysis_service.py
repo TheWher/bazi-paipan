@@ -1260,7 +1260,7 @@ def _match_combo(combo_key: str, pal: dict, plate_dict: dict, branch_order: str)
     return True
 
 
-def _build_ziwei_user_message(plate_dict: dict) -> str:
+def _build_ziwei_user_message(plate_dict: dict, bazi_ref: dict = None) -> str:
     """构造紫微斗数分析请求"""
     p = plate_dict
     info = p.get("input", {})
@@ -1457,6 +1457,18 @@ def _build_ziwei_user_message(plate_dict: dict) -> str:
         if len(lines) > 2:
             parts.extend(lines)
             parts.append("")
+    # ═══ 八字参考注入 ═══
+    if bazi_ref:
+        parts.append("## 八字参考（用于交叉验证）")
+        parts.append(f"日主：{bazi_ref.get('rizhu', '?')}（{bazi_ref.get('ri_gan_wuxing', '?')}，{bazi_ref.get('strength', '?')}）")
+        xiyong = bazi_ref.get('xiyong')
+        if xiyong:
+            parts.append(f"喜用：{'、'.join(xiyong)}")
+        if bazi_ref.get('geju'):
+            parts.append(f"格局：{bazi_ref['geju']}")
+        if bazi_ref.get('dayun'):
+            parts.append(f"当前大运：{bazi_ref['dayun']}")
+        parts.append("")
     # 分析要求
     parts.append("## 分析要求")
     parts.append("")
@@ -1474,7 +1486,7 @@ def _build_ziwei_user_message(plate_dict: dict) -> str:
     return "\n".join(parts)
 
 
-def analyze_ziwei(plate_dict: dict, timeout: int = 120) -> dict:
+def analyze_ziwei(plate_dict: dict, timeout: int = 120, bazi_ref: dict = None) -> dict:
     """紫微斗数命盘一次性解读（无验盘闭环）
 
     Args:
@@ -1488,7 +1500,7 @@ def analyze_ziwei(plate_dict: dict, timeout: int = 120) -> dict:
         return {"success": False, "error": "未配置 API Key"}
 
     system_prompt = _load_ziwei_system_prompt()
-    user_message = _build_ziwei_user_message(plate_dict)
+    user_message = _build_ziwei_user_message(plate_dict, bazi_ref=bazi_ref)
     user_messages = [{"role": "user", "content": user_message}]
 
     result = _call_api(system_prompt, user_messages,

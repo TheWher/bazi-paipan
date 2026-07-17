@@ -130,6 +130,39 @@ def _cache_set(key: str, result: dict):
 # 反馈日志目录
 FEEDBACK_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedback")
 
+def _compute_bazi_ref(plate_dict: dict) -> dict | None:
+    """从紫微 plate_dict 提取生辰，排八字参考信息用于交叉验证"""
+    input_info = plate_dict.get("input", {})
+    birth_dt_str = input_info.get("birth_datetime", "")
+    gender = input_info.get("gender", "")
+    if not birth_dt_str or gender not in ("男", "女"):
+        return None
+    import re
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})", birth_dt_str)
+    if not m:
+        return None
+    try:
+        from bazi_calculator import paipan
+        y, mo, d, h, mi = int(m[1]), int(m[2]), int(m[3]), int(m[4]), int(m[5])
+        bp = paipan(y, mo, d, h, mi, gender=gender, apply_solar_correction=False)
+        dayun_str = ""
+        if getattr(bp, "dayun", []):
+            du = bp.dayun[0]
+            dayun_str = f"{du['gz']}（{du['start_age']}-{du['end_age']}岁）"
+        return {
+            "rizhu": bp.sizhu["day"]["gz"],
+            "ri_gan_wuxing": bp.sizhu["day"]["gan_wuxing"],
+            "strength": "身强" if getattr(bp, "shenqiang", False) else "身弱",
+            "xiyong": getattr(bp, "xiyong", [])[:3],
+            "geju": getattr(bp, "geju", ""),
+            "dayun": dayun_str,
+        }
+    except Exception as e:
+        import logging
+        logging.warning("bazi_ref generation failed: %s", e)
+        return None
+
+
 def save_feedback_log(plate_dict: dict, messages: list[dict], ip: str = "", turn_type: str = "initial") -> str | None:
     """保存深度分析对话日志，用于后续优化 Agent 准确性。
 
@@ -759,6 +792,7 @@ def api_ziwei_analyze():
         return jsonify({"error": "缺少参数: plate"}), 400
 
     plate_dict = data["plate"]
+    bazi_ref = _compute_bazi_ref(plate_dict)
 
     # 缓存检查
     cache_key = _make_ziwei_cache_key(plate_dict)
@@ -771,7 +805,7 @@ def api_ziwei_analyze():
 
     try:
         from analysis_service import analyze_ziwei
-        result = analyze_ziwei(plate_dict, timeout=600)
+        result = analyze_ziwei(plate_dict, timeout=600, bazi_ref=bazi_ref)
     except Exception as e:
         return jsonify({"success": False, "error": f"分析异常: {str(e)}"}), 500
 
@@ -801,6 +835,7 @@ def api_ziwei_analyze_stream():
 
     if "plate" not in data: return jsonify({"error": "缺少 plate"}), 400
     plate_dict = data["plate"]
+    bazi_ref = _compute_bazi_ref(plate_dict)
 
     if not check_rate_limit(ip, max_requests=3, window_minutes=60):
         return jsonify({"error": "请求过于频繁（3次/时）"}), 429
@@ -810,7 +845,7 @@ def api_ziwei_analyze_stream():
 
     def generate():
         sp = _load_ziwei_system_prompt()
-        um = _build_ziwei_user_message(plate_dict)
+        um = _build_ziwei_user_message(plate_dict, bazi_ref=bazi_ref)
         for chunk in _call_api_stream(sp, [{"role": "user", "content": um}], 32768, 0.7, 600):
             yield chunk
 
