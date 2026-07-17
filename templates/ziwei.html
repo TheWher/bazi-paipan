@@ -34,6 +34,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
 .a-card h2{font-size:.85em;font-weight:600;color:#8b6914;margin-bottom:10px}[data-theme="dark"] .a-card h2{color:var(--accent)}
 .a-card .body{font-size:.9rem;line-height:1.85;color:var(--text)}.a-card .body strong{color:var(--accent)}
 .loading{text-align:center;padding:60px;color:var(--text-muted)}.spinner{width:32px;height:32px;margin:0 auto 12px;border:3px solid var(--border-light);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}
+.reasoning-details{margin:6px 0 10px 12px;padding:6px 10px 6px 14px;background:rgba(212,168,67,.04);border-left:2px solid rgba(212,168,67,.25);border-radius:4px;font-size:.82em;line-height:1.7}
+.reasoning-details summary{cursor:pointer;color:var(--text-muted);font-size:.78em;font-weight:600;user-select:none;padding:2px 0}
+.reasoning-details summary:hover{color:var(--accent)}
+.reasoning-details .step{margin:1px 0;padding:1px 0 1px 8px;border-left:1px solid rgba(212,168,67,.12)}
+.reasoning-details .step .risk{color:#ef5350}
+.reasoning-details .step .conclusion{color:var(--accent)}
 .pattern-row{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}.pat-badge{padding:3px 10px;border-radius:12px;font-size:.7em;font-weight:600}.pat-ex{background:linear-gradient(135deg,#d4a843,#8b6914);color:#fff;font-size:.75em}.pat-gd{background:rgba(46,125,50,.12);color:#2e7d32;border:1px solid rgba(46,125,50,.2);font-size:.72em}.pat-ne{background:rgba(120,120,120,.06);color:var(--text-muted);font-size:.68em}.pat-ca{background:rgba(198,40,40,.12);color:#ef5350;border:1px solid rgba(198,40,40,.2);font-size:.72em}
 @media(max-width:860px){.app-layout{flex-direction:column}.app-sidebar{width:100%;min-width:0;height:auto;position:static;border-right:none;padding:20px 16px 16px}.app-main{padding:20px 16px 80px}.sticky-actions{width:100%}}
 </style>
@@ -449,7 +455,8 @@ function appendChatReply(text){
     saveSession();
 }
 $('chat-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat()}});
-function formatCards(t){t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');const p=t.split(/^## /gm);if(p.length<2)return t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');let h='';for(let i=1;i<p.length;i++){const l=p[i].split('\n');h+='<div class="a-card"><h2>'+l[0].trim()+'</h2><div class="body">'+l.slice(1).join('\n').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')+'</div></div>'}return h}
+function formatCards(t){t=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');const p=t.split(/^## /gm);if(p.length<2)return renderReasoning(t);let h='';for(let i=1;i<p.length;i++){const l=p[i].split('\n');h+='<div class="a-card"><h2>'+l[0].trim()+'</h2><div class="body">'+renderReasoning(l.slice(1).join('\n'))+'</div></div>'}return h}
+function renderReasoning(text){const parts=text.split(/【推理依据】\n?/);if(parts.length<2)return text.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');let r=parts[0].replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');for(let i=1;i<parts.length;i++){const lines=parts[i].split('\n');let steps='<details class="reasoning-details"><summary>🔍 查看推理过程</summary>';let after='';let inAfter=false;for(const line of lines){const tr=line.trim();if(!tr)continue;if(inAfter){after+=tr+'\n';continue}if(tr.startsWith('└─ ')||tr.startsWith('- ')){const content=tr.replace(/^[└─\- ]+/,'').trim();let cls='step';if(content.startsWith('⚠ '))cls=' step risk';else if(content.startsWith('→ '))cls=' step conclusion';steps+='<div class="'+cls+'">'+content.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')+'</div>'}else if(tr.startsWith('【')){inAfter=true;after+=tr+'\n'}else{steps+='<div style="margin-top:4px;color:var(--text)">'+tr.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')+'</div>'}}steps+='</details>';r+=steps;if(after)r+=after.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>')}return r}
 </script>
 </body>
 </html>
