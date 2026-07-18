@@ -159,7 +159,13 @@ $('btn-analyze').addEventListener('click',async()=>{
         const sd=await sr.json();
         const sid=sd.id;
         $('loading-section').innerHTML='<p style="text-align:center;padding:60px;color:#666">AI分析中，即将跳转报告页...</p>';
-        const r=await fetch('/api/ziwei/analyze/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData,password:''})});
+        let pw = '';
+        let r = await fetch('/api/ziwei/analyze/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData,password:''})});
+        if(r.status === 403){
+          pw = prompt('需要密码才能解读：');
+          if(!pw){ $('loading-section').innerHTML='<p style="color:#ef5350">已取消</p>'; $('btn-analyze').disabled=false; $('btn-analyze').textContent='重试'; return; }
+          r = await fetch('/api/ziwei/analyze/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData,password:pw})});
+        }
         const reader=r.body.getReader();const decoder=new TextDecoder();let fullText='',buf='';
         while(true){
             const{value,done}=await reader.read();

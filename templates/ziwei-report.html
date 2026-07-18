@@ -276,8 +276,8 @@ async function load(){
     renderFlowYears();
   }
   const msgs = s.messages || [];
-  const hasAnalysis = msgs.some(m => m.role === 'assistant');
-  if(hasAnalysis) renderAnalysis(msgs);
+  const validAnalysis = msgs.find(m => m.role === 'assistant' && m.content && m.content.length > 50);
+  if(validAnalysis) renderAnalysis(msgs);
   else startAnalysis(s.plate_data);
 }
 load();
