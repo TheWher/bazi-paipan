@@ -268,15 +268,18 @@ let plateData = null;
 // ── 加载数据 ──
 async function load(){
   const r = await fetch(`/api/ziwei/sessions/${sid}`);
-  if(!r.ok){ $('grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-soft)">报告未找到或已过期</div>'; return }
+  if(!r.ok){ $('grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:80px 20px;color:var(--ink-soft);font-size:13px">报告未找到<span style="display:block;font-size:11px;margin-top:6px">请先在表单页排盘并生成分析</span></div>'; $('analysis-text').innerHTML=''; return }
   const s = await r.json();
   plateData = s.plate_data || null;
-  renderInfo(s);
-  if(plateData && plateData.palaces){
-    renderGrid(plateData);
-    renderDayun(plateData);
-    renderFlowYears();
+  if(!plateData || !plateData.palaces || !plateData.palaces.length){
+    $('grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:80px 20px;color:var(--ink-soft);font-size:13px">命盘数据未找到<span style="display:block;font-size:11px;margin-top:6px">请重新排盘分析</span></div>';
+    $('analysis-text').innerHTML='';
+    return;
   }
+  renderInfo(s);
+  renderGrid(plateData);
+  renderDayun(plateData);
+  renderFlowYears();
   const msgs = s.messages || [];
   const validAnalysis = msgs.find(m => m.role === 'assistant' && m.content && m.content.length > 50);
   if(validAnalysis) renderAnalysis(msgs);
