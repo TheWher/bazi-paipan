@@ -268,18 +268,15 @@ let plateData = null;
 // ── 加载数据 ──
 async function load(){
   const r = await fetch(`/api/ziwei/sessions/${sid}`);
-  if(!r.ok){ $('grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:80px 20px;color:var(--ink-soft);font-size:13px">报告未找到<span style="display:block;font-size:11px;margin-top:6px">请先在表单页排盘并生成分析</span></div>'; $('analysis-text').innerHTML=''; return }
+  if(!r.ok){ $('grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-soft)">报告未找到或已过期</div>'; return }
   const s = await r.json();
   plateData = s.plate_data || null;
-  if(!plateData || !plateData.palaces || !plateData.palaces.length){
-    $('grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:80px 20px;color:var(--ink-soft);font-size:13px">命盘数据未找到<span style="display:block;font-size:11px;margin-top:6px">请重新排盘分析</span></div>';
-    $('analysis-text').innerHTML='';
-    return;
-  }
   renderInfo(s);
-  renderGrid(plateData);
-  renderDayun(plateData);
-  renderFlowYears();
+  if(plateData && plateData.palaces){
+    renderGrid(plateData);
+    renderDayun(plateData);
+    renderFlowYears();
+  }
   const msgs = s.messages || [];
   const validAnalysis = msgs.find(m => m.role === 'assistant' && m.content && m.content.length > 50);
   if(validAnalysis) renderAnalysis(msgs);
@@ -417,7 +414,7 @@ function renderDayun(plate){
       const [s,e] = dr.split('-').map(Number);
       if(s <= curAge && curAge <= e) cls += ' current';
     }
-    return `<div class="${cls}" onclick="selectDecade('${p.name}')">
+    return `<div class="${cls}" onclick="highlightDecade('${p.name}')">
       <div class="gz">${p.decadal_dizhi||''}</div>
       <div class="ages">${dr}</div>
     </div>`;
@@ -439,8 +436,9 @@ function renderFlowYears(){
     const div = document.createElement('div');
     div.className = 'strip-cell';
     if(y === ty) div.classList.add('current');
-    div.dataset.br = br; div.dataset.label = `${y}年`; div.dataset.gz = gz; div.innerHTML = `<div class="gz">${gz}</div><div class="ages">${y}年</div>`;
-    div.onclick = function(){selectFlow(this.dataset.br, this.dataset.label, this.dataset.gz, "year")}; fRow.appendChild(div);
+    div.innerHTML = `<div class="gz">${gz}</div><div class="ages">${y}年</div>`;
+    div.onclick = () => { clearScope(); highlightFlow(br, `${y}年`, gz); };
+    fRow.appendChild(div);
   }
 
   // 流月：斗君计算
@@ -461,8 +459,9 @@ function renderFlowYears(){
     const br = ZHI[idx];
     const div = document.createElement('div');
     div.className = 'strip-cell';
-    div.dataset.br = br; div.dataset.label = `${m}月`; div.innerHTML = `<div class="gz">${m}月</div><div class="ages">${br}宫</div>`;
-    div.onclick = function(){selectFlow(this.dataset.br, this.dataset.label, "", "month")}; mRow.appendChild(div);
+    div.innerHTML = `<div class="gz">${m}月</div><div class="ages">${br}宫</div>`;
+    div.onclick = () => { clearScope(); highlightFlow(br, `${m}月`, ''); };
+    mRow.appendChild(div);
   }
 
   // 流日条（15列显示前30天，每天对应一个地支）
@@ -472,91 +471,86 @@ function renderFlowYears(){
     const br = ZHI[(d-1)%12];
     const div = document.createElement('div');
     div.className = 'strip-cell';
-    div.dataset.br = br; div.dataset.label = `${d}日`; div.innerHTML = `<div class="gz">${d}日</div><div class="ages">${br}</div>`;
-    div.onclick = function(){selectFlow(this.dataset.br, this.dataset.label, "", "day")}; dRow.appendChild(div);
+    div.innerHTML = `<div class="gz">${d}日</div><div class="ages">${br}</div>`;
+    div.onclick = () => { clearScope(); highlightFlow(br, `${d}日`, ''); };
+    dRow.appendChild(div);
   }
 }
 
-
-
-// ── 叠盘选择系统（大限/流年/流月/流日） ──
-const SCOPE_COLORS = {decade:'#2e6da4', year:'#4a7c4e', month:'#c97c3a', day:'#7c4dff'};
-const SCOPE_LABELS = {decade:'大限', year:'流年', month:'流月', day:'流日'};
-const selections = {decade:null, year:null, month:null, day:null};
-const GAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
-const GAN_SIHUA_MAP = {
-  '甲':['廉贞','破军','武曲','太阳'],'乙':['天机','天梁','紫微','太阴'],
-  '丙':['天同','天机','文昌','廉贞'],'丁':['太阴','天同','天机','巨门'],
-  '戊':['贪狼','太阴','右弼','天机'],'己':['武曲','贪狼','天梁','文曲'],
-  '庚':['太阳','武曲','太阴','天同'],'辛':['巨门','太阳','文曲','文昌'],
-  '壬':['天梁','紫微','左辅','武曲'],'癸':['破军','巨门','太阴','贪狼']
-};
-const HUA = ['禄','权','科','忌'];
-const LIMIT_NAMES = ['命宫','兄弟','夫妻','子女','财帛','疾厄','迁移','交友','官禄','田宅','福德','父母'];
-
-function findSihuaPalaces(gan){
-  const stars = GAN_SIHUA_MAP[gan]; if(!stars) return {};
-  const pals = plateData?.palaces || [];
-  const r = {};
-  for(let i=0;i<4;i++){
-    const found = pals.find(p => [...(p.major_stars||[]),...(p.minor_stars||[])].some(s => s.name===stars[i]));
-    r[HUA[i]] = {star:stars[i], palace:found?found.name:'?'};
-  }
-  return r;
+let activeFlowLabel = null;
+function clearScope(){
+  document.querySelectorAll('.palace').forEach(el => {
+    el.querySelector('.scope-badge')?.remove();
+    if(!el.classList.contains('ming')) el.style.boxShadow = '';
+  });
+  activeFlowLabel = null;
 }
-
-function selectDecade(name){
-  if(selections.decade && selections.decade.name===name){ selections.decade=null; renderSel(); return; }
-  const p = plateData?.palaces?.find(x=>x.name===name); if(!p) return;
-  selections.decade = {name, br:p.earthly_branch, stem:p.heavenly_stem, sihua:findSihuaPalaces(p.heavenly_stem), label:p.decadal_dizhi||name};
-  renderSel();
-}
-function selectFlow(br, label, gz, type){
-  if(selections[type] && selections[type].br===br){ selections[type]=null; renderSel(); return; }
-  selections[type] = {br, label, gz, sihua: gz ? findSihuaPalaces(gz[0]) : {}};
-  renderSel();
-}
-function renderSel(){
-  // 清除
-  document.querySelectorAll('.palace').forEach(el=>{el.style.outline='';el.style.outlineOffset='';el.querySelectorAll('.scope-badge,.living-badge,.sihua-tag').forEach(e=>e.remove())});
-  document.querySelectorAll('.strip-cell').forEach(c=>{c.style.background='';c.style.fontWeight=''});
-  const pals = plateData?.palaces || [];
-  for(const [type,sel] of Object.entries(selections)){
-    if(!sel) continue;
-    const col = SCOPE_COLORS[type];
-    // 宫位高亮
-    document.querySelectorAll('.palace').forEach(el=>{
-      const dz = el.querySelector('.p-dizhi');
-      if(!dz||dz.textContent.trim()!==sel.br) return;
-      el.style.outline='2px solid '+col; el.style.outlineOffset=type==='decade'?'-3px':'-2px';
-      const b = document.createElement('span'); b.className='scope-badge'; b.textContent=sel.label;
-      b.style.cssText='font-size:8px;color:'+col+';border:1px solid '+col+';border-radius:2px;padding:0 3px;font-weight:700';
-      el.querySelector('.p-head')?.appendChild(b);
-    });
-    // 大限限年宫名
-    if(type==='decade'){ const di=pals.findIndex(p=>p.earthly_branch===sel.br); if(di>=0) document.querySelectorAll('.palace').forEach((el,i)=>{
-      const b=document.createElement('span'); b.className='living-badge'; b.textContent=LIMIT_NAMES[(i-di+12)%12];
-      b.style.cssText='font-size:7px;color:'+col+';border:1px solid '+col+';border-radius:2px;padding:0 2px;margin-left:2px';
-      el.querySelector('.p-head')?.appendChild(b);
-    });}
-    // 四化
-    if(sel.sihua) for(const[hua,info] of Object.entries(sel.sihua)){
-      if(!info.palace||info.palace==='?') continue;
-      document.querySelectorAll('.palace').forEach(el=>{
-        const g=el.querySelector('.p-gong'); if(!g||g.textContent.trim()!==info.palace) return;
-        const t=document.createElement('span'); t.className='sihua-tag';
-        t.textContent=(SCOPE_LABELS[type]||'')+hua;
-        t.style.cssText='font-size:7px;color:'+col+';border:1px solid '+col+';border-radius:2px;padding:0 2px;margin-left:1px';
-        el.querySelector('.main-star')?.appendChild(t);
+function highlightFlow(br, label, gz){
+  activeFlowLabel = label;
+  if(gz){
+    const GAN_SIHUA = {'甲':['廉贞','破军','武曲','太阳'],'乙':['天机','天梁','紫微','太阴'],'丙':['天同','天机','文昌','廉贞'],'丁':['太阴','天同','天机','巨门'],'戊':['贪狼','太阴','右弼','天机'],'己':['武曲','贪狼','天梁','文曲'],'庚':['太阳','武曲','太阴','天同'],'辛':['巨门','太阳','文曲','文昌'],'壬':['天梁','紫微','左辅','武曲'],'癸':['破军','巨门','太阴','贪狼']};
+    const gan = gz[0];
+    const sihua = GAN_SIHUA[gan];
+    const huaNames = ['禄','权','科','忌'];
+    const palaces = plateData?.palaces || [];
+    if(sihua){
+      // 标注流年四化星在哪宫
+      document.querySelectorAll('.palace').forEach(el => {
+        el.querySelector('.sihua-flow')?.remove();
+        const pName = el.querySelector('.p-gong')?.textContent?.trim();
+        if(pName && sihua){
+          for(let i=0; i<4; i++){
+            const star = sihua[i];
+            const found = palaces.find(p =>
+              (p.major_stars||[]).some(s => s.name === star) ||
+              (p.minor_stars||[]).some(s => s.name === star)
+            );
+            if(found && found.name === pName){
+              const tag = document.createElement('span');
+              tag.className = 'sihua-flow';
+              tag.textContent = `流${huaNames[i]}`;
+              tag.style.cssText = 'font-size:8px;margin-left:1px;font-weight:700';
+              tag.style.color = ['#c1432f','#2e6da4','#4a7c4e','#000'][i];
+              el.querySelector('.main-star')?.appendChild(tag);
+            }
+          }
+        }
       });
     }
-    // 条选中
-    const sid={'decade':'dayun-row','year':'flow-row','month':'month-row','day':'day-row'}[type];
-    if(sid) document.querySelectorAll('#'+sid+' .strip-cell').forEach(c=>{
-      const g=c.querySelector('.gz'); if(!g) return;
-      if(g.textContent.trim()===sel.label||g.textContent.trim()===sel.br||(sel.label&&g.textContent.trim().startsWith(sel.label))){c.style.background=col+'22';c.style.fontWeight='700'}
-    });
   }
+  document.querySelectorAll('.palace').forEach(el => {
+    const dz = el.querySelector('.p-dizhi');
+    if(dz && dz.textContent.trim() === br){
+      el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
+      const badge = document.createElement('span');
+      badge.className = 'scope-badge';
+      badge.textContent = label;
+      badge.style.cssText = 'font-size:8px;color:var(--azure);border:1px solid var(--azure);border-radius:2px;padding:0 3px;margin-left:2px;font-weight:700';
+      el.querySelector('.p-head')?.appendChild(badge);
+      el.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  });
+}
+function highlightFlow(br, label, gz){
+  document.querySelectorAll('.palace').forEach(el => {
+    el.querySelector('.scope-badge')?.remove();
+    const dz = el.querySelector('.p-dizhi');
+    if(dz && dz.textContent.trim() === br){
+      el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
+      const badge = document.createElement('span');
+      badge.className = 'scope-badge';
+      badge.textContent = label;
+      badge.style.cssText = 'font-size:7px;color:var(--azure);border:1px solid var(--azure);border-radius:2px;padding:0 2px';
+      el.querySelector('.p-head')?.appendChild(badge);
+      el.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  });
+}
+function highlightDecade(pName){
+  document.querySelectorAll('.palace').forEach(el => {
+    const gong = el.querySelector('.p-gong');
+    if(gong && gong.textContent.trim() === pName) el.scrollIntoView({behavior:'smooth'});
+  });
 }
 
 // ── 宫位点击弹窗 ──
@@ -655,6 +649,7 @@ function highlightDecade(pName){
     el.querySelector('.living-badge')?.remove();
     el.querySelector('.scope-badge')?.remove();
   });
+  activeFlowLabel = null;
   // 高亮大限宫位
   let targetIdx = -1;
   document.querySelectorAll('.palace').forEach((el, i) => {
