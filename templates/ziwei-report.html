@@ -216,16 +216,16 @@
 
   <!-- 运限控制 -->
   <div class="dayun-strip no-print" id="dayun-strip">
-    <div class="strip-head" style="display:flex;align-items:center;gap:10px">
+    <div class="strip-head" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span>大限（虚岁）</span>
-      <span style="color:var(--ink-faint);font-size:10px">运限:</span>
       <input type="number" id="horo-year" value="2026" min="1900" max="2100" style="width:56px;padding:2px 4px;font-size:10px;border:1px solid var(--line-soft);background:var(--paper);color:var(--ink);border-radius:2px">
       <button class="scope-btn" data-scope="decadal" onclick="toggleScope('decadal')">大限</button>
       <button class="scope-btn" data-scope="yearly" onclick="toggleScope('yearly')">流年</button>
       <button class="scope-btn" data-scope="monthly" onclick="toggleScope('monthly')">流月</button>
       <button class="scope-btn" data-scope="daily" onclick="toggleScope('daily')">流日</button>
     </div>
-    <div class="strip-row skeleton-line" style="height:40px"></div>
+    <div class="strip-row" id="dayun-row" style="grid-template-columns:repeat(12,1fr)"></div>
+    <div class="scope-strip" id="scope-strip" style="display:none;border-top:1px solid var(--line-faint)"></div>
   </div>
 
   <!-- 分析 -->
@@ -551,39 +551,95 @@ function fetchLiuyao(){
   const ty = parseInt($('horo-year')?.value) || new Date().getFullYear();
   if(!plateData?.input) return;
   const inp = plateData.input;
+  // 计算流月命宫（斗君）
+  const birthDt = inp.birth_datetime || '';
+  const birthMonth = parseInt(birthDt.split('-')[1]) || 1;  // 公历月近似
+  const birthHour = parseInt(birthDt.split(' ')[1]?.split(':')[0]) || 0;
+  const liunianZhiIdx = (ty - 4) % 12;
+  // 逆数到生月
+  const monthIdx = ((liunianZhiIdx - (birthMonth - 1)) % 12 + 12) % 12;
+  // 顺数到生时
+  const shichen = Math.floor((birthHour + 1) / 2) % 12;
+  const doujunIdx = ((monthIdx + shichen) % 12 + 12) % 12;
+  const ZHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+  const BRANCH_ORDER = '子丑寅卯辰巳午未申酉戌亥';
+  const flow_months = {};
+  const palaces = plateData.palaces || [];
+  for(let m=1; m<=12; m++){
+    const idx = ((doujunIdx + m - 1) % 12 + 12) % 12;
+    const br = ZHI[idx];
+    const p = palaces.find(x => x.earthly_branch === br);
+    flow_months[`${m}月`] = p ? p.name : br;
+  }
+
   fetch('/api/ziwei/horoscope', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
-      year: parseInt(inp.birth_datetime?.split('-')[0])||2000,
-      month: parseInt(inp.birth_datetime?.split('-')[1])||1,
-      day: parseInt(inp.birth_datetime?.split('-')[2]?.split(' ')[0])||1,
-      hour: parseInt(inp.birth_datetime?.split(' ')[1]?.split(':')[0])||0,
-      minute: parseInt(inp.birth_datetime?.split(':')[1])||0,
+      year: birthDt.split('-')[0]||2000,
+      month: birthDt.split('-')[1]||1,
+      day: birthDt.split('-')[2]?.split(' ')[0]||1,
+      hour: birthHour, minute: parseInt(birthDt.split(':')[1])||0,
       gender: inp.gender||'男', target_year: ty
     })
-  }).then(r=>r.json()).then(d=>{liuyaoCache=d; highlightScope()}).catch(()=>{});
+  }).then(r=>r.json()).then(d=>{liuyaoCache={...d, flow_months}; highlightScope()}).catch(()=>{});
 }
 function highlightScope(){
   if(!liuyaoCache || activeScopes.size === 0) return;
-  document.querySelectorAll('.palace').forEach(el => el.style.boxShadow = '');
+  const strip = $('scope-strip');
+  strip.style.display = 'block';
+  const ZHI_LABELS = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+  let items = [];
   for(const scope of activeScopes){
     const data = liuyaoCache[scope];
-    if(data && data.index !== undefined){
-      const br = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'][data.index];
-      document.querySelectorAll('.palace').forEach(el => {
-        const dz = el.querySelector('.p-dizhi');
-        if(dz && dz.textContent.trim() === br){
-          const label = {'decadal':'大限','yearly':'流年','monthly':'流月','daily':'流日'}[scope]||scope;
-          el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
-          // add scope label
-          let badge = el.querySelector('.scope-badge');
-          if(!badge){ badge=document.createElement('span'); badge.className='scope-badge'; el.querySelector('.p-head').appendChild(badge) }
-          badge.textContent = label;
-          badge.style.cssText = 'font-size:8px;color:var(--azure);border:1px solid var(--azure);border-radius:2px;padding:0 3px;margin-left:2px';
+    if(!data) continue;
+    if(scope === 'decadal'){
+      // 大限数据在 dayun-row 里已有，不重复
+      continue;
+    }
+    // 流年/流月/流日
+    if(scope === 'yearly' && data.index !== undefined){
+      for(let i=0; i<12; i++){
+        const y = parseInt($('horo-year')?.value)||2026;
+        const gz = ['甲子','乙丑','丙寅','丁卯','戊辰','己巳','庚午','辛未','壬申','癸酉','甲戌','乙亥'][i];
+        items.push({label: `${y-12+i+1}`, br: ZHI_LABELS[i], scope, gz});
+      }
+    }
+    if(scope === 'monthly' && liuyaoCache.flow_months){
+      for(let m=1; m<=12; m++){
+        const pName = liuyaoCache.flow_months[`${m}月`];
+        if(pName && plateData){
+          const p = plateData.palaces.find(x => x.name === pName);
+          items.push({label: `${m}月`, br: p?.earthly_branch||'', scope, gz: pName});
         }
-      });
+      }
+    }
+    if(scope === 'daily'){
+      for(let d=1; d<=30; d++){
+        const br = ZHI_LABELS[(d-1)%12];
+        items.push({label: `${d}日`, br, scope, gz: ''});
+      }
     }
   }
+  if(items.length > 0){
+    strip.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:2px;padding:6px 8px">' +
+      items.map((item, i) => `<div class="scope-item" data-br="${item.br}" data-scope="${item.scope}" onclick="clickScopeItem('${item.br}','${item.scope}','${item.label}')" style="padding:3px 6px;font-size:9px;border:1px solid var(--line-soft);border-radius:2px;cursor:pointer;white-space:nowrap">${item.label}</div>`).join('') +
+      '</div>';
+  }
+}
+function clickScopeItem(br, scope, label){
+  document.querySelectorAll('.palace').forEach(el => {
+    el.querySelector('.scope-badge')?.remove();
+    const dz = el.querySelector('.p-dizhi');
+    if(dz && dz.textContent.trim() === br){
+      el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
+      const badge = document.createElement('span');
+      badge.className = 'scope-badge';
+      badge.textContent = label;
+      badge.style.cssText = 'font-size:7px;color:var(--azure);border:1px solid var(--azure);border-radius:2px;padding:0 2px;margin-left:2px';
+      el.querySelector('.p-head')?.appendChild(badge);
+      el.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  });
 }
 
 // ── 流式分析 ──
