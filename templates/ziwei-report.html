@@ -553,39 +553,26 @@ function highlightDecade(pName){
 let liuyaoCache = null;
 function fetchLiuyao(){
   const ty = parseInt($('horo-year')?.value) || new Date().getFullYear();
-  if(!plateData?.input) return;
-  const inp = plateData.input;
-  // 计算流月命宫（斗君）
-  const birthDt = inp.birth_datetime || '';
-  const birthMonth = parseInt(birthDt.split('-')[1]) || 1;  // 公历月近似
-  const birthHour = parseInt(birthDt.split(' ')[1]?.split(':')[0]) || 0;
-  const liunianZhiIdx = (ty - 4) % 12;
-  // 逆数到生月
-  const monthIdx = ((liunianZhiIdx - (birthMonth - 1)) % 12 + 12) % 12;
-  // 顺数到生时
-  const shichen = Math.floor((birthHour + 1) / 2) % 12;
-  const doujunIdx = ((monthIdx + shichen) % 12 + 12) % 12;
+  if(!plateData?.palaces) return;
   const ZHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-  const BRANCH_ORDER = '子丑寅卯辰巳午未申酉戌亥';
-  const flow_months = {};
-  const palaces = plateData.palaces || [];
+  const palaces = plateData.palaces;
+  // 流年：当年地支索引
+  const yearIdx = (ty - 4) % 12;
+  // 流月：斗君算法
+  const inp = plateData.input || {};
+  const birthDt = inp.birth_datetime || '';
+  const birthM = parseInt(birthDt.split('-')[1]) || 1;
+  const birthH = parseInt(birthDt.split(' ')[1]?.split(':')[0]) || 0;
+  const sc = Math.floor((birthH + 1) / 2) % 12;
+  const dj = (((yearIdx - (birthM - 1)) % 12 + 12) % 12 + sc) % 12;
+  const flowMonths = {};
   for(let m=1; m<=12; m++){
-    const idx = ((doujunIdx + m - 1) % 12 + 12) % 12;
-    const br = ZHI[idx];
-    const p = palaces.find(x => x.earthly_branch === br);
-    flow_months[`${m}月`] = p ? p.name : br;
+    const idx = (dj + m - 1) % 12;
+    const p = palaces.find(x => x.earthly_branch === ZHI[idx]);
+    flowMonths[`${m}月`] = p ? p.name : ZHI[idx];
   }
-
-  fetch('/api/ziwei/horoscope', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      year: birthDt.split('-')[0]||2000,
-      month: birthDt.split('-')[1]||1,
-      day: birthDt.split('-')[2]?.split(' ')[0]||1,
-      hour: birthHour, minute: parseInt(birthDt.split(':')[1])||0,
-      gender: inp.gender||'男', target_year: ty
-    })
-  }).then(r=>r.json()).then(d=>{liuyaoCache={...d, flow_months}; highlightScope()}).catch(()=>{});
+  liuyaoCache = { yearly: { index: yearIdx }, flow_months: flowMonths };
+  highlightScope();
 }
 function highlightScope(){
   if(!liuyaoCache || activeScopes.size === 0) return;
