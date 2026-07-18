@@ -267,20 +267,25 @@ let plateData = null;
 
 // ── 加载数据 ──
 async function load(){
-  const r = await fetch(`/api/ziwei/sessions/${sid}`);
-  if(!r.ok){ $('grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-soft)">报告未找到或已过期</div>'; return }
-  const s = await r.json();
-  plateData = s.plate_data || null;
-  renderInfo(s);
-  if(plateData && plateData.palaces){
-    renderGrid(plateData);
-    renderDayun(plateData);
-    renderFlowYears();
+  try{
+    const r = await fetch(`/api/ziwei/sessions/${sid}`);
+    if(!r.ok){ $('grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-soft)">报告未找到或已过期</div>'; return }
+    const s = await r.json();
+    plateData = s.plate_data || null;
+    renderInfo(s);
+    if(plateData && plateData.palaces){
+      renderGrid(plateData);
+      renderDayun(plateData);
+      renderFlowYears();
+    }
+    const msgs = s.messages || [];
+    const validAnalysis = msgs.find(m => m.role === 'assistant' && m.content && m.content.length > 50);
+    if(validAnalysis) renderAnalysis(msgs);
+    else startAnalysis(s.plate_data);
+  }catch(e){
+    $('analysis-text').innerHTML = '<span style="color:#c1432f">页面加载异常: '+e.message+'</span>';
+    console.error(e);
   }
-  const msgs = s.messages || [];
-  const validAnalysis = msgs.find(m => m.role === 'assistant' && m.content && m.content.length > 50);
-  if(validAnalysis) renderAnalysis(msgs);
-  else startAnalysis(s.plate_data);
 }
 load();
 
@@ -592,8 +597,10 @@ async function startAnalysis(plate, password){
         method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({plate, password: pw})
       });
-      const d = await r.json();
-      if(d.success){
+      const text = await r.text();
+      let d;
+      try{ d = JSON.parse(text); }catch(e){ area.innerHTML = '<span style="color:#c1432f">API返回异常: '+text.slice(0,200)+'</span>'; return; }
+      if(d.success && d.analysis){
         area.innerHTML = formatText(d.analysis);
         await fetch(`/api/ziwei/sessions/${sid}`, {
           method:'PATCH', headers:{'Content-Type':'application/json'},
