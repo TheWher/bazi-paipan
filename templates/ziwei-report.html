@@ -115,8 +115,7 @@
   .strip-cell .ages { color: var(--ink-soft); font-size: 8px; }
   .strip-cell.current { background: rgba(193,67,47,0.08); }
   .strip-cell.current .gz { color: var(--vermillion); }
-  .scope-btn { font-size:10px; padding:2px 8px; border:1px solid var(--line-soft); background:var(--paper); color:var(--ink-soft); cursor:pointer; border-radius:2px; }
-  .scope-btn.active { border-color:var(--vermillion); color:var(--vermillion); font-weight:600; background:rgba(193,67,47,.05); }
+  #flow-row { grid-template-columns: repeat(12, 1fr); }
 
   /* ── 分析 + 追问 ── */
   .analysis-area {
@@ -220,14 +219,14 @@
   <div class="dayun-strip no-print" id="dayun-strip">
     <div class="strip-head" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span>大限（虚岁）</span>
-      <input type="number" id="horo-year" value="2026" min="1900" max="2100" style="width:56px;padding:2px 4px;font-size:10px;border:1px solid var(--line-soft);background:var(--paper);color:var(--ink);border-radius:2px">
-      <button class="scope-btn" data-scope="decadal" onclick="toggleScope('decadal')">大限</button>
-      <button class="scope-btn" data-scope="yearly" onclick="toggleScope('yearly')">流年</button>
-      <button class="scope-btn" data-scope="monthly" onclick="toggleScope('monthly')">流月</button>
-      <button class="scope-btn" data-scope="daily" onclick="toggleScope('daily')">流日</button>
+      <input type="number" id="horo-year" value="2026" min="1900" max="2100" style="width:56px;padding:2px 4px;font-size:10px;border:1px solid var(--line-soft);background:var(--paper);color:var(--ink);border-radius:2px" onchange="renderFlowYears()">
     </div>
     <div class="strip-row" id="dayun-row" style="grid-template-columns:repeat(12,1fr)"></div>
-    <div class="scope-strip" id="scope-strip" style="display:none;border-top:1px solid var(--line-faint)"></div>
+  </div>
+  <!-- 流年条 -->
+  <div class="dayun-strip no-print" id="flow-strip">
+    <div class="strip-head">流年（点击年份→高亮对应宫位）</div>
+    <div class="strip-row" id="flow-row" style="grid-template-columns:repeat(12,1fr)"></div>
   </div>
 
   <!-- 分析 -->
@@ -274,6 +273,7 @@ async function load(){
   if(plateData && plateData.palaces){
     renderGrid(plateData);
     renderDayun(plateData);
+    renderFlowYears();
   }
   const msgs = s.messages || [];
   const hasAnalysis = msgs.some(m => m.role === 'assistant');
@@ -396,26 +396,52 @@ function renderGrid(plate){
 function renderDayun(plate){
   const palaces = plate.palaces || [];
   const curAge = currentAge();
-  const strip = $('dayun-strip');
-  let row = '<div class="strip-row">';
-  for(const p of palaces){
+  const row = $('dayun-row');
+  row.innerHTML = palaces.map(p => {
     const dr = p.decadal_range || '';
     let cls = 'strip-cell';
     if(dr){
-      const parts = dr.split('-');
-      if(parts.length===2){
-        const s = parseInt(parts[0]), e = parseInt(parts[1]);
-        if(s <= curAge && curAge <= e) cls += ' current';
-      }
+      const [s,e] = dr.split('-').map(Number);
+      if(s <= curAge && curAge <= e) cls += ' current';
     }
-    const gz = p.decadal_dizhi || '';
-    row += `<div class="${cls}" onclick="highlightDecade('${p.name}')">
-      <div class="gz">${gz}</div>
+    return `<div class="${cls}" onclick="highlightDecade('${p.name}')">
+      <div class="gz">${p.decadal_dizhi||''}</div>
       <div class="ages">${dr}</div>
     </div>`;
+  }).join('');
+}
+function renderFlowYears(){
+  const ty = parseInt($('horo-year')?.value) || new Date().getFullYear();
+  const row = $('flow-row');
+  const GAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+  const ZHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+  row.innerHTML = '';
+  for(let i=0; i<12; i++){
+    const y = ty - (ty % 12) + i;
+    const gz = GAN[(y-4)%10] + ZHI[(y-4)%12];
+    const br = ZHI[(y-4)%12];
+    const div = document.createElement('div');
+    div.className = 'strip-cell';
+    if(y === ty) div.classList.add('current');
+    div.innerHTML = `<div class="gz">${gz}</div><div class="ages">${y}年</div>`;
+    div.onclick = () => highlightFlow(br, `${y}年`, gz);
+    row.appendChild(div);
   }
-  row += '</div>';
-  strip.innerHTML = '<div class="strip-head">大限（虚岁）</div>' + row;
+}
+function highlightFlow(br, label, gz){
+  document.querySelectorAll('.palace').forEach(el => {
+    el.querySelector('.scope-badge')?.remove();
+    const dz = el.querySelector('.p-dizhi');
+    if(dz && dz.textContent.trim() === br){
+      el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
+      const badge = document.createElement('span');
+      badge.className = 'scope-badge';
+      badge.textContent = label;
+      badge.style.cssText = 'font-size:7px;color:var(--azure);border:1px solid var(--azure);border-radius:2px;padding:0 2px';
+      el.querySelector('.p-head')?.appendChild(badge);
+      el.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  });
 }
 function highlightDecade(pName){
   document.querySelectorAll('.palace').forEach(el => {
@@ -513,15 +539,7 @@ function formatText(t){
     .replace(/\n/g,'<br>');
 }
 
-// ── 运限切换 ──
-const activeScopes = new Set();
-function toggleScope(scope){
-  if(activeScopes.has(scope)) activeScopes.delete(scope); else activeScopes.add(scope);
-  document.querySelectorAll('.scope-btn').forEach(b => {
-    b.classList.toggle('active', activeScopes.has(b.dataset.scope));
-  });
-  fetchLiuyao();
-}
+// ── 大限高亮 ──
 function highlightDecade(pName){
   document.querySelectorAll('.palace').forEach(el => {
     el.style.boxShadow = '';
@@ -550,89 +568,6 @@ function highlightDecade(pName){
     });
   }
 }
-let liuyaoCache = null;
-function fetchLiuyao(){
-  const ty = parseInt($('horo-year')?.value) || new Date().getFullYear();
-  if(!plateData?.palaces) return;
-  const ZHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-  const palaces = plateData.palaces;
-  // 流年：当年地支索引
-  const yearIdx = (ty - 4) % 12;
-  // 流月：斗君算法
-  const inp = plateData.input || {};
-  const birthDt = inp.birth_datetime || '';
-  const birthM = parseInt(birthDt.split('-')[1]) || 1;
-  const birthH = parseInt(birthDt.split(' ')[1]?.split(':')[0]) || 0;
-  const sc = Math.floor((birthH + 1) / 2) % 12;
-  const dj = (((yearIdx - (birthM - 1)) % 12 + 12) % 12 + sc) % 12;
-  const flowMonths = {};
-  for(let m=1; m<=12; m++){
-    const idx = (dj + m - 1) % 12;
-    const p = palaces.find(x => x.earthly_branch === ZHI[idx]);
-    flowMonths[`${m}月`] = p ? p.name : ZHI[idx];
-  }
-  liuyaoCache = { yearly: { index: yearIdx }, flow_months: flowMonths };
-  highlightScope();
-}
-function highlightScope(){
-  if(!liuyaoCache || activeScopes.size === 0) return;
-  const strip = $('scope-strip');
-  strip.style.display = 'block';
-  const ZHI_LABELS = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-  let items = [];
-  for(const scope of activeScopes){
-    const data = liuyaoCache[scope];
-    if(!data) continue;
-    if(scope === 'decadal'){
-      // 大限数据在 dayun-row 里已有，不重复
-      continue;
-    }
-    // 流年/流月/流日
-    if(scope === 'yearly' && data.index !== undefined){
-      for(let i=0; i<12; i++){
-        const y = parseInt($('horo-year')?.value)||2026;
-        const gz = ['甲子','乙丑','丙寅','丁卯','戊辰','己巳','庚午','辛未','壬申','癸酉','甲戌','乙亥'][i];
-        items.push({label: `${y-12+i+1}`, br: ZHI_LABELS[i], scope, gz});
-      }
-    }
-    if(scope === 'monthly' && liuyaoCache.flow_months){
-      for(let m=1; m<=12; m++){
-        const pName = liuyaoCache.flow_months[`${m}月`];
-        if(pName && plateData){
-          const p = plateData.palaces.find(x => x.name === pName);
-          items.push({label: `${m}月`, br: p?.earthly_branch||'', scope, gz: pName});
-        }
-      }
-    }
-    if(scope === 'daily'){
-      for(let d=1; d<=30; d++){
-        const br = ZHI_LABELS[(d-1)%12];
-        items.push({label: `${d}日`, br, scope, gz: ''});
-      }
-    }
-  }
-  if(items.length > 0){
-    strip.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:2px;padding:6px 8px">' +
-      items.map((item, i) => `<div class="scope-item" data-br="${item.br}" data-scope="${item.scope}" onclick="clickScopeItem('${item.br}','${item.scope}','${item.label}')" style="padding:3px 6px;font-size:9px;border:1px solid var(--line-soft);border-radius:2px;cursor:pointer;white-space:nowrap">${item.label}</div>`).join('') +
-      '</div>';
-  }
-}
-function clickScopeItem(br, scope, label){
-  document.querySelectorAll('.palace').forEach(el => {
-    el.querySelector('.scope-badge')?.remove();
-    const dz = el.querySelector('.p-dizhi');
-    if(dz && dz.textContent.trim() === br){
-      el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
-      const badge = document.createElement('span');
-      badge.className = 'scope-badge';
-      badge.textContent = label;
-      badge.style.cssText = 'font-size:7px;color:var(--azure);border:1px solid var(--azure);border-radius:2px;padding:0 2px;margin-left:2px';
-      el.querySelector('.p-head')?.appendChild(badge);
-      el.scrollIntoView({behavior:'smooth', block:'center'});
-    }
-  });
-}
-
 // ── 流式分析 ──
 async function startAnalysis(plate, password){
   if(!plate) return;
