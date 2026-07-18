@@ -113,6 +113,8 @@
   .strip-cell .ages { color: var(--ink-soft); font-size: 8px; }
   .strip-cell.current { background: rgba(193,67,47,0.08); }
   .strip-cell.current .gz { color: var(--vermillion); }
+  .scope-btn { font-size:10px; padding:2px 8px; border:1px solid var(--line-soft); background:var(--paper); color:var(--ink-soft); cursor:pointer; border-radius:2px; }
+  .scope-btn.active { border-color:var(--vermillion); color:var(--vermillion); font-weight:600; background:rgba(193,67,47,.05); }
 
   /* ── 分析 + 追问 ── */
   .analysis-area {
@@ -209,9 +211,17 @@
   <!-- 4x4 宫格 -->
   <div class="ziwei-grid skeleton-grid" id="grid"></div>
 
-  <!-- 大运条 -->
+  <!-- 运限控制 -->
   <div class="dayun-strip no-print" id="dayun-strip">
-    <div class="strip-head">大限（虚岁）</div>
+    <div class="strip-head" style="display:flex;align-items:center;gap:10px">
+      <span>大限（虚岁）</span>
+      <span style="color:var(--ink-faint);font-size:10px">运限:</span>
+      <input type="number" id="horo-year" value="2026" min="1900" max="2100" style="width:56px;padding:2px 4px;font-size:10px;border:1px solid var(--line-soft);background:var(--paper);color:var(--ink);border-radius:2px">
+      <button class="scope-btn" data-scope="decadal" onclick="toggleScope('decadal')">大限</button>
+      <button class="scope-btn" data-scope="yearly" onclick="toggleScope('yearly')">流年</button>
+      <button class="scope-btn" data-scope="monthly" onclick="toggleScope('monthly')">流月</button>
+      <button class="scope-btn" data-scope="daily" onclick="toggleScope('daily')">流日</button>
+    </div>
     <div class="strip-row skeleton-line" style="height:40px"></div>
   </div>
 
@@ -247,16 +257,18 @@
 <script>
 const $ = id => document.getElementById(id);
 const sid = window.location.pathname.split('/').pop();
+let plateData = null;
 
 // ── 加载数据 ──
 async function load(){
   const r = await fetch(`/api/ziwei/sessions/${sid}`);
   if(!r.ok){ $('grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-soft)">报告未找到或已过期</div>'; return }
   const s = await r.json();
+  plateData = s.plate_data || null;
   renderInfo(s);
-  if(s.plate_data && s.plate_data.palaces){
-    renderGrid(s.plate_data);
-    renderDayun(s.plate_data);
+  if(plateData && plateData.palaces){
+    renderGrid(plateData);
+    renderDayun(plateData);
   }
   const msgs = s.messages || [];
   const hasAnalysis = msgs.some(m => m.role === 'assistant');
@@ -437,17 +449,82 @@ function formatText(t){
     .replace(/\n/g,'<br>');
 }
 
+// ── 运限切换 ──
+const activeScopes = new Set();
+function toggleScope(scope){
+  if(activeScopes.has(scope)) activeScopes.delete(scope); else activeScopes.add(scope);
+  document.querySelectorAll('.scope-btn').forEach(b => {
+    b.classList.toggle('active', activeScopes.has(b.dataset.scope));
+  });
+  fetchLiuyao();
+}
+function highlightDecade(pName){
+  document.querySelectorAll('.palace').forEach(el => {
+    el.style.boxShadow = '';
+    const gong = el.querySelector('.p-gong');
+    if(gong && gong.textContent.trim() === pName){
+      el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
+      el.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  });
+}
+let liuyaoCache = null;
+function fetchLiuyao(){
+  const ty = parseInt($('horo-year')?.value) || new Date().getFullYear();
+  if(!plateData?.input) return;
+  const inp = plateData.input;
+  fetch('/api/ziwei/horoscope', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      year: parseInt(inp.birth_datetime?.split('-')[0])||2000,
+      month: parseInt(inp.birth_datetime?.split('-')[1])||1,
+      day: parseInt(inp.birth_datetime?.split('-')[2]?.split(' ')[0])||1,
+      hour: parseInt(inp.birth_datetime?.split(' ')[1]?.split(':')[0])||0,
+      minute: parseInt(inp.birth_datetime?.split(':')[1])||0,
+      gender: inp.gender||'男', target_year: ty
+    })
+  }).then(r=>r.json()).then(d=>{liuyaoCache=d; highlightScope()}).catch(()=>{});
+}
+function highlightScope(){
+  if(!liuyaoCache || activeScopes.size === 0) return;
+  document.querySelectorAll('.palace').forEach(el => el.style.boxShadow = '');
+  for(const scope of activeScopes){
+    const data = liuyaoCache[scope];
+    if(data && data.index !== undefined){
+      const br = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'][data.index];
+      document.querySelectorAll('.palace').forEach(el => {
+        const dz = el.querySelector('.p-dizhi');
+        if(dz && dz.textContent.trim() === br){
+          const label = {'decadal':'大限','yearly':'流年','monthly':'流月','daily':'流日'}[scope]||scope;
+          el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
+          // add scope label
+          let badge = el.querySelector('.scope-badge');
+          if(!badge){ badge=document.createElement('span'); badge.className='scope-badge'; el.querySelector('.p-head').appendChild(badge) }
+          badge.textContent = label;
+          badge.style.cssText = 'font-size:8px;color:var(--azure);border:1px solid var(--azure);border-radius:2px;padding:0 3px;margin-left:2px';
+        }
+      });
+    }
+  }
+}
+
 // ── 流式分析 ──
-async function startAnalysis(plate){
+async function startAnalysis(plate, password){
   if(!plate) return;
   const area = $('analysis-text');
   area.innerHTML = '正在推算命盘...';
   try{
     const r = await fetch('/api/ziwei/analyze/stream', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({plate, password:''})
+      body:JSON.stringify({plate, password: password||''})
     });
-    if(!r.ok){ area.innerHTML = '<span style="color:var(--vermillion)">分析请求失败，请重新排盘</span>'; return }
+    if(r.status===403){
+      const p = prompt('此命盘需要密码才能解读：');
+      if(p) return startAnalysis(plate, p);
+      area.innerHTML = '<span style="color:var(--vermillion)">需要密码</span>';
+      return;
+    }
+    if(!r.ok){ area.innerHTML = '<span style="color:var(--vermillion)">分析请求失败</span>'; return }
     const reader = r.body.getReader();
     const decoder = new TextDecoder();
     let fullText = '', buf = '';
@@ -473,13 +550,7 @@ async function startAnalysis(plate){
       }
     }
     area.innerHTML = formatText(fullText);
-    // 存回 session
-    const sp = {role:'system', content:'你是紫微斗数命理师...'};
-    const msgs = [
-      {role:'system', content:''},
-      {role:'user', content:'请解读命盘'},
-      {role:'assistant', content:fullText}
-    ];
+    const msgs = [{role:'assistant', content:fullText}];
     await fetch(`/api/ziwei/sessions/${sid}`, {
       method:'PATCH', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({messages: msgs})
