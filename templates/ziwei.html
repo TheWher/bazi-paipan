@@ -180,25 +180,6 @@ async function loadSessions(){
     catch(e){}
 }
 loadSessions();
-</script></script>
+</script>
 </body>
 </html>
-// ── 会话管理 ──
-async function loadSessions(){
-    try{const r=await fetch('/api/ziwei/sessions');const sessions=await r.json();document.getElementById('session-count').textContent=sessions.length;
-        if(sessions.length>0){document.getElementById('session-details').open=true}
-        document.getElementById('session-list').innerHTML=sessions.map(s=>'<div style="padding:6px 8px;margin:3px 0;border-radius:6px;cursor:pointer" onclick="window.location.href='/ziwei/report/'+s.id+''">'<span style="color:#d4a843;font-weight:600">📝 '+s.title+'</span>'<span style="color:#666;font-size:.8em;margin-left:4px">'+s.message_count+'条</span>'<button onclick="event.stopPropagation();fetch('/api/ziwei/sessions/'+s.id+'{method:'DELETE'}).then(()=>loadSessions())" style="float:right;background:none;border:none;color:#666;cursor:pointer">✕</button>'</div>').join('')||'<div style="color:#666;padding:8px;text-align:center">暂无历史会话</div>'}
-    catch(e){}
-}
-async function saveSession(){
-    if(!plateData)return;
-    const title=document.getElementById('y').value+'-'+document.getElementById('m').value+'-'+document.getElementById('d').value+' '+document.getElementById('h').value+':00';
-    const body={title,messages:[],plate_data:plateData,plate_summary:title};
-    try{
-        const r=await fetch('/api/ziwei/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-        const d=await r.json();
-        if(d.id) window.location.href='/ziwei/report/'+d.id;
-    }catch(e){}
-}
-loadSessions();
-
