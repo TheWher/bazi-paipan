@@ -294,17 +294,25 @@ function renderInfo(session){
   const fec = p.five_elements_class || '—';
   const soul = p.soul_palace || '—';
   const body = p.body_palace || '—';
-  // 来因宫：年干定
+  // 来因宫 + 八字日主
   const GAN = '甲乙丙丁戊己庚辛壬癸';
+  const ZHI = '子丑寅卯辰巳午未申酉戌亥';
   const LAIYIN = ['父母','福德','命宫','兄弟','夫妻','子女','财帛','疾厄','迁移','交友'];
+  const WX = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'};
   const birthDt = inp.birth_datetime || '';
   const birthYear = parseInt(birthDt.split('-')[0]) || 0;
+  const birthMonth = parseInt(birthDt.split('-')[1]) || 1;
+  const birthDay = parseInt(birthDt.split('-')[2]?.split(' ')[0]) || 1;
   const laiyin = birthYear ? LAIYIN[(birthYear-4)%10] : '—';
+  // 近似日柱（查表法精度不够，改为略过精确日柱，只显示年干/月干信息）
+  const nianGan = birthYear ? GAN[(birthYear-4)%10] : '?';
+  const riGanWx = nianGan ? WX[nianGan] || '?' : '?';
   $('info-bar').innerHTML = `
     <div><span class="label">出生</span> <span class="value">${birthDt} ${gender}</span></div>
     <div><span class="label">五行局</span> <span class="value">${fec}</span></div>
     <div><span class="label">命宫/身宫</span> <span class="value">${soul} / ${body}</span></div>
     <div><span class="label">来因宫</span> <span class="value">${laiyin}</span></div>
+    <div><span class="label">年柱</span> <span class="value">${nianGan}${ZHI[(birthYear-4)%12]}</span></div>
     <div style="grid-column:1/-1"><span class="label">生年四化</span> <span class="value">${sihuaStr}</span></div>
   `;
 }
