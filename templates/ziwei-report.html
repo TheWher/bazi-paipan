@@ -480,12 +480,18 @@ function renderFlowYears(){
 let activeFlowLabel = null;
 function clearScope(){
   document.querySelectorAll('.palace').forEach(el => {
-    el.querySelector('.scope-badge')?.remove();
+    el.querySelector('.scope-badge')?.remove(); el.querySelector('.sihua-flow')?.remove();
     if(!el.classList.contains('ming')) el.style.boxShadow = '';
   });
+  document.querySelectorAll('.strip-cell').forEach(c => c.style.background = '');
   activeFlowLabel = null;
 }
 function highlightFlow(br, label, gz){
+  // 清除其他流年/月/日
+  document.querySelectorAll('.palace').forEach(el => {
+    el.style.boxShadow = ''; el.querySelector('.scope-badge')?.remove(); el.querySelector('.sihua-flow')?.remove();
+  });
+  document.querySelectorAll('.strip-cell').forEach(c => c.style.background = '');
   activeFlowLabel = label;
   if(gz){
     const GAN_SIHUA = {'甲':['廉贞','破军','武曲','太阳'],'乙':['天机','天梁','紫微','太阴'],'丙':['天同','天机','文昌','廉贞'],'丁':['太阴','天同','天机','巨门'],'戊':['贪狼','太阴','右弼','天机'],'己':['武曲','贪狼','天梁','文曲'],'庚':['太阳','武曲','太阴','天同'],'辛':['巨门','太阳','文曲','文昌'],'壬':['天梁','紫微','左辅','武曲'],'癸':['破军','巨门','太阴','贪狼']};
@@ -530,125 +536,20 @@ function highlightFlow(br, label, gz){
       el.scrollIntoView({behavior:'smooth', block:'center'});
     }
   });
-}
-function highlightFlow(br, label, gz){
-  document.querySelectorAll('.palace').forEach(el => {
-    el.querySelector('.scope-badge')?.remove();
-    const dz = el.querySelector('.p-dizhi');
-    if(dz && dz.textContent.trim() === br){
-      el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
-      const badge = document.createElement('span');
-      badge.className = 'scope-badge';
-      badge.textContent = label;
-      badge.style.cssText = 'font-size:7px;color:var(--azure);border:1px solid var(--azure);border-radius:2px;padding:0 2px';
-      el.querySelector('.p-head')?.appendChild(badge);
-      el.scrollIntoView({behavior:'smooth', block:'center'});
-    }
+  // 高亮流年/月/日条
+  ['flow-row','month-row','day-row'].forEach(id => {
+    document.querySelectorAll('#'+id+' .strip-cell').forEach(c => {
+      const g = c.querySelector('.gz');
+      if(g && g.textContent === label) c.style.background = 'rgba(74,124,78,0.12)';
+    });
   });
 }
 function highlightDecade(pName){
+  // 清除所有
   document.querySelectorAll('.palace').forEach(el => {
-    const gong = el.querySelector('.p-gong');
-    if(gong && gong.textContent.trim() === pName) el.scrollIntoView({behavior:'smooth'});
+    el.style.boxShadow = ''; el.querySelector('.living-badge')?.remove(); el.querySelector('.scope-badge')?.remove();
   });
-}
-
-// ── 宫位点击弹窗 ──
-function showPalaceDetail(name, plate){
-  const p = (plate.palaces || []).find(x => x.name === name);
-  if(!p) return;
-  const major = (p.major_stars || []).map(s => `${s.name}[${s.brightness||'?'}]`).join('、') || '无主星(空宫)';
-  const minor = (p.minor_stars || []).map(s => s.name).join('、') || '无';
-  const mutagens = (p.mutagens || []).map(m => `${m.star}${m.mutagen}`).join('、') || '无';
-  $('sd-name').textContent = `${name}（${p.earthly_branch}）`;
-  $('sd-content').innerHTML = `
-    <div style="margin-top:6px"><b>主星</b>：${major}</div>
-    <div><b>辅星</b>：${minor}</div>
-    <div><b>四化</b>：${mutagens}</div>
-    <div><b>大限</b>：${p.decadal_range||'—'}</div>
-  `;
-  $('star-dialog').style.display = 'flex';
-}
-function closeStarDetail(){ $('star-dialog').style.display = 'none'; }
-window.addEventListener('keydown', e => { if(e.key==='Escape') closeStarDetail(); });
-
-// ── 三方四正 ──
-let selectedPalace = null;
-const BR = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-function selectPalace(br, plate){
-  selectedPalace = (selectedPalace === br) ? null : br;
-  drawSanfang(plate);
-}
-function drawSanfang(plate){
-  const svg = $('grid-lines');
-  svg.innerHTML = '';
-  if(!selectedPalace || !plate) return;
-  const palaces = plate.palaces || [];
-  const gridEl = $('grid');
-  const rect = gridEl.getBoundingClientRect();
-  const cellW = rect.width / 4, cellH = rect.height / 4;
-  const GRID = {'巳':[0,0],'午':[1,0],'未':[2,0],'申':[3,0],'辰':[0,1],'酉':[3,1],'卯':[0,2],'戌':[3,2],'寅':[0,3],'丑':[1,3],'子':[2,3],'亥':[3,3]};
-  const idx = BR.indexOf(selectedPalace);
-  if(idx < 0) return;
-  const p = GRID[selectedPalace]; if(!p) return;
-  const cx = (p[0] + 0.5) * cellW, cy = (p[1] + 0.5) * cellH;
-  // 对冲 (对宫): idx+6
-  const opp = GRID[BR[(idx+6)%12]];
-  // 三合: idx+4, idx+8
-  const s1 = GRID[BR[(idx+4)%12]], s2 = GRID[BR[(idx+8)%12]];
-  // 绘制连线
-  const points = [
-    {x: cx, y: cy, color: '#c1432f'},  // 本宫红色
-    {x: (opp[0]+0.5)*cellW, y: (opp[1]+0.5)*cellH, color: '#2e6da4'},  // 对冲蓝色
-    {x: (s1[0]+0.5)*cellW, y: (s1[1]+0.5)*cellH, color: '#4a7c4e'},    // 三合绿
-    {x: (s2[0]+0.5)*cellW, y: (s2[1]+0.5)*cellH, color: '#4a7c4e'},    // 三合绿
-  ];
-  // 画线: 本宫→对冲, 本宫→三合1, 本宫→三合2
-  const pairs = [[0,1],[0,2],[0,3]];
-  for(const [i,j] of pairs){
-    drawLine(svg, points[i].x, points[i].y, points[j].x, points[j].y, points[j].color);
-  }
-  // 画节点
-  for(const pt of points){
-    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    circle.setAttribute('cx', pt.x); circle.setAttribute('cy', pt.y);
-    circle.setAttribute('r', pt===points[0]?4:3);
-    circle.setAttribute('fill', pt.color);
-    circle.setAttribute('opacity', '0.7');
-    svg.appendChild(circle);
-  }
-}
-function drawLine(svg, x1, y1, x2, y2, color){
-  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-  line.setAttribute('x1', x1); line.setAttribute('y1', y1);
-  line.setAttribute('x2', x2); line.setAttribute('y2', y2);
-  line.setAttribute('stroke', color);
-  line.setAttribute('stroke-width', '1.5');
-  line.setAttribute('opacity', '0.5');
-  line.setAttribute('stroke-dasharray', '5,3');
-  svg.appendChild(line);
-}
-
-// ── 渲染已有分析 ──
-function renderAnalysis(messages){
-  const aiMsg = messages.filter(m => m.role==='assistant');
-  let html = aiMsg.map(m => formatText(m.content)).join('\n<hr style="border:none;border-top:1px dashed var(--line-faint);margin:12px 0">\n');
-  $('analysis-text').innerHTML = html;
-}
-function formatText(t){
-  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/^## (.+)$/gm,'<h2 style="font-size:14px;letter-spacing:1px;margin:14px 0 8px;border-left:3px solid var(--vermillion);padding-left:8px">$1</h2>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\n/g,'<br>');
-}
-
-// ── 大限高亮 ──
-function highlightDecade(pName){
-  document.querySelectorAll('.palace').forEach(el => {
-    el.style.boxShadow = '';
-    el.querySelector('.living-badge')?.remove();
-    el.querySelector('.scope-badge')?.remove();
-  });
+  document.querySelectorAll('.strip-cell').forEach(c => c.style.background = '');
   activeFlowLabel = null;
   // 高亮大限宫位
   let targetIdx = -1;
@@ -659,6 +560,11 @@ function highlightDecade(pName){
       el.scrollIntoView({behavior:'smooth', block:'center'});
       targetIdx = i;
     }
+  });
+  // 高亮大运条
+  document.querySelectorAll('#dayun-row .strip-cell').forEach(c => {
+    const gz = c.querySelector('.gz');
+    if(gz && gz.textContent.trim() === pName) c.style.background = 'rgba(193,67,47,0.1)';
   });
   // 叠盘：大限宫位 → 限年命宫，宫名旋转
   if(targetIdx >= 0 && plateData){
