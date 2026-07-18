@@ -223,10 +223,12 @@
     </div>
     <div class="strip-row" id="dayun-row" style="grid-template-columns:repeat(12,1fr)"></div>
   </div>
-  <!-- 流年条 -->
-  <div class="dayun-strip no-print" id="flow-strip">
-    <div class="strip-head">流年（点击年份→高亮对应宫位）</div>
+  <!-- 流年/流月/流日 条 -->
+  <div class="dayun-strip no-print">
+    <div class="strip-head">流年 · 流月 · 流日 <span style="color:var(--ink-faint);font-size:10px">（点击展开叠盘）</span></div>
     <div class="strip-row" id="flow-row" style="grid-template-columns:repeat(12,1fr)"></div>
+    <div class="strip-row" id="month-row" style="grid-template-columns:repeat(12,1fr);border-top:1px solid var(--line-faint)"></div>
+    <div class="strip-row" id="day-row" style="grid-template-columns:repeat(15,1fr);border-top:1px solid var(--line-faint);font-size:8px"></div>
   </div>
 
   <!-- 分析 -->
@@ -412,10 +414,13 @@ function renderDayun(plate){
 }
 function renderFlowYears(){
   const ty = parseInt($('horo-year')?.value) || new Date().getFullYear();
-  const row = $('flow-row');
   const GAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
   const ZHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-  row.innerHTML = '';
+  const ZHI_NAMES = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+
+  // 流年
+  const fRow = $('flow-row');
+  fRow.innerHTML = '';
   for(let i=0; i<12; i++){
     const y = ty - (ty % 12) + i;
     const gz = GAN[(y-4)%10] + ZHI[(y-4)%12];
@@ -424,9 +429,99 @@ function renderFlowYears(){
     div.className = 'strip-cell';
     if(y === ty) div.classList.add('current');
     div.innerHTML = `<div class="gz">${gz}</div><div class="ages">${y}年</div>`;
-    div.onclick = () => highlightFlow(br, `${y}年`, gz);
-    row.appendChild(div);
+    div.onclick = () => { clearScope(); highlightFlow(br, `${y}年`, gz); };
+    fRow.appendChild(div);
   }
+
+  // 流月：斗君计算
+  const inp = plateData?.input || {};
+  const birthDt = inp.birth_datetime || '';
+  const birthM = parseInt(birthDt.split('-')[1]) || 1;
+  const birthH = parseInt(birthDt.split(' ')[1]?.split(':')[0]) || 0;
+  const sc = Math.floor((birthH + 1) / 2) % 12;
+  const yearIdx = (ty - 4) % 12;
+  const dj = (((yearIdx - (birthM - 1)) % 12 + 12) % 12 + sc) % 12;
+  const palaces = plateData?.palaces || [];
+
+  // 流月条
+  const mRow = $('month-row');
+  mRow.innerHTML = '';
+  for(let m=1; m<=12; m++){
+    const idx = (dj + m - 1) % 12;
+    const br = ZHI[idx];
+    const div = document.createElement('div');
+    div.className = 'strip-cell';
+    div.innerHTML = `<div class="gz">${m}月</div><div class="ages">${br}宫</div>`;
+    div.onclick = () => { clearScope(); highlightFlow(br, `${m}月`, ''); };
+    mRow.appendChild(div);
+  }
+
+  // 流日条（15列显示前30天，每天对应一个地支）
+  const dRow = $('day-row');
+  dRow.innerHTML = '';
+  for(let d=1; d<=30; d++){
+    const br = ZHI[(d-1)%12];
+    const div = document.createElement('div');
+    div.className = 'strip-cell';
+    div.innerHTML = `<div class="gz">${d}日</div><div class="ages">${br}</div>`;
+    div.onclick = () => { clearScope(); highlightFlow(br, `${d}日`, ''); };
+    dRow.appendChild(div);
+  }
+}
+
+let activeFlowLabel = null;
+function clearScope(){
+  document.querySelectorAll('.palace').forEach(el => {
+    el.querySelector('.scope-badge')?.remove();
+    if(!el.classList.contains('ming')) el.style.boxShadow = '';
+  });
+  activeFlowLabel = null;
+}
+function highlightFlow(br, label, gz){
+  activeFlowLabel = label;
+  if(gz){
+    const GAN_SIHUA = {'甲':['廉贞','破军','武曲','太阳'],'乙':['天机','天梁','紫微','太阴'],'丙':['天同','天机','文昌','廉贞'],'丁':['太阴','天同','天机','巨门'],'戊':['贪狼','太阴','右弼','天机'],'己':['武曲','贪狼','天梁','文曲'],'庚':['太阳','武曲','太阴','天同'],'辛':['巨门','太阳','文曲','文昌'],'壬':['天梁','紫微','左辅','武曲'],'癸':['破军','巨门','太阴','贪狼']};
+    const gan = gz[0];
+    const sihua = GAN_SIHUA[gan];
+    const huaNames = ['禄','权','科','忌'];
+    const palaces = plateData?.palaces || [];
+    if(sihua){
+      // 标注流年四化星在哪宫
+      document.querySelectorAll('.palace').forEach(el => {
+        el.querySelector('.sihua-flow')?.remove();
+        const pName = el.querySelector('.p-gong')?.textContent?.trim();
+        if(pName && sihua){
+          for(let i=0; i<4; i++){
+            const star = sihua[i];
+            const found = palaces.find(p =>
+              (p.major_stars||[]).some(s => s.name === star) ||
+              (p.minor_stars||[]).some(s => s.name === star)
+            );
+            if(found && found.name === pName){
+              const tag = document.createElement('span');
+              tag.className = 'sihua-flow';
+              tag.textContent = `流${huaNames[i]}`;
+              tag.style.cssText = 'font-size:8px;margin-left:1px;font-weight:700';
+              tag.style.color = ['#c1432f','#2e6da4','#4a7c4e','#000'][i];
+              el.querySelector('.main-star')?.appendChild(tag);
+            }
+          }
+        }
+      });
+    }
+  }
+  document.querySelectorAll('.palace').forEach(el => {
+    const dz = el.querySelector('.p-dizhi');
+    if(dz && dz.textContent.trim() === br){
+      el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
+      const badge = document.createElement('span');
+      badge.className = 'scope-badge';
+      badge.textContent = label;
+      badge.style.cssText = 'font-size:8px;color:var(--azure);border:1px solid var(--azure);border-radius:2px;padding:0 3px;margin-left:2px;font-weight:700';
+      el.querySelector('.p-head')?.appendChild(badge);
+      el.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+  });
 }
 function highlightFlow(br, label, gz){
   document.querySelectorAll('.palace').forEach(el => {
@@ -544,7 +639,9 @@ function highlightDecade(pName){
   document.querySelectorAll('.palace').forEach(el => {
     el.style.boxShadow = '';
     el.querySelector('.living-badge')?.remove();
+    el.querySelector('.scope-badge')?.remove();
   });
+  activeFlowLabel = null;
   // 高亮大限宫位
   let targetIdx = -1;
   document.querySelectorAll('.palace').forEach((el, i) => {
