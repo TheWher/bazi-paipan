@@ -581,8 +581,10 @@ function highlightDecade(pName){
 }
 // ── 流式分析 ──
 async function startAnalysis(plate, password){
-  if(!plate) return;
+  console.log('startAnalysis called', plate ? 'plate OK' : 'plate NULL');
+  if(!plate){ console.log('plate null, skipping'); return; }
   const area = $('analysis-text');
+  if(!area){ console.log('analysis-text element not found!'); return; }
   area.innerHTML = '正在推算命盘...';
   try{
     const r = await fetch('/api/ziwei/analyze/stream', {
