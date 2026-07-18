@@ -592,10 +592,14 @@ async function startAnalysis(plate, password){
     if(r.status===403){
       const p = prompt('此命盘需要密码才能解读：');
       if(p) return startAnalysis(plate, p);
-      area.innerHTML = '<span style="color:var(--vermillion)">需要密码</span>';
+      area.innerHTML = '<span style="color:var(--vermillion)">需要密码才能解读</span>';
       return;
     }
-    if(!r.ok){ area.innerHTML = '<span style="color:var(--vermillion)">分析请求失败</span>'; return }
+    if(!r.ok){
+      const errText = await r.text().catch(()=>'');
+      area.innerHTML = `<span style="color:var(--vermillion)">分析请求失败 (${r.status})${errText ? ': '+errText.slice(0,100) : ''}</span>`;
+      return;
+    }
     const reader = r.body.getReader();
     const decoder = new TextDecoder();
     let fullText = '', buf = '';
@@ -627,7 +631,7 @@ async function startAnalysis(plate, password){
       body:JSON.stringify({messages: msgs})
     });
   }catch(e){
-    area.innerHTML = '<span style="color:var(--vermillion)">分析中断，请重试</span>';
+    area.innerHTML = '<span style="color:var(--vermillion)">分析异常: ' + e.message + '</span>';
   }
 }
 
