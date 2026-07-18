@@ -95,6 +95,11 @@ memory: project
 
 **confidence**：cross_references 中 level 为"强"的条目越多 → confidence 越高。≥3 条"强"→high；1-2 条→medium；0 条→low。
 
+## 输出数量要求
+- `cross_references` 至少 6-10 条，覆盖全部 6 组对宫冲照 + 至少 2 条三合联动
+- `conclusions` 至少 5-8 条，覆盖身宫走势、各宫位联动结论
+- `body_palace` 必须分析年龄权重和趋势
+
 ## 禁制
 
 - 不分析格局（任何 X 格判定）
