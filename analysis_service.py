@@ -1611,11 +1611,21 @@ def analyze_ziwei(plate_dict: dict, timeout: int = 120, bazi_ref: dict = None) -
             name = future_map[future]
             results[name] = future.result()
 
-    # 构建合成输入
-    synth_input = "\n\n".join([
-        f"【格局分析】\n{json.dumps(results.get('geju', {}), ensure_ascii=False)}",
-        f"【四化分析】\n{json.dumps(results.get('sihua', {}), ensure_ascii=False)}",
-        f"【宫位联动分析】\n{json.dumps(results.get('palace', {}), ensure_ascii=False)}",
+    # 从三专项的 paragraphs 构建合成输入
+    def _format_agent_output(data, label):
+        paragraphs = data.get('paragraphs', []) if isinstance(data, dict) else []
+        if not paragraphs:
+            return f"【{label}】\n（无分析结论）"
+        lines = [f"【{label}】"]
+        for p in paragraphs:
+            lines.append(f"\n### {p.get('topic', '未命名段落')}")
+            lines.append(p.get('content', ''))
+        return '\n'.join(lines)
+
+    synth_input = "\n\n---\n\n".join([
+        _format_agent_output(results.get('geju', {}), '格局分析'),
+        _format_agent_output(results.get('sihua', {}), '四化分析'),
+        _format_agent_output(results.get('palace', {}), '宫位联动分析'),
     ])
     synth_messages = [{"role": "user", "content": synth_input}]
 

@@ -69,36 +69,10 @@ memory: project
 - 财富 → 财帛宫 + 福德宫 + 官禄宫 + 田宅宫
 - 健康 → 疾厄宫 + 福德宫 + 命宫
 
-## 输出格式
+## 输出 JSON Schema（严格遵循，禁止输出 Markdown）
 
-**只输出纯 JSON，一行不许多。不输出 markdown、不输出解释、不输出推理过程。**
 
-```json
-{
-  "agent": "palace",
-  "cross_references": [
-    {"from": "宫位名", "to": "宫位名", "type": "冲照|三合|联动", "effect": "一句话描述联动影响", "level": "强|中|弱"}
-  ],
-  "body_palace": {"location": "宫位名", "weight": "百分比", "trend": "后天发力方向的简短描述"},
-  "conclusions": ["结论1", "结论2", "结论3"],
-  "confidence": "high|medium|low"
-}
-```
-
-## 字段生成规则
-
-**cross_references**：遍历所有对宫冲照（6 组），每组必出 1 条。如果对宫有主星——标注 level 依据冲照力度规则（庙旺→强；得利→中；平→弱）；如果对宫空宫——借星后标记"中"或"弱"。三合联动至少出 2 条（找三方会照最显著的组合）。总数 8-12 条。
-
-**body_palace**：weight 按年龄分段表取值；trend 一句话概括后天发力方向。
-
-**conclusions**：3-5 条，言简意赅。必须是宫位结构层面的结论（如「命迁冲照强→内外反差大」），不能是格局/四化结论。
-
-**confidence**：cross_references 中 level 为"强"的条目越多 → confidence 越高。≥3 条"强"→high；1-2 条→medium；0 条→low。
-
-## 输出数量要求
-- `cross_references` 至少 6-10 条，覆盖全部 6 组对宫冲照 + 至少 2 条三合联动
-- `conclusions` 至少 5-8 条，覆盖身宫走势、各宫位联动结论
-- `body_palace` 必须分析年龄权重和趋势
+**content 写作标准**：每个 content ≥ 200 字，包含定位→推演→实务三段式。至少 4-6 个段落。
 
 ## 禁制
 
