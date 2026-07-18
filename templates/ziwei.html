@@ -104,35 +104,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
     </div>
 </aside>
 <main class="app-main">
-    <section id="welcome-section"><div style="text-align:center;padding:120px 40px;color:var(--text-muted)"><div style="font-size:3em;margin-bottom:16px">🔮</div><p style="font-size:1em;margin-bottom:8px">输入出生信息，点击「排盘」开始分析</p><p style="font-size:.75em">iztro JS 原版引擎 · 紫微斗数命盘解读</p></div></section>
+    <section id="welcome-section"><div style="text-align:center;padding:120px 40px;color:var(--text-muted)"><div style="font-size:3em;margin-bottom:16px">🔮</div><p style="font-size:1em;margin-bottom:8px">输入出生信息，点击「排盘」开始分析</p><p style="font-size:.75em">排盘后点击 AI 解读 → 自动跳转水墨报告页</p></div></section>
     <section id="loading-section" class="hidden"><div class="loading"><div class="spinner"></div><p>紫微排盘中...</p></div></section>
-    <section id="chart-section" class="hidden">
-        <div class="floating-bar"><span class="bar-title">🔮 紫微命盘</span>
-            <span style="font-size:.72em;color:var(--text-muted)">运限:</span>
-            <input type="number" id="horo-year" value="2026" min="1900" max="2100" style="width:60px;padding:3px 4px;font-size:.68em;border:1px solid var(--border);border-radius:4px;background:var(--card-bg);color:var(--text)" onchange="if(astrolabe&&activeScopes.size>0){fetchLiuyao();renderChart()}">
-            <button id="btn-decadal" class="btn" style="font-size:.68em;padding:3px 8px" onclick="toggleScope('decadal')">大限</button>
-            <button id="btn-yearly" class="btn" style="font-size:.68em;padding:3px 8px" onclick="toggleScope('yearly')">流年</button>
-            <button id="btn-monthly" class="btn" style="font-size:.68em;padding:3px 8px" onclick="toggleScope('monthly')">流月</button>
-            <button id="btn-daily" class="btn" style="font-size:.68em;padding:3px 8px" onclick="toggleScope('daily')">流日</button>
-            <button id="btn-flystar" class="btn" style="font-size:.7em;padding:3px 10px" onclick="toggleFlyStars()">✈️ 飞星</button>
-            <span id="horo-result" style="font-size:.7em;color:var(--accent)"></span>
-            <!-- 格局判定交由 Agent v6 分析，此处不显示预设徽章 -->
-        </div>
-        <div id="flystar-panel" class="hidden" style="background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;font-size:.74em;max-height:260px;overflow-y:auto"></div>
-        <div class="chart-wrapper" id="zw-chart"></div>
-        <div id="star-detail" class="hidden" style="background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:16px;margin-bottom:14px;font-size:.8em;line-height:1.7"></div>
-        <div id="decadal-panel" style="background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);padding:14px 18px;margin-top:14px;font-size:.78em"></div>
-    </section>
-    <section id="analysis-section" class="hidden">
-        <div class="floating-bar"><span class="bar-title">📜 命盘解读</span></div>
-        <div id="analysis-content" class="analysis-content"></div>
-        <div id="chat-section" style="margin-top:14px">
-            <div class="floating-bar"><span class="bar-title">💬 追问</span></div>
-            <div id="chat-messages" style="margin-bottom:10px"></div>
-            <div style="display:flex;gap:8px">
-                <textarea id="chat-input" rows="2" placeholder="追问Agent，例如：我今年换工作合适吗？财运怎么样？" style="flex:1;padding:10px;border:1px solid var(--border-light);border-radius:var(--radius-sm);background:var(--card-bg);color:var(--text);font-size:.85em;resize:none;outline:none"></textarea>
-                <button id="btn-chat-send" class="btn btn-gold" style="align-self:flex-end;flex-shrink:0" onclick="sendChat()">发送</button>
-            </div>
+    <section id="result-section" class="hidden">
+        <div style="text-align:center;padding:60px 40px">
+            <div style="font-size:2em;margin-bottom:12px">✅</div>
+            <p style="font-size:.95em;color:var(--text);margin-bottom:8px">排盘完成</p>
+            <p style="font-size:.78em;color:var(--text-muted)">点击下方「AI 解读」生成水墨风格命盘报告</p>
         </div>
     </section>
 </main>
@@ -147,11 +125,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","M
     </div>
 </div>
 <div id="city-suggestions" style="display:none;position:fixed;z-index:99999;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;max-height:280px;overflow-y:auto;font-size:.82em;line-height:1.8;box-shadow:0 4px 24px rgba(0,0,0,.35)"></div>
-<script src="https://cdn.jsdelivr.net/npm/iztro/dist/iztro.min.js" defer></script>
 <script>
 const $=id=>document.getElementById(id);
-let astrolabe=null,plateData=null,selectedPalace=null,activeStem=null;
-const activeScopes=new Set(); // 'decadal','yearly','monthly','daily'
+let plateData=null,conversationMessages=null,currentSessionId=null;
 
 // Theme
 (function(){const t=localStorage.getItem('bazi_theme');$('btn-theme').textContent=t==='dark'?'☀️':'🌙'})();
@@ -177,197 +153,16 @@ document.addEventListener('click',function(e){if(!e.target.closest('#location')&
 
 async function geocodeCity(){const loc=$('location').value.trim();if(!loc)return;const btn=$('btn-geocode');btn.disabled=true;try{const r=await fetch('/api/geocode?q='+encodeURIComponent(loc));const d=await r.json();if(d.error){$('geocode-status').style.display='block';$('geocode-status').textContent='未找到该地点';return}const c=d.results?d.results[0]:null;if(!c){$('geocode-status').style.display='block';$('geocode-status').textContent='未找到该地点';return}$('longitude').value=c.lon.toFixed(2);$('location').value=c.display_name.split('，')[0];$('geocode-status').style.display='block';$('geocode-status').textContent='已定位: '+c.display_name+' · 经度 '+c.lon.toFixed(2)+'°E';updateSolarInfo()}catch(e){$('geocode-status').style.display='block';$('geocode-status').textContent='网络错误'}finally{btn.disabled=false}}
 
-// Paipan
+// ── 排盘 ──
 $('btn-render').addEventListener('click',()=>{
     const b=getB();if(!b.y||!b.m||!b.d)return;
-    liuyaoCache=null;activeStem=null;selectedPalace=null;activeScopes.clear();
-    $('welcome-section').classList.add('hidden');$('loading-section').classList.remove('hidden');$('chart-section').classList.add('hidden');$('analysis-section').classList.add('hidden');
-    let hh=b.h,mm=b.min;if($('use-true-solar').checked){const lng=parseFloat($('longitude').value)||120;const adj=getAdjustedHour(b.h,b.min,lng);hh=adj.hour;mm=adj.minute}
-    const hi=Math.floor((hh+1)/2)%12;
-    try{astrolabe=b.cal==='lunar'?iztro.astro.byLunar(b.y+'-'+b.m+'-'+b.d,hi,b.gender,false,true,'zh-CN'):iztro.astro.bySolar(b.y+'-'+b.m+'-'+b.d,hi,b.gender,true,'zh-CN')}
-    catch(e){$('loading-section').innerHTML='<p style="color:#ef5350;text-align:center;padding:60px">排盘失败: '+e.message+'</p>';return}
-    try{renderChart()}catch(e){$('loading-section').innerHTML='<p style="color:#ef5350;text-align:center;padding:60px">渲染失败: '+e.message+'</p>';return}
-    $('loading-section').classList.add('hidden');$('chart-section').classList.remove('hidden');$('btn-analyze').disabled=false;
-    fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:hh,minute:mm,gender:b.gender,is_lunar:b.cal==='lunar',longitude:parseFloat($('longitude').value)||120,location:$('location').value||''})}).then(r=>r.json()).then(d=>{plateData=d}).catch(()=>{});
-});
-
-// Horoscope scope toggle (independent, can stack)
-let liuyaoCache=null;
-function fetchLiuyao(){
-    if(!astrolabe)return;
-    const b=getB(),ty=parseInt($('horo-year').value)||new Date().getFullYear();
-    fetch('/api/ziwei/horoscope',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:b.h,minute:b.min,gender:b.gender,target_year:ty})}).then(r=>r.json()).then(d=>{liuyaoCache=d;renderChart()}).catch(()=>{});
-}
-function toggleScope(scope){
-    if(activeScopes.has(scope))activeScopes.delete(scope);else activeScopes.add(scope);
-    ['decadal','yearly','monthly','daily'].forEach(s=>{const btn=$('btn-'+s);if(btn)btn.style.cssText=activeScopes.has(s)?'font-size:.68em;padding:3px 8px;border:1px solid var(--accent);border-radius:6px;background:rgba(212,168,67,.12);color:var(--accent);font-weight:600':'font-size:.68em;padding:3px 8px'});
-    renderChart();
-    if(activeScopes.size>0)fetchLiuyao();
-}
-
-// GAN_SIHUA table
-const GAN_SIHUA={甲:{禄:'廉贞',权:'破军',科:'武曲',忌:'太阳'},乙:{禄:'天机',权:'天梁',科:'紫微',忌:'太阴'},丙:{禄:'天同',权:'天机',科:'文昌',忌:'廉贞'},丁:{禄:'太阴',权:'天同',科:'天机',忌:'巨门'},戊:{禄:'贪狼',权:'太阴',科:'右弼',忌:'天机'},己:{禄:'武曲',权:'贪狼',科:'天梁',忌:'文曲'},庚:{禄:'太阳',权:'武曲',科:'太阴',忌:'天同'},辛:{禄:'巨门',权:'太阳',科:'文曲',忌:'文昌'},壬:{禄:'天梁',权:'紫微',科:'左辅',忌:'武曲'},癸:{禄:'破军',权:'巨门',科:'太阴',忌:'贪狼'}};
-
-// Fly star panel
-function toggleFlyStars(){if(!astrolabe)return;const el=$('flystar-panel');if(!el.classList.contains('hidden')){el.classList.add('hidden');return}el.classList.remove('hidden');const palaces=Array.isArray(astrolabe.palaces)?astrolabe.palaces:typeof astrolabe.palaces==='function'?astrolabe.palaces():[];let h='<div style="font-weight:700;color:var(--accent);margin-bottom:6px">十二宫飞星</div>';for(const p of palaces){const gan=p.heavenlyStem;const fly=GAN_SIHUA[gan];if(!fly)continue;let items=[];for(const[mu,sn]of Object.entries(fly)){let t='?';for(const pp of palaces)for(const s of[...pp.majorStars,...pp.minorStars])if(s.name===sn){t=pp.name;break}items.push('<span style="color:'+(mu==='禄'?'#2e7d32':mu==='权'?'#7b1fa2':mu==='科'?'#1565c0':'#c62828')+'">化'+mu+'→'+t+'</span>')}h+='<div style="padding:2px 6px;border-left:2px solid var(--accent);margin-bottom:3px;font-size:.85em"><b style="color:var(--accent)">'+p.name+'</b>('+gan+'): '+items.join(' · ')+'</div>'}el.innerHTML=h}
-
-function toggleStem(stem){activeStem=(activeStem===stem)?null:stem;renderChart()}
-
-// ═══ SVG Render ═══
-function renderChart(){
-    if(!astrolabe)return;
-    const isDark=document.documentElement.getAttribute('data-theme')==='dark';
-    const S={bg:isDark?'#19192b':'#f8f8fa',cell:isDark?'#1a1a2e':'#fff',border:isDark?'#555':'#bbb',text:isDark?'#999':'#777',gold:'#d4a843'};
-    const palaces=Array.isArray(astrolabe.palaces)?astrolabe.palaces:typeof astrolabe.palaces==='function'?astrolabe.palaces():[];
-    const soulBr=astrolabe.earthlyBranchOfSoulPalace,bodyBr=astrolabe.earthlyBranchOfBodyPalace,fec=astrolabe.fiveElementsClass;
-    let horoscope=null;
-    if(activeScopes.size>0)try{const hy=parseInt($('horo-year').value)||new Date().getFullYear();horoscope=astrolabe.horoscope(hy+'-07-01',parseInt($('h').value)||1)}catch(e){}
-    const siHua=[];for(const p of palaces)for(const s of[...p.majorStars,...p.minorStars])if(s.mutagen)siHua.push({star:s.name,hua:s.mutagen,palace:p.name});
-
-    const W=780,H=960,pad=14,cellW=(W-2*pad)/4,cellH=(H-2*pad-24)/4;
-    const GRID={'巳':[0,0],'午':[1,0],'未':[2,0],'申':[3,0],'辰':[0,1],'酉':[3,1],'卯':[0,2],'戌':[3,2],'寅':[0,3],'丑':[1,3],'子':[2,3],'亥':[3,3]};
-    const BR=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-    const sfSet=new Set();if(selectedPalace){const i=BR.indexOf(selectedPalace);if(i>=0){sfSet.add(selectedPalace);sfSet.add(BR[(i+6)%12]);sfSet.add(BR[(i+4)%12]);sfSet.add(BR[(i+8)%12])}}
-
-    let svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'">';
-    svg+='<rect width="'+W+'" height="'+H+'" fill="'+S.bg+'" rx="8"/>';
-    const zod=astrolabe.zodiac||'',sign=astrolabe.sign||'',cn=astrolabe.chineseDate||'';
-    svg+='<text x="'+W/2+'" y="24" text-anchor="middle" fill="#d4a843" font-size="18" font-weight="700">紫微斗数 · '+fec+'</text>';
-    svg+='<text x="'+W/2+'" y="44" text-anchor="middle" fill="#888" font-size="9">'+cn+' · 生肖'+zod+' · 星座'+sign+'</text>';
-
-    for(const p of palaces){
-        const br=p.earthlyBranch,st=p.heavenlyStem;if(!br)continue;const pos=GRID[br];if(!pos)continue;
-        const x=pad+pos[0]*cellW,y=pad+pos[1]*cellH+34;
-        const isSoul=br===soulBr,isBody=br===bodyBr,isSF=sfSet.has(br),isSel=br===selectedPalace;
-        const stroke=isSel?'#d4a843':isSF?'#64b5f6':isSoul?'#d4a843':isBody?'#7c4dff':'#999';
-        svg+='<rect x="'+(x+1)+'" y="'+(y+1)+'" width="'+(cellW-2)+'" height="'+(cellH-2)+'" rx="4" fill="'+S.cell+'" stroke="'+stroke+'" stroke-width="'+(isSel?2.5:isSF||isSoul||isBody?2:1)+'" style="cursor:pointer" onclick="selectPalace(\''+br+'\')"/>';
-        svg+='<text x="'+(x+cellW/2)+'" y="'+(y+16)+'" text-anchor="middle" fill="#888" font-size="18" font-weight="800" style="pointer-events:none">'+br+'</text>';
-        svg+='<text x="'+(x+cellW/2)+'" y="'+(y+cellH-4)+'" text-anchor="middle" fill="'+(isSoul?'#c62828':'#888')+'" font-size="11" font-weight="600" style="pointer-events:none">'+p.name+'</text>';
-        // 宫干 (点击触飞化线)
-        var gzCls=activeStem===st?'font-weight:700;fill:#d4a843':'fill:#d4a843';
-        svg+='<text x="'+(x+cellW-6)+'" y="'+(y+cellH-12)+'" text-anchor="end" style="cursor:pointer;'+gzCls+'" font-size="9" onclick="event.stopPropagation();toggleStem(\''+st+'\')">'+st+br+'</text>';
-        if(isSoul)svg+='<text x="'+(x+cellW-6)+'" y="'+(y+12)+'" text-anchor="end" fill="#d4a843" font-size="10" font-weight="700" style="pointer-events:none">命</text>';
-        if(isBody)svg+='<text x="'+(x+cellW-6)+'" y="'+(y+22)+'" text-anchor="end" fill="#7c4dff" font-size="10" font-weight="700" style="pointer-events:none">身</text>';
-
-        let sy=y+30;
-        // 主星
-        for(const s of p.majorStars){
-            const clr=s.type==='major'?'#d4a843':'#ce93d8';
-            svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="'+clr+'" font-size="12" font-weight="600" style="cursor:pointer" onclick="event.stopPropagation();showStarDetail(\''+s.name+'\')">'+s.name;
-            if(s.brightness)svg+='<tspan fill="'+(s.brightness==='庙'?'#d4a843':s.brightness==='旺'?'#e8a860':s.brightness==='陷'?'#c62828':'#888')+'" font-size="9">'+s.brightness+'</tspan>';
-            if(s.mutagen){const hc={'禄':'#2e7d32','权':'#7b1fa2','科':'#1565c0','忌':'#c62828'};svg+='<tspan fill="'+hc[s.mutagen]+'" font-size="9">◈</tspan>'}
-            // 自化标记：本宫天干四化包含此星
-            if(st&&GAN_SIHUA[st]){const selfMu=Object.entries(GAN_SIHUA[st]).find(([mu,sn])=>sn===s.name);if(selfMu&&!s.mutagen){const hc={'禄':'#2e7d32','权':'#7b1fa2','科':'#1565c0','忌':'#c62828'};svg+='<tspan fill="'+hc[selfMu[0]]+'" font-size="8">自化'+selfMu[0]+'</tspan>'}}
-            svg+='</text>';sy+=16;
-        }
-        const minors=p.minorStars||[];
-        // 吉星
-        const ausp=(p.minorStars||[]).filter(s=>s.type==='soft'||s.type==='tianma'||s.type==='lucun');
-        if(ausp.length){svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#ce93d8" font-size="9">'+ausp.map(s=>s.name).join(' ')+'</text>';sy+=12}
-        // 煞星 (红色可见)
-        const sha=(p.minorStars||[]).filter(s=>s.type==='tough');
-        if(sha.length){svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#ef5350" font-size="9">'+sha.map(s=>s.name).join(' ')+'</text>';sy+=12}
-        // 运限流曜 (按scope分别显示 + 后端liuyao数据)
-        if(horoscope||liuyaoCache){
-            // CDN horoscope markers (decadal stars)
-            if(horoscope&&activeScopes.has('decadal')&&horoscope.decadal&&horoscope.decadal.stars&&horoscope.decadal.stars[p.index]){
-                const names=horoscope.decadal.stars[p.index].map(s=>s.name).join(' ');
-                if(names){svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#4a9eff" font-size="7">'+names+'</text>';sy+=9}
-            }
-            // 后端流曜数据 (yearly流禄/流羊/流昌等)
-            if(liuyaoCache&&activeScopes.has('yearly')){
-                const ly=liuyaoCache.liuyao||{};let cellLy=[];
-                for(const[k,v]of Object.entries(ly))if(v===p.name)cellLy.push(k.replace('流',''));
-                if(cellLy.length){svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="#5cb85c" font-size="7">'+cellLy.join(' ')+'</text>';sy+=9}
-            }
-        }
-        // 十二长生
-        const cs12=p.changsheng12||'',bs12=p.boshi12||'';
-        if(cs12)svg+='<text x="'+(x+cellW/2)+'" y="'+sy+'" text-anchor="middle" fill="'+S.text+'" font-size="8">'+cs12+(bs12?' · '+bs12:'')+'</text>';sy+=9;
-        // 运限标记
-        let hy=y+cellH-16;
-        if(horoscope){
-            const marks=[{key:'decadal',label:'大限',color:'#4a9eff'},{key:'yearly',label:'流年',color:'#5cb85c'},{key:'monthly',label:'流月',color:'#f0ad4e'},{key:'daily',label:'流日',color:'#d4a843'}];
-            for(const m of marks)if(activeScopes.has(m.key)&&horoscope[m.key]&&horoscope[m.key].index===p.index){svg+='<text x="'+(x+3)+'" y="'+hy+'" fill="'+m.color+'" font-size="9">'+m.label+'</text>';hy-=7}
-        }
-    }
-
-    // 中心区
-    const cx=pad+cellW,cy=pad+cellH+34,cw=cellW*2,ch=cellH*2;
-    svg+='<rect x="'+(cx+1)+'" y="'+(cy+1)+'" width="'+(cw-2)+'" height="'+(ch-2)+'" rx="4" fill="'+S.cell+'" stroke="#999"/>';
-    svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+32)+'" text-anchor="middle" fill="#d4a843" font-size="16" font-weight="700">紫微斗数</text>';
-    svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+52)+'" text-anchor="middle" fill="'+S.text+'" font-size="10">'+fec+' · 命宫: '+soulBr+' / 身宫: '+bodyBr+'</text>';
-    svg+='<text x="'+(cx+cw/2)+'" y="'+(cy+70)+'" text-anchor="middle" fill="#d4a843" font-size="10">生年四化:</text>';
-    const huaLabel={'禄':'◈','权':'▲','科':'◎','忌':'✕'},huaColor={'禄':'#2e7d32','权':'#7b1fa2','科':'#1565c0','忌':'#c62828'};
-    let hy2=cy+84;
-    for(const sh of siHua){svg+='<text x="'+(cx+cw/2)+'" y="'+hy2+'" text-anchor="middle" fill="'+huaColor[sh.hua]+'" font-size="9">'+(huaLabel[sh.hua]||'')+' '+sh.star+'化'+sh.hua+' → '+sh.palace+'</text>';hy2+=14}
-    // 大限四化 (从后端liuyaoCache获取大限干支)
-    if(activeScopes.has('decadal')&&liuyaoCache&&liuyaoCache.decadal_gz){
-        const dGz=liuyaoCache.decadal_gz,dGan=dGz[0];
-        if(dGan&&GAN_SIHUA[dGan]){
-            const dFly=GAN_SIHUA[dGan];
-            svg+='<text x="'+(cx+cw/2)+'" y="'+hy2+'" text-anchor="middle" fill="#4a9eff" font-size="9">大限 '+dGz+' 四化:</text>';hy2+=14;
-            for(const[mu,sn]of Object.entries(dFly)){
-                let tgtP='?';for(const pp of palaces)for(const s of[...pp.majorStars,...pp.minorStars])if(s.name===sn){tgtP=pp.name;break}
-                svg+='<text x="'+(cx+cw/2)+'" y="'+hy2+'" text-anchor="middle" fill="'+huaColor[mu]+'" font-size="8">'+(huaLabel[mu]||'')+' '+sn+' → '+tgtP+'</text>';hy2+=12;
-            }
-        }
-    }
-
-    // 飞化连线
-    if(activeStem){
-        const srcPalace=palaces.find(p=>p.heavenlyStem===activeStem);
-        if(srcPalace){const fly=GAN_SIHUA[activeStem];if(fly){const srcBr=srcPalace.earthlyBranch;const sp=GRID[srcBr];if(sp){const sx=pad+sp[0]*cellW+cellW/2,sY=pad+sp[1]*cellH+34+cellH/2;
-            const hc2={'禄':'#2e7d32','权':'#7b1fa2','科':'#1565c0','忌':'#c62828'};
-            for(const[mu,sn]of Object.entries(fly)){let tp=null;for(const pp of palaces)for(const s of[...pp.majorStars,...pp.minorStars])if(s.name===sn){tp=pp;break}if(tp){const tbr=tp.earthlyBranch,tp2=GRID[tbr];if(tp2){const tx=pad+tp2[0]*cellW+cellW/2,tY=pad+tp2[1]*cellH+34+cellH/2;
-                svg+='<line x1="'+sx+'" y1="'+sY+'" x2="'+tx+'" y2="'+tY+'" stroke="'+hc2[mu]+'" stroke-width="2" opacity="0.7"/>';
-                svg+='<circle cx="'+tx+'" cy="'+tY+'" r="3" fill="'+hc2[mu]+'"/>';
-            }}}}
-        }}
-    }
-
-    // 三方四正线
-    if(selectedPalace){const si=BR.indexOf(selectedPalace);if(si>=0){const sp=GRID[selectedPalace];if(sp){const sX=pad+sp[0]*cellW+cellW/2,sY=pad+sp[1]*cellH+34+cellH/2;[BR[(si+4)%12],BR[(si+8)%12],BR[(si+6)%12]].forEach(sfb=>{const fp=GRID[sfb];if(fp){const tX=pad+fp[0]*cellW+cellW/2,tY=pad+fp[1]*cellH+34+cellH/2;svg+='<line x1="'+sX+'" y1="'+sY+'" x2="'+tX+'" y2="'+tY+'" stroke="#7c4dff" stroke-width="1.5" opacity="0.5" stroke-dasharray="3,3"/>'}})}}}
-    svg+='</svg>';
-    $('zw-chart').innerHTML=svg;
-
-    // 大限面板
-    const birthY=parseInt($('y').value)||1991,curAge=new Date().getFullYear()-birthY;
-    let dp='<div style="font-weight:700;color:var(--accent);margin-bottom:8px">大限时间轴 (当前 '+curAge+'岁)</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
-    for(const p of palaces){const dec=p.decadal||p.stage||{};const dr=dec.range;if(!dr)continue;const isCur=curAge>=dr[0]&&curAge<=dr[1];dp+='<div style="padding:4px 10px;border:1px solid var(--border-light);border-radius:8px;font-size:.85em;'+(isCur?'background:rgba(212,168,67,.12);border-color:var(--accent);font-weight:700':'')+'"><span style="color:var(--accent)">'+(dec.heavenlyStem||'')+(dec.earthlyBranch||'')+'</span> '+p.name+' <span style="color:var(--text-muted)">'+dr[0]+'-'+dr[1]+'岁</span></div>'}
-    $('decadal-panel').innerHTML=dp+'</div>';
-}
-
-function showStarDetail(name){
-    if(!astrolabe||!name)return;const el=$('star-detail');
-    try{const palaces=Array.isArray(astrolabe.palaces)?astrolabe.palaces:typeof astrolabe.palaces==='function'?astrolabe.palaces():[];
-        // 找该星所在的所有宫位
-        const inPalaces=[];for(const p of palaces)for(const s of[...p.majorStars,...p.minorStars])if(s.name===name){inPalaces.push(p);break}
-        // 找亮度等信息
-        let brightness='',mutagen='';for(const p of palaces)for(const s of[...p.majorStars,...p.minorStars])if(s.name===name){brightness=s.brightness||'';mutagen=s.mutagen||'';break}
-        if(!inPalaces.length){el.classList.add('hidden');return}
-        const p0=inPalaces[0];const pBr=p0.earthlyBranch;
-        // 三方四正
-        const BR2=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];const bi=BR2.indexOf(pBr);
-        const duiBr=bi>=0?BR2[(bi+6)%12]:'';const san1=bi>=0?BR2[(bi+4)%12]:'';const san2=bi>=0?BR2[(bi+8)%12]:'';
-        const duiP=palaces.find(p=>p.earthlyBranch===duiBr),san1P=palaces.find(p=>p.earthlyBranch===san1),san2P=palaces.find(p=>p.earthlyBranch===san2);
-        let h='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><b style="color:#d4a843;font-size:1.1em">⭐ '+name+'</b>';
-        if(brightness){const b=!!brightness&&brightness!=='陷';h+='<span style="font-size:.75em;padding:2px 6px;border-radius:4px;background:'+(b?'#d4a843':'#888')+';color:#fff">'+brightness+'</span>'}
-        if(mutagen)h+='<span style="font-size:.75em;background:#c62828;color:#fff;padding:2px 6px;border-radius:4px">化'+mutagen+'</span>';
-        h+=' <button onclick="document.getElementById(\'star-detail\').classList.add(\'hidden\')" style="margin-left:auto;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2em">✕</button></div>';
-        h+='<div>📍 所在宫位: <b>'+inPalaces.map(p=>p.name).join('、')+'</b> ('+pBr+')</div>';
-        if(duiP)h+='<div>🔁 对宫: <b>'+duiP.name+'</b> ('+duiBr+') — '+duiP.majorStars.map(s=>s.name).join('·')+'</div>';
-        if(san1P||san2P)h+='<div>△ 三合宫: '+(san1P?'<b>'+san1P.name+'</b>('+san1P.majorStars.map(s=>s.name).join('·')+'·'+san1P.minorStars.slice(0,2).map(s=>s.name).join('·')+') ':'')+(san2P?'<b>'+san2P.name+'</b>('+san2P.majorStars.map(s=>s.name).join('·')+')':'')+'</div>';
-        // 三方四正四化
-        const sfPalaces=[duiP,san1P,san2P].filter(Boolean);const sfHua=[];for(const p of sfPalaces)for(const s of[...p.majorStars,...p.minorStars])if(s.mutagen)sfHua.push(s.name+'化'+s.mutagen+'('+p.name+')');if(sfHua.length)h+='<div>✨ 三方四化: <b>'+sfHua.join('·')+'</b></div>';
-        // 空宫
-        if(p0.majorStars.length===0)h+='<div>⚠️ 所在宫为空宫(借对宫)</div>';
-        el.innerHTML=h;el.classList.remove('hidden');
-    }catch(e){console.error(e);el.classList.add('hidden')}
-}
-function selectPalace(br){selectedPalace=(selectedPalace===br)?null:br;renderChart()}
-
-// AI analysis
+    $('welcome-section').classList.add('hidden');$('loading-section').classList.remove('hidden');
+    let hh=b.h,mm=b.min;
+    if($('use-true-solar').checked){const lng=parseFloat($('longitude').value)||120;const adj=getAdjustedHour(b.h,b.min,lng);hh=adj.hour;mm=adj.minute}
+    fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:hh,minute:mm,gender:b.gender,is_lunar:b.cal==='lunar',longitude:parseFloat($('longitude').value)||120,location:$('location').value||''})})
+    .then(r=>r.json()).then(d=>{plateData=d;$('loading-section').classList.add('hidden');$('result-section').classList.remove('hidden');$('btn-analyze').disabled=false})
+    .catch(()=>{$('loading-section').innerHTML='<p style="color:#ef5350">排盘失败</p>'});
+});// AI analysis
 let _pwResolve=null,conversationMessages=null,currentSessionId=null;
 
 // Session management
