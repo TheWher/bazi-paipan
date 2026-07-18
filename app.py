@@ -461,8 +461,13 @@ def index():
 
 @app.route("/ziwei")
 def ziwei():
-    """紫微斗数 — iztro JS CDN 原版引擎"""
+    """紫微斗数 — 表单页"""
     return render_template("ziwei.html")
+
+@app.route("/ziwei/report/<sid>")
+def ziwei_report(sid):
+    """紫微命盘报告页（水墨风）"""
+    return render_template("ziwei-report.html")
 
 
 @app.route("/api/geocode")
@@ -884,7 +889,7 @@ def api_ziwei_analyze_continue():
 # 紫微会话管理
 # ============================================================
 import uuid as _uuid
-_ziwei_sessions = {}  # {session_id: {id, title, messages, plate_summary, created_at}}
+_ziwei_sessions = {}  # {session_id: {id, title, messages, plate_data, plate_summary, created_at}}
 
 @app.route("/api/ziwei/sessions", methods=["GET", "POST"])
 def api_ziwei_sessions():
@@ -897,14 +902,16 @@ def api_ziwei_sessions():
     sid = str(_uuid.uuid4())[:8]
     _ziwei_sessions[sid] = {
         "id": sid, "title": data.get("title", "新会话"),
-        "messages": data.get("messages", []), "plate_summary": data.get("plate_summary", ""),
+        "messages": data.get("messages", []),
+        "plate_data": data.get("plate_data", {}),
+        "plate_summary": data.get("plate_summary", ""),
         "created_at": datetime.now().isoformat(timespec="seconds"),
     }
     return jsonify(_ziwei_sessions[sid])
 
-@app.route("/api/ziwei/sessions/<sid>", methods=["GET", "PUT", "DELETE"])
+@app.route("/api/ziwei/sessions/<sid>", methods=["GET", "PUT", "PATCH", "DELETE"])
 def api_ziwei_session(sid):
-    """获取 / 更新 / 删除单个会话"""
+    """获取 / 更新 / 追加 / 删除单个会话"""
     if request.method == "GET":
         s = _ziwei_sessions.get(sid); return jsonify(s) if s else (jsonify({"error": "not found"}), 404)
     if request.method == "PUT":
@@ -912,6 +919,14 @@ def api_ziwei_session(sid):
         data = request.get_json(force=True)
         if "title" in data: _ziwei_sessions[sid]["title"] = data["title"]
         if "messages" in data: _ziwei_sessions[sid]["messages"] = data["messages"]
+        if "plate_data" in data: _ziwei_sessions[sid]["plate_data"] = data["plate_data"]
+        return jsonify({"ok": True})
+    if request.method == "PATCH":
+        """追加 messages（用于流式完成后保存）"""
+        if sid not in _ziwei_sessions: return jsonify({"error": "not found"}), 404
+        data = request.get_json(force=True)
+        if "messages" in data:
+            _ziwei_sessions[sid]["messages"] = data["messages"]
         return jsonify({"ok": True})
     if request.method == "DELETE":
         if sid in _ziwei_sessions: del _ziwei_sessions[sid]
