@@ -1486,166 +1486,36 @@ def _build_ziwei_user_message(plate_dict: dict, bazi_ref: dict = None) -> str:
     return "\n".join(parts)
 
 
-def _load_agent_prompt(name: str) -> str:
-    """读取 .claude/agents/ 下的 prompt 文件"""
-    for base in (os.path.dirname(__file__), os.path.join(os.path.dirname(__file__), '..')):
-        path = os.path.join(base, '.claude', 'agents', f'{name}.md')
-        if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
-                return f.read()
-    return ""
 
-
-def _call_api_json(system_prompt: str, messages: list[dict], timeout: int) -> dict:
-    """调用 API 并强制解析 JSON 输出"""
-    result = _call_api(system_prompt, messages, max_tokens=16384, temperature=0.3, timeout=timeout)
-    if not result["success"]:
-        return {"agent": "error", "conclusions": [f"API调用失败: {result.get('error','')}"], "confidence": "low"}
-    import json
-    text = result["text"].strip()
-    # 尝试从 markdown 代码块中提取 JSON
-    if '```json' in text:
-        text = text.split('```json')[1].split('```')[0].strip()
-    elif '```' in text:
-        text = text.split('```')[1].split('```')[0].strip()
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return {"agent": "parse_error", "conclusions": [f"JSON解析失败"], "raw": text[:200], "confidence": "low"}
-
-
-def _build_base_message(plate_dict: dict) -> str:
-    """构建三个专项 Agent 共用的基础命盘信息"""
-    parts = []
-    palaces = plate_dict.get('palaces', [])
-    parts.append("## 十二宫分布")
-    parts.append("| 宫位 | 干支 | 主星[亮度] | 辅星 | 生年四化 | 大限范围 | 标记 |")
-    parts.append("|------|------|-----------|------|---------|---------|------|")
-    soul = plate_dict.get('soul_palace', '')
-    body = plate_dict.get('body_palace', '')
-    for pal in palaces:
-        pname = pal.get('name', '')
-        dizhi = pal.get('dizhi', '')
-        major = '、'.join(f"{s['name']}[{s['brightness']}]" if s.get('brightness') else s['name'] for s in pal.get('major_stars', [])) if pal.get('major_stars') else '空宫'
-        minor = '、'.join(s['name'] for s in pal.get('minor_stars', [])) if pal.get('minor_stars') else '—'
-        mutagens = '、'.join(f"{m['star']}{m['mutagen']}" for m in pal.get('mutagens', [])) if pal.get('mutagens') else '—'
-        dr = pal.get('decadal_range', '')
-        tags = []
-        if pname == soul: tags.append('命宫')
-        if pname == body: tags.append('身宫')
-        parts.append(f"| {pname} | {dizhi} | {major} | {minor} | {mutagens} | {dr} | {' '.join(tags)} |")
-    parts.append("")
-    parts.append(f"**五行局**: {plate_dict.get('five_elements_class', '?')}")
-    parts.append(f"**命宫**: {soul}")
-    parts.append(f"**身宫**: {body}")
-    parts.append("")
-    return "\n".join(parts)
 
 
 def analyze_ziwei(plate_dict: dict, timeout: int = 120, bazi_ref: dict = None) -> dict:
-    """多智能体编排：3 专项 Agent 并行 + 1 合成 Agent
+    """紫微斗数命盘解读（单 Agent 模式）
 
-    降级策略：若专项 Agent 文件不存在，自动回退为单 Agent 模式
+    使用完整的 ziwei-master.md prompt，注入知识库和八字参考
     """
     if not API_CONFIG.get("api_key"):
         return {"success": False, "error": "未配置 API Key"}
 
-    # 检查多 Agent 文件是否存在，不存在则回退旧模式
-    geju_sp = _load_agent_prompt("ziwei-geju")
-    sihua_sp = _load_agent_prompt("ziwei-sihua")
-    palace_sp = _load_agent_prompt("ziwei-palace")
-    synth_sp = _load_agent_prompt("ziwei-synth")
-    if not geju_sp or not synth_sp:
-        system_prompt = _load_ziwei_system_prompt()
-        user_message = _build_ziwei_user_message(plate_dict, bazi_ref=bazi_ref)
-        result = _call_api(system_prompt, [{"role": "user", "content": user_message}],
-                           max_tokens=32768, temperature=0.7, timeout=timeout)
-        if not result["success"]:
-            return result
-        return {
-            "success": True, "analysis": result["text"],
-            "model": result.get("model", API_CONFIG["model"]),
-            "usage": result.get("usage", {}),
-            "messages": [{"role": "system", "content": system_prompt},
-                         {"role": "user", "content": user_message},
-                         {"role": "assistant", "content": result["text"]}],
-        }
+    system_prompt = _load_ziwei_system_prompt()
+    user_message = _build_ziwei_user_message(plate_dict, bazi_ref=bazi_ref)
+    user_messages = [{"role": "user", "content": user_message}]
 
-    base = _build_base_message(plate_dict)
-    import json
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    result = _call_api(system_prompt, user_messages,
+                       max_tokens=32768, temperature=0.7, timeout=timeout)
 
-    # 加载 KB
-    stars_kb = _load_json_kb("ziwei_stars.json")
-    star_palace_kb = _load_json_kb("ziwei_star_palace.json")
-    hua_kb = _load_json_kb("ziwei_hua.json")
-    sihua_interact_kb = _load_json_kb("ziwei_sihua_interact.json")
-    fuzuo_kb = _load_json_kb("ziwei_fuzuo.json")
-
-    # 构建三个 user message
-    geju_msg = base + ("\n## 星曜知识库\n" + json.dumps(stars_kb, ensure_ascii=False) if stars_kb else "")
-    geju_msg += ("\n## 宫位星曜解读\n" + json.dumps(star_palace_kb, ensure_ascii=False) if star_palace_kb else "")
-
-    sihua_msg = base + ("\n## 四化对照表\n" + json.dumps(hua_kb, ensure_ascii=False) if hua_kb else "")
-    sihua_msg += ("\n## 四化互涉规则\n" + json.dumps(sihua_interact_kb, ensure_ascii=False) if sihua_interact_kb else "")
-
-    palace_msg = base + ("\n## 辅佐煞曜知识库\n" + json.dumps(fuzuo_kb, ensure_ascii=False) if fuzuo_kb else "")
-    if bazi_ref:
-        palace_msg += "\n## 八字参考\n" + json.dumps(bazi_ref, ensure_ascii=False)
-
-    # 加载 prompt
-    geju_sp = _load_agent_prompt("ziwei-geju")
-    sihua_sp = _load_agent_prompt("ziwei-sihua")
-    palace_sp = _load_agent_prompt("ziwei-palace")
-    synth_sp = _load_agent_prompt("ziwei-synth")
-
-    # 并行调用三个专项 Agent
-    results = {}
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        future_map = {
-            pool.submit(_call_api_json, geju_sp, [{"role": "user", "content": geju_msg}], timeout): "geju",
-            pool.submit(_call_api_json, sihua_sp, [{"role": "user", "content": sihua_msg}], timeout): "sihua",
-            pool.submit(_call_api_json, palace_sp, [{"role": "user", "content": palace_msg}], timeout): "palace",
-        }
-        for future in as_completed(future_map):
-            name = future_map[future]
-            results[name] = future.result()
-
-    # 从三专项的 paragraphs 构建合成输入
-    def _format_agent_output(data, label):
-        paragraphs = data.get('paragraphs', []) if isinstance(data, dict) else []
-        if not paragraphs:
-            return f"【{label}】\n（无分析结论）"
-        lines = [f"【{label}】"]
-        for p in paragraphs:
-            lines.append(f"\n### {p.get('topic', '未命名段落')}")
-            lines.append(p.get('content', ''))
-        return '\n'.join(lines)
-
-    synth_input = "\n\n---\n\n".join([
-        _format_agent_output(results.get('geju', {}), '格局分析'),
-        _format_agent_output(results.get('sihua', {}), '四化分析'),
-        _format_agent_output(results.get('palace', {}), '宫位联动分析'),
-    ])
-    synth_messages = [{"role": "user", "content": synth_input}]
-
-    # 调用合成 Agent
-    synth_result = _call_api(synth_sp, synth_messages, max_tokens=32768, temperature=0.7, timeout=timeout)
-
-    if not synth_result["success"]:
-        return synth_result
-
+    if not result["success"]:
+        return result
     return {
         "success": True,
-        "analysis": synth_result["text"],
-        "model": synth_result.get("model", API_CONFIG["model"]),
-        "usage": synth_result.get("usage", {}),
+        "analysis": result["text"],
+        "model": result.get("model", API_CONFIG["model"]),
+        "usage": result.get("usage", {}),
         "messages": [
-            {"role": "system", "content": synth_sp},
-            {"role": "user", "content": synth_input},
-            {"role": "assistant", "content": synth_result["text"]},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+            {"role": "assistant", "content": result["text"]},
         ],
-        "sub_agents": results,
     }
 
 
