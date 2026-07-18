@@ -1498,7 +1498,7 @@ def _load_agent_prompt(name: str) -> str:
 
 def _call_api_json(system_prompt: str, messages: list[dict], timeout: int) -> dict:
     """调用 API 并强制解析 JSON 输出"""
-    result = _call_api(system_prompt, messages, max_tokens=8192, temperature=0.3, timeout=timeout)
+    result = _call_api(system_prompt, messages, max_tokens=16384, temperature=0.3, timeout=timeout)
     if not result["success"]:
         return {"agent": "error", "conclusions": [f"API调用失败: {result.get('error','')}"], "confidence": "low"}
     import json
