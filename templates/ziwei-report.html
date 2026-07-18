@@ -474,12 +474,7 @@ function renderFlowYears(){
   }
 }
 
-function highlightDecade(pName){
-  document.querySelectorAll('.palace').forEach(el => {
-    const gong = el.querySelector('.p-gong');
-    if(gong && gong.textContent.trim() === pName) el.scrollIntoView({behavior:'smooth'});
-  });
-}
+
 
 // ── 叠盘选择系统（大限/流年/流月/流日） ──
 const SCOPE_COLORS = {decade:'#2e6da4', year:'#4a7c4e', month:'#c97c3a', day:'#7c4dff'};
@@ -657,7 +652,6 @@ function highlightDecade(pName){
     el.querySelector('.living-badge')?.remove();
     el.querySelector('.scope-badge')?.remove();
   });
-  activeFlowLabel = null;
   // 高亮大限宫位
   let targetIdx = -1;
   document.querySelectorAll('.palace').forEach((el, i) => {
