@@ -622,6 +622,19 @@ async function startAnalysis(plate, password){
   }
 }
 
+// ── 渲染分析文本 ──
+function renderAnalysis(messages){
+  const aiMsg = messages.filter(m => m.role==='assistant');
+  let html = aiMsg.map(m => formatText(m.content)).join('\n<hr style="border:none;border-top:1px dashed var(--line-faint);margin:12px 0">\n');
+  $('analysis-text').innerHTML = html;
+}
+function formatText(t){
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^## (.+)$/gm,'<h2 style="font-size:14px;letter-spacing:1px;margin:14px 0 8px;border-left:3px solid var(--vermillion);padding-left:8px">$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+}
+
 // ── 追问 ──
 async function sendChat(){
   const input = $('chat-input'), reply = input.value.trim();
