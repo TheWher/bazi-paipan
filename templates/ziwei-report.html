@@ -521,12 +521,30 @@ function toggleScope(scope){
 function highlightDecade(pName){
   document.querySelectorAll('.palace').forEach(el => {
     el.style.boxShadow = '';
+    el.querySelector('.living-badge')?.remove();
+  });
+  // 高亮大限宫位
+  let targetIdx = -1;
+  document.querySelectorAll('.palace').forEach((el, i) => {
     const gong = el.querySelector('.p-gong');
     if(gong && gong.textContent.trim() === pName){
       el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
       el.scrollIntoView({behavior:'smooth', block:'center'});
+      targetIdx = i;
     }
   });
+  // 叠盘：大限宫位 → 限年命宫，宫名旋转
+  if(targetIdx >= 0 && plateData){
+    const LIMIT_NAMES = ['命宫','兄弟','夫妻','子女','财帛','疾厄','迁移','交友','官禄','田宅','福德','父母'];
+    document.querySelectorAll('.palace').forEach((el, i) => {
+      const limitName = LIMIT_NAMES[(i - targetIdx + 12) % 12];
+      const badge = document.createElement('span');
+      badge.className = 'living-badge';
+      badge.textContent = limitName;
+      badge.style.cssText = 'font-size:7px;color:var(--azure);border:1px solid var(--azure);border-radius:2px;padding:0 2px;margin-left:2px';
+      el.querySelector('.p-head')?.appendChild(badge);
+    });
+  }
 }
 let liuyaoCache = null;
 function fetchLiuyao(){
