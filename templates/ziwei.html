@@ -374,17 +374,17 @@ let _pwResolve=null,conversationMessages=null,currentSessionId=null;
 async function loadSessions(){
     try{const r=await fetch('/api/ziwei/sessions');const sessions=await r.json();$('session-count').textContent=sessions.length;
         if(sessions.length>0){$('session-details').open=true}
-        $('session-list').innerHTML=sessions.map(s=>`<div style="padding:6px 8px;margin:3px 0;border-radius:6px;cursor:pointer;${s.id===currentSessionId?'background:rgba(212,168,67,.12);border:1px solid rgba(212,168,67,.2);':''}" onclick="switchSession('${s.id}')">
+        $('session-list').innerHTML=sessions.map(s=>`<div style="padding:6px 8px;margin:3px 0;border-radius:6px;cursor:pointer;${s.id===currentSessionId?'background:rgba(212,168,67,.12);border:1px solid rgba(212,168,67,.2);':''}" onclick="window.location.href='/ziwei/report/${s.id}'">
             <span style="color:var(--accent);font-weight:600">📝 ${s.title||'未命名'}</span>
             <span style="color:var(--text-muted);font-size:.8em;margin-left:4px">${s.message_count||0}条</span>
-            <button onclick="event.stopPropagation();deleteSession('${s.id}')" style="float:right;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.85em" title="删除">✕</button>
+            <button onclick="event.stopPropagation();fetch('/api/ziwei/sessions/${s.id}',{method:'DELETE'}).then(()=>loadSessions())" style="float:right;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.85em" title="删除">✕</button>
         </div>`).join('')||'<div style="color:var(--text-muted);padding:8px;text-align:center">暂无历史会话。进行AI分析后会自动保存。</div>'}
     catch(e){}
 }
 async function saveSession(){
     if(!conversationMessages||!conversationMessages.length)return;
     const title=$('y').value+'-'+$('m').value+'-'+$('d').value+' '+($('g').value||'男');
-    const body={title:title,messages:conversationMessages,plate_summary:title};
+    const body={title:title,messages:conversationMessages,plate_data:plateData||{},plate_summary:title};
     try{
         if(currentSessionId){await fetch('/api/ziwei/sessions/'+currentSessionId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}
         else{const r=await fetch('/api/ziwei/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();currentSessionId=d.id}
@@ -433,6 +433,7 @@ async function doAnalyze(password){
         // 模拟 messages 数组给会话
         const sp=conversationMessages?conversationMessages.find(m=>m.role==='system'):null;
         conversationMessages=[{role:'system',content:sp?.content||''},{role:'user',content:'请解读命盘'},{role:'assistant',content:fullText}];saveSession();
+        if(currentSessionId) setTimeout(()=>{window.location.href='/ziwei/report/'+currentSessionId},500);
     }catch(e){$('analysis-content').innerHTML='<p style="color:#ef5350">流式失败，请重试</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试'}
 }
 $('btn-analyze').addEventListener('click',()=>{if(!plateData)return;$('btn-analyze').disabled=true;$('btn-analyze').textContent='分析中...';$('analysis-section').classList.remove('hidden');doAnalyze('')});

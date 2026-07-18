@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>紫微斗数 · 命盘报告</title>
+<style>
+  :root {
+    --paper: #f5f1e8; --paper-deep: #ebe5d5; --paper-card: #faf6ec;
+    --ink: #2b2825; --ink-soft: #6b6660; --ink-faint: #a8a298;
+    --vermillion: #c1432f; --vermillion-deep: #8e2f20;
+    --azure: #2e6da4; --jade: #4a7c4e; --jade-soft: #6f9971;
+    --line: #8b8378; --line-soft: #c4bdb0; --line-faint: #e0d9c8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--paper); color: var(--ink);
+    font-family: "Source Han Serif SC", "Noto Serif SC", "STSong", "PingFang SC", serif;
+    font-size: 14px; line-height: 1.7;
+    background-image: radial-gradient(circle at 15% 25%, rgba(180,160,130,0.06), transparent 50%),
+                      radial-gradient(circle at 85% 75%, rgba(180,160,130,0.05), transparent 50%);
+    min-height: 100vh;
+  }
+  .no-print { display: block; }
+  .report { max-width: 1080px; margin: 0 auto; padding: 24px; }
+
+  /* ── 导航 ── */
+  .nav-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0 16px; border-bottom: 1px solid var(--line-soft); margin-bottom: 20px;
+  }
+  .nav-bar .title { font-size: 18px; letter-spacing: 2px; color: var(--ink); }
+  .nav-bar .btn-back {
+    font-size: 12px; color: var(--ink-soft); text-decoration: none;
+    border: 1px solid var(--line-soft); padding: 4px 12px; border-radius: 2px;
+  }
+  .nav-bar .btn-back:hover { border-color: var(--vermillion); color: var(--vermillion); }
+
+  /* ── 命盘概要 ── */
+  .info-bar {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    background: var(--paper-card); border: 1px solid var(--line-soft);
+    padding: 12px 16px; margin-bottom: 16px; font-size: 12px; line-height: 1.6;
+  }
+  .info-bar .label { color: var(--ink-faint); }
+  .info-bar .value { color: var(--ink); font-weight: 600; }
+
+  /* ── 4x4 宫格 ── */
+  .ziwei-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr);
+    height: 540px; background: var(--line-soft); gap: 1px; margin-bottom: 16px;
+  }
+  .palace {
+    background: var(--paper); padding: 5px 7px; font-size: 10px; line-height: 1.4;
+    display: flex; flex-direction: column; overflow: hidden; cursor: pointer;
+    transition: background .15s;
+  }
+  .palace:hover { background: var(--paper-card); }
+  .palace.ming { box-shadow: inset 0 0 0 2px var(--vermillion); }
+  .palace .p-head {
+    display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+    border-bottom: 1px dashed var(--line-faint); padding-bottom: 2px; margin-bottom: 3px;
+  }
+  .palace .p-dizhi { font-size: 11px; font-weight: 700; color: var(--ink-soft); }
+  .palace .p-gong { font-size: 10px; font-weight: 600; color: var(--ink); }
+  .palace .p-ganzhi { font-size: 9px; color: var(--ink-faint); margin-left: auto; }
+  .shen-badge {
+    display: inline-block; color: var(--vermillion); border: 1px solid var(--vermillion);
+    border-radius: 2px; font-size: 8px; padding: 0 3px; line-height: 1.3;
+  }
+  .palace .main-star { font-size: 12px; font-weight: 700; line-height: 1.5; }
+  .palace .aux-star { color: var(--ink-soft); font-size: 10px; line-height: 1.5; }
+  .palace .sihua-mark { font-size: 9px; margin-left: 1px; }
+  .sihua-禄 { color: var(--vermillion); } .sihua-权 { color: var(--azure); }
+  .sihua-科 { color: var(--jade); } .sihua-忌 { color: var(--ink); text-decoration: underline; }
+  .palace .daxian {
+    margin-top: auto; padding-top: 3px; border-top: 1px dashed var(--line-faint);
+    font-size: 9px; color: var(--ink-soft);
+  }
+  .palace.current .daxian { color: var(--vermillion); font-weight: 700; }
+
+  /* 中间 info */
+  .center-palace {
+    grid-column: 2 / 4; grid-row: 2 / 4;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--paper); padding: 14px; text-align: center;
+    border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+  }
+  .center-palace h3 { font-size: 16px; letter-spacing: 4px; margin-bottom: 8px; }
+  .center-palace .info { font-size: 11px; color: var(--ink-soft); margin: 2px 0; }
+  .center-palace .pillars { display: flex; gap: 8px; margin-top: 10px; }
+  .center-palace .pillar {
+    background: var(--paper-deep); border: 1px solid var(--line-soft);
+    padding: 4px 8px; text-align: center;
+  }
+  .center-palace .pillar .pname { font-size: 9px; color: var(--ink-faint); }
+  .center-palace .pillar .pgan { font-size: 14px; font-weight: 700; }
+  .center-palace .pillar .pzhi { font-size: 13px; color: var(--ink-soft); }
+
+  /* ── 大运条 ── */
+  .dayun-strip { margin-bottom: 16px; border: 1px solid var(--line-soft); }
+  .strip-head {
+    background: var(--paper-deep); padding: 5px 12px;
+    font-size: 12px; border-bottom: 1px solid var(--line-soft);
+  }
+  .strip-row { display: grid; grid-template-columns: repeat(10, 1fr); }
+  .strip-cell {
+    border-right: 1px solid var(--line-faint); padding: 4px 2px;
+    text-align: center; font-size: 9px; cursor: pointer;
+  }
+  .strip-cell:last-child { border-right: none; }
+  .strip-cell .gz { font-size: 11px; font-weight: 700; }
+  .strip-cell .ages { color: var(--ink-soft); font-size: 8px; }
+  .strip-cell.current { background: rgba(193,67,47,0.08); }
+  .strip-cell.current .gz { color: var(--vermillion); }
+
+  /* ── 分析 + 追问 ── */
+  .analysis-area {
+    background: var(--paper-card); border: 1px solid var(--line-soft);
+    padding: 18px 20px; margin-bottom: 14px;
+  }
+  .analysis-area h2 {
+    font-size: 15px; letter-spacing: 1px; margin-bottom: 10px;
+    border-left: 3px solid var(--vermillion); padding-left: 10px;
+  }
+  .analysis-text { font-size: 13px; line-height: 1.9; color: var(--ink); min-height: 100px; }
+  .analysis-text strong { color: var(--ink); }
+  .chat-area { margin-top: 14px; }
+  .chat-msg {
+    margin: 6px 0; padding: 8px 12px; border-radius: 2px;
+    font-size: 12px; line-height: 1.6;
+  }
+  .chat-msg.user { background: rgba(193,67,47,0.04); border-left: 2px solid rgba(193,67,47,0.2); }
+  .chat-msg.agent { background: var(--paper-card); border: 1px solid var(--line-faint); }
+  .chat-msg .who { font-weight: 700; color: var(--ink-soft); font-size: 11px; margin-bottom: 2px; }
+  .chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+  .chat-input-row textarea {
+    flex: 1; padding: 8px 10px; font-size: 12px;
+    border: 1px solid var(--line-soft); background: var(--paper);
+    color: var(--ink); resize: none; outline: none; font-family: inherit;
+  }
+  .chat-input-row textarea:focus { border-color: var(--vermillion); }
+  .chat-input-row button {
+    padding: 6px 18px; font-size: 12px; background: var(--ink);
+    color: var(--paper); border: none; cursor: pointer; letter-spacing: 1px;
+  }
+  .chat-input-row button:hover { background: var(--vermillion); }
+  .chat-input-row button:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ── 星曜弹窗 ── */
+  .star-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .star-dialog {
+    background: var(--paper-card); border: 1px solid var(--line);
+    padding: 20px 24px; max-width: 380px; width: 90vw; font-size: 12px; line-height: 1.7;
+  }
+  .star-dialog h3 { font-size: 15px; margin-bottom: 8px; }
+  .star-dialog .close-btn {
+    float: right; background: none; border: none;
+    font-size: 18px; cursor: pointer; color: var(--ink-soft);
+  }
+
+  /* ── 骨架屏 ── */
+  .skeleton { background: var(--line-faint); border-radius: 2px; animation: pulse 1.5s infinite; }
+  .skeleton-grid { height: 540px; }
+  .skeleton-line { height: 14px; margin: 8px 0; width: 80%; }
+  .skeleton-line:last-child { width: 60%; }
+  @keyframes pulse { 0%{opacity:.6} 50%{opacity:1} 100%{opacity:.6} }
+
+  /* ── 打印 ── */
+  @media print {
+    .no-print { display: none !important; }
+    body { background: white; padding: 0; }
+    .report { max-width: 100%; padding: 0; }
+    .nav-bar { display: none; }
+    .ziwei-grid { height: 480px; page-break-inside: avoid; }
+    .analysis-area { page-break-inside: avoid; }
+    .palace { break-inside: avoid; }
+  }
+
+  /* ── 响应式 ── */
+  @media (max-width: 700px) {
+    .report { padding: 12px; }
+    .info-bar { grid-template-columns: 1fr; font-size: 11px; }
+    .ziwei-grid { height: 380px; }
+    .palace { font-size: 9px; padding: 3px 5px; }
+    .palace .main-star { font-size: 10px; }
+    .center-palace h3 { font-size: 13px; }
+    .strip-row { grid-template-columns: repeat(5, 1fr); }
+    .strip-cell:nth-child(n+6) { display: none; }  /* 手机只显示前5个大运 */
+  }
+</style>
+</head>
+<body>
+<div class="report">
+  <!-- 导航 -->
+  <div class="nav-bar no-print">
+    <span class="title">🔮 紫微斗数 · 命盘报告</span>
+    <a href="/ziwei" class="btn-back">← 重新排盘</a>
+  </div>
+
+  <!-- 命盘概要 -->
+  <div class="info-bar" id="info-bar">
+    <div class="skeleton-line"></div>
+  </div>
+
+  <!-- 4x4 宫格 -->
+  <div class="ziwei-grid skeleton-grid" id="grid"></div>
+
+  <!-- 大运条 -->
+  <div class="dayun-strip no-print" id="dayun-strip">
+    <div class="strip-head">大限（虚岁）</div>
+    <div class="strip-row skeleton-line" style="height:40px"></div>
+  </div>
+
+  <!-- 分析 -->
+  <div class="analysis-area" id="analysis">
+    <h2>📜 命盘解读</h2>
+    <div class="analysis-text" id="analysis-text">
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line" style="width:60%"></div>
+    </div>
+  </div>
+
+  <!-- 追问 -->
+  <div class="chat-area no-print" id="chat-area">
+    <div class="chat-input-row">
+      <textarea id="chat-input" rows="2" placeholder="追问Agent，例如：我今年换工作合适吗？"></textarea>
+      <button id="btn-chat" onclick="sendChat()">发送</button>
+    </div>
+    <div id="chat-messages" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- 星曜弹窗 -->
+<div id="star-dialog" class="star-overlay" style="display:none" onclick="this.style.display='none'">
+  <div class="star-dialog" onclick="event.stopPropagation()">
+    <button class="close-btn" onclick="closeStarDetail()">✕</button>
+    <h3 id="sd-name"></h3>
+    <div id="sd-content"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const sid = window.location.pathname.split('/').pop();
+
+// ── 加载数据 ──
+async function load(){
+  const r = await fetch(`/api/ziwei/sessions/${sid}`);
+  if(!r.ok){ $('grid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--ink-soft)">报告未找到或已过期</div>'; return }
+  const s = await r.json();
+  renderInfo(s);
+  if(s.plate_data && s.plate_data.palaces){
+    renderGrid(s.plate_data);
+    renderDayun(s.plate_data);
+  }
+  const msgs = s.messages || [];
+  const hasAnalysis = msgs.some(m => m.role === 'assistant');
+  if(hasAnalysis) renderAnalysis(msgs);
+  else startAnalysis(s.plate_data);
+}
+load();
+
+// ── 命盘概要 ──
+function renderInfo(session){
+  const p = session.plate_data || {};
+  const inp = p.input || {};
+  const yms = p.year_mutagens || [];
+  const sihuaStr = yms.map(m => `${m.mutagen}：${m.star}在${m.palace}`).join(' · ') || '—';
+  const gender = inp.gender || '—';
+  const fec = p.five_elements_class || '—';
+  const soul = p.soul_palace || '—';
+  const body = p.body_palace || '—';
+  // 来因宫：年干定
+  const GAN = '甲乙丙丁戊己庚辛壬癸';
+  const LAIYIN = ['父母','福德','命宫','兄弟','夫妻','子女','财帛','疾厄','迁移','交友'];
+  const birthDt = inp.birth_datetime || '';
+  const birthYear = parseInt(birthDt.split('-')[0]) || 0;
+  const laiyin = birthYear ? LAIYIN[(birthYear-4)%10] : '—';
+  $('info-bar').innerHTML = `
+    <div><span class="label">出生</span> <span class="value">${birthDt} ${gender}</span></div>
+    <div><span class="label">五行局</span> <span class="value">${fec}</span></div>
+    <div><span class="label">命宫/身宫</span> <span class="value">${soul} / ${body}</span></div>
+    <div><span class="label">来因宫</span> <span class="value">${laiyin}</span></div>
+    <div style="grid-column:1/-1"><span class="label">生年四化</span> <span class="value">${sihuaStr}</span></div>
+  `;
+}
+
+// ── 宫格渲染 ──
+const GRID_POS = {'巳':[0,0],'午':[1,0],'未':[2,0],'申':[3,0],'辰':[0,1],'酉':[3,1],'卯':[0,2],'戌':[3,2],'寅':[0,3],'丑':[1,3],'子':[2,3],'亥':[3,3]};
+const BR_ORDER = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const GAN = '甲乙丙丁戊己庚辛壬癸';
+const ZHI = '子丑寅卯辰巳午未申酉戌亥';
+const SIHUA = {'化禄':'禄','化权':'权','化科':'科','化忌':'忌'};
+
+function currentAge(){
+  const y = new Date().getFullYear();
+  return y - (parseInt(document.querySelector('.info-bar .value')?.textContent?.split('-')[0]) || 2005);
+}
+
+function renderGrid(plate){
+  const palaces = plate.palaces || [];
+  const soul = plate.soul_palace || '';
+  const body = plate.body_palace || '';
+  const cells = [];
+  for(const p of palaces){
+    const br = p.earthly_branch;
+    const pos = GRID_POS[br];
+    if(!pos) continue;
+    const isSoul = p.name === soul;
+    const isBody = p.name === body;
+    const cls = isSoul ? 'palace ming' : 'palace';
+    const shenBadge = isBody ? '<span class="shen-badge">身</span>' : '';
+    // 主星+亮度+四化
+    const mainStars = (p.major_stars || []).map(s => {
+      let html = s.name;
+      if(s.brightness) html += `<span style="font-size:9px;color:var(--ink-soft)">[${s.brightness}]</span>`;
+      if(s.mutagen){
+        const hua = SIHUA[s.mutagen] || s.mutagen;
+        const cls = {'禄':'sihua-禄','权':'sihua-权','科':'sihua-科','忌':'sihua-忌'}[hua] || '';
+        html += `<span class="sihua-mark ${cls}">◈${hua}</span>`;
+      }
+      return html;
+    }).join('') || '<span style="color:var(--ink-faint)">—</span>';
+    const auxStars = (p.minor_stars || []).slice(0,4).map(s => s.name).join(' ') || '';
+    const dr = p.decadal_range || '';
+    // 当前大限高亮
+    const curAge = currentAge();
+    let isCurrent = false;
+    if(dr){
+      const parts = dr.split('-');
+      if(parts.length===2){
+        const s = parseInt(parts[0]), e = parseInt(parts[1]);
+        if(s <= curAge && curAge <= e) isCurrent = true;
+      }
+    }
+    cells.push({
+      pos, br, name: p.name, cls, shenBadge, mainStars, auxStars, dr, isCurrent,
+      dizhi: p.dizhi || br,
+    });
+  }
+  // 构建 grid
+  const gridEl = $('grid');
+  gridEl.className = 'ziwei-grid';
+  gridEl.innerHTML = '';
+  const gEls = [];
+  for(const c of cells){
+    const div = document.createElement('div');
+    div.className = c.cls + (c.isCurrent ? ' current' : '');
+    div.style.gridColumn = c.pos[0]+1; div.style.gridRow = c.pos[1]+1;
+    div.innerHTML = `
+      <div class="p-head">
+        <span class="p-dizhi">${c.br}</span>
+        <span class="p-gong">${c.name}</span>${c.shenBadge}
+        <span class="p-ganzhi">${c.dizhi}</span>
+      </div>
+      <div class="main-star">${c.mainStars}</div>
+      <div class="aux-star">${c.auxStars}</div>
+      <div class="daxian">${c.dr ? '大限 '+c.dr : ''}</div>
+    `;
+    div.onclick = () => showPalaceDetail(c.name, plate);
+    gridEl.appendChild(div);
+  }
+  // center
+  const center = document.createElement('div');
+  center.className = 'center-palace';
+  center.innerHTML = `<h3>${plate.five_elements_class || ''}</h3>
+    <div class="info">命宫：${soul}　身宫：${body}</div>`;
+  gridEl.appendChild(center);
+}
+
+// ── 大运条 ──
+function renderDayun(plate){
+  const palaces = plate.palaces || [];
+  const curAge = currentAge();
+  const strip = $('dayun-strip');
+  let row = '<div class="strip-row">';
+  for(const p of palaces){
+    const dr = p.decadal_range || '';
+    let cls = 'strip-cell';
+    if(dr){
+      const parts = dr.split('-');
+      if(parts.length===2){
+        const s = parseInt(parts[0]), e = parseInt(parts[1]);
+        if(s <= curAge && curAge <= e) cls += ' current';
+      }
+    }
+    const gz = p.decadal_dizhi || '';
+    row += `<div class="${cls}" onclick="highlightDecade('${p.name}')">
+      <div class="gz">${gz}</div>
+      <div class="ages">${dr}</div>
+    </div>`;
+  }
+  row += '</div>';
+  strip.innerHTML = '<div class="strip-head">大限（虚岁）</div>' + row;
+}
+function highlightDecade(pName){
+  document.querySelectorAll('.palace').forEach(el => {
+    const gong = el.querySelector('.p-gong');
+    if(gong && gong.textContent.trim() === pName) el.scrollIntoView({behavior:'smooth'});
+  });
+}
+
+// ── 宫位点击弹窗 ──
+function showPalaceDetail(name, plate){
+  const p = (plate.palaces || []).find(x => x.name === name);
+  if(!p) return;
+  const major = (p.major_stars || []).map(s => `${s.name}[${s.brightness||'?'}]`).join('、') || '无主星(空宫)';
+  const minor = (p.minor_stars || []).map(s => s.name).join('、') || '无';
+  const mutagens = (p.mutagens || []).map(m => `${m.star}${m.mutagen}`).join('、') || '无';
+  $('sd-name').textContent = `${name}（${p.earthly_branch}）`;
+  $('sd-content').innerHTML = `
+    <div style="margin-top:6px"><b>主星</b>：${major}</div>
+    <div><b>辅星</b>：${minor}</div>
+    <div><b>四化</b>：${mutagens}</div>
+    <div><b>大限</b>：${p.decadal_range||'—'}</div>
+  `;
+  $('star-dialog').style.display = 'flex';
+}
+function closeStarDetail(){ $('star-dialog').style.display = 'none'; }
+window.addEventListener('keydown', e => { if(e.key==='Escape') closeStarDetail(); });
+
+// ── 渲染已有分析 ──
+function renderAnalysis(messages){
+  const aiMsg = messages.filter(m => m.role==='assistant');
+  let html = aiMsg.map(m => formatText(m.content)).join('\n<hr style="border:none;border-top:1px dashed var(--line-faint);margin:12px 0">\n');
+  $('analysis-text').innerHTML = html;
+}
+function formatText(t){
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^## (.+)$/gm,'<h2 style="font-size:14px;letter-spacing:1px;margin:14px 0 8px;border-left:3px solid var(--vermillion);padding-left:8px">$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+}
+
+// ── 流式分析 ──
+async function startAnalysis(plate){
+  if(!plate) return;
+  const area = $('analysis-text');
+  area.innerHTML = '正在推算命盘...';
+  try{
+    const r = await fetch('/api/ziwei/analyze/stream', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({plate, password:''})
+    });
+    if(!r.ok){ area.innerHTML = '<span style="color:var(--vermillion)">分析请求失败，请重新排盘</span>'; return }
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '', buf = '';
+    let lastRender = 0;
+    while(true){
+      const {value,done} = await reader.read();
+      if(done) break;
+      buf += decoder.decode(value, {stream:true});
+      const lines = buf.split('\n'); buf = lines.pop() || '';
+      for(const line of lines){
+        if(!line.startsWith('data: ')) continue;
+        try{
+          const d = JSON.parse(line.slice(6));
+          if(d.type === 'content_block_delta' && d.delta?.text){
+            fullText += d.delta.text;
+            const now = Date.now();
+            if(now - lastRender > 50){
+              area.innerHTML = formatText(fullText) + '<span style="animation:blink 1s infinite">▌</span>';
+              lastRender = now;
+            }
+          }
+        }catch(e){}
+      }
+    }
+    area.innerHTML = formatText(fullText);
+    // 存回 session
+    const sp = {role:'system', content:'你是紫微斗数命理师...'};
+    const msgs = [
+      {role:'system', content:''},
+      {role:'user', content:'请解读命盘'},
+      {role:'assistant', content:fullText}
+    ];
+    await fetch(`/api/ziwei/sessions/${sid}`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages: msgs})
+    });
+  }catch(e){
+    area.innerHTML = '<span style="color:var(--vermillion)">分析中断，请重试</span>';
+  }
+}
+
+// ── 追问 ──
+async function sendChat(){
+  const input = $('chat-input'), reply = input.value.trim();
+  if(!reply) return;
+  input.disabled = true; $('btn-chat').disabled = true;
+  const chatArea = $('chat-messages');
+  chatArea.innerHTML += `<div class="chat-msg user"><div class="who">你</div>${reply}</div>`;
+  input.value = '';
+  // 获取当前 messages
+  const r = await fetch(`/api/ziwei/sessions/${sid}`);
+  const s = await r.json();
+  const msgs = s.messages || [];
+  try{
+    const res = await fetch('/api/ziwei/analyze/continue', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages: msgs, reply})
+    });
+    const d = await res.json();
+    if(d.success){
+      chatArea.innerHTML += `<div class="chat-msg agent"><div class="who">Agent</div>${d.analysis.replace(/\n/g,'<br>')}</div>`;
+      // 追加到 session
+      msgs.push({role:'user', content: reply});
+      msgs.push({role:'assistant', content: d.analysis});
+      await fetch(`/api/ziwei/sessions/${sid}`, {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({messages: msgs})
+      });
+    }
+  } catch(e){ chatArea.innerHTML += '<div style="color:var(--vermillion);font-size:11px">追问失败，请重试</div>'; }
+  input.disabled = false; $('btn-chat').disabled = false;
+}
+</script>
+</body>
+</html>
