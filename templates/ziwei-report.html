@@ -56,6 +56,8 @@
     transition: background .15s;
   }
   .palace:hover { background: var(--paper-card); }
+  .palace .p-hint { display:none; font-size:7px; color:var(--ink-faint); margin-top:auto; text-align:right; }
+  .palace:hover .p-hint { display:block; }
   .palace.ming { box-shadow: inset 0 0 0 2px var(--vermillion); }
   .palace .p-head {
     display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
@@ -376,8 +378,10 @@ function renderGrid(plate){
       <div class="main-star">${c.mainStars}</div>
       <div class="aux-star">${c.auxStars}</div>
       <div class="daxian">${c.dr ? '大限 '+c.dr : ''}</div>
+      <div class="p-hint">双击详情</div>
     `;
-    div.onclick = () => { selectPalace(c.br, plate); showPalaceDetail(c.name, plate); };
+    div.onclick = () => { selectPalace(c.br, plate); };
+    div.ondblclick = () => { showPalaceDetail(c.name, plate); };
     gridEl.appendChild(div);
   }
   // center
