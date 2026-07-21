@@ -405,6 +405,38 @@ function getB(){const c=document.querySelector('input[name="cal"]:checked')?.val
 
 function getAdjustedHour(h,min,lng){const o=Math.round((lng-120)*4);let t=h*60+min+o;if(t<0)t+=1440;if(t>=1440)t-=1440;return{hour:Math.floor(t/60),minute:Math.round(t%60),offset:o}}
 
+// ── 地理编码 ──
+let geocodeTimer=null;
+$('location').addEventListener('input',function(){
+  clearTimeout(geocodeTimer);
+  const q=this.value.trim();
+  if(q.length<2){$('city-suggestions').style.display='none';return;}
+  geocodeTimer=setTimeout(async()=>{
+    try{const r=await fetch('/api/cities?q='+encodeURIComponent(q));const d=await r.json();
+    if(!d.results||!d.results.length){$('city-suggestions').style.display='none';return;}
+    const s=$('city-suggestions');
+    s.innerHTML=d.results.slice(0,6).map(c=>'<div style="padding:5px 10px;cursor:pointer;border-bottom:1px solid var(--line-faint);font-size:.82em" data-lon="'+c.lon+'" data-name="'+c.display_name+'">'+c.display_name+' <span style="color:var(--ink-faint);font-size:.8em">'+c.lon.toFixed(1)+'°E</span></div>').join('');
+    s.querySelectorAll('div').forEach(el=>el.onclick=()=>{pickCity(parseFloat(el.dataset.lon),el.dataset.name);});
+    s.style.display='block';
+  }catch(e){}
+},200);
+});
+function pickCity(lng,name){
+  $('longitude').value=lng.toFixed(2);
+  $('location').value=name;
+  $('city-suggestions').style.display='none';
+  $('geocode-status').style.display='block';
+  $('geocode-status').textContent='已定位：'+name+'（经度 '+lng.toFixed(2)+'°E）';
+}
+function geocodeCity(){
+  const loc=$('location').value.trim();if(!loc)return;
+  $('btn-geocode').disabled=true;
+  fetch('/api/geocode?q='+encodeURIComponent(loc)).then(r=>r.json()).then(d=>{
+    if(d.results&&d.results.length) pickCity(d.results[0].lon,d.results[0].display_name);
+    else{$('geocode-status').style.display='block';$('geocode-status').textContent='未找到: '+loc;}
+  }).catch(()=>{}).finally(()=>{$('btn-geocode').disabled=false;});
+}
+
 
 
 $('btn-render').addEventListener('click',()=>{
@@ -688,6 +720,8 @@ async function loadSessions(){
 loadSessions();
 
 </script>
+
+<div id="city-suggestions" style="display:none;position:fixed;z-index:99999;background:var(--paper-card);border:1px solid var(--line-soft);border-radius:4px;max-height:280px;overflow-y:auto;font-size:.82em;line-height:1.8;box-shadow:0 4px 24px rgba(0,0,0,.35)"></div>
 
 </body>
 
