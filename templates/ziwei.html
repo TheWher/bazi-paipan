@@ -1,191 +1,697 @@
 <!DOCTYPE html>
+
 <html lang="zh-CN">
+
 <head>
+
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>紫微斗数 · 命盘</title>
+
 <script>(function(){var t=localStorage.getItem('bazi_theme');if(t)document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.setAttribute('data-theme','dark')})()</script>
+
 <style>
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
 :root{--bg:#fff;--card-bg:#fff;--text:#000;--text-muted:#666;--accent:#000;--primary:#000;--primary-hover:#333;--border:#ccc;--border-light:#e5e5e5;--shadow-sm:0 0 0 1px rgba(0,0,0,.04);--shadow-lg:0 2px 16px rgba(0,0,0,.08);--gold:#000;--radius:18px;--radius-sm:12px}
+
 [data-theme="dark"]{--bg:#1a1a2e;--card-bg:#16213e;--text:#e0e0e0;--text-muted:#999;--accent:#d4a843;--primary:#d4a843;--primary-hover:#e8c860;--border:#444;--border-light:#2a2a3e;--shadow-sm:0 0 0 1px rgba(255,255,255,.03);--shadow-lg:0 2px 16px rgba(0,0,0,.3);--gold:#d4a843}
+
 html{font-size:16px;scroll-behavior:smooth}
+
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+
 .hidden{display:none!important}
+
 .app-layout{display:flex;min-height:100vh}
+
 .app-sidebar{width:400px;min-width:400px;flex-shrink:0;background:linear-gradient(180deg,rgba(212,168,67,.03),rgba(255,255,255,0) 40%);border-right:1px solid var(--border-light);padding:32px 28px 80px;position:sticky;top:0;height:100vh;overflow-y:auto}
+
 .app-sidebar .app-header{text-align:left;padding:0 0 14px}
+
 .app-sidebar .app-header h1{font-size:1.5rem;margin-bottom:2px;cursor:pointer}
+
 .app-sidebar .subtitle{font-size:.7em;color:#999}
+
 .app-main{flex:1;min-width:0;padding:40px 48px 80px;overflow-y:auto}
+
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border:1px solid var(--border);border-radius:20px;background:var(--card-bg);color:var(--text);font-size:.82em;font-weight:500;cursor:pointer;white-space:nowrap}.btn:hover{opacity:.85}
+
 .btn-gold{background:linear-gradient(135deg,#d4a843,#b8860b);color:#fff;border:none}
+
 .quick{flex:1;padding:10px 14px;border:1.5px dashed var(--border);border-radius:var(--radius-sm);background:var(--card-bg);color:var(--text);font-size:1.1em;font-family:monospace;letter-spacing:3px;text-align:center;outline:none}.quick:focus{border-color:#d4a843;border-style:solid}
+
 .quick-hint{color:#666;font-size:.72em;white-space:nowrap}
+
 .radio-group{display:flex;gap:12px}.radio-label{display:flex;align-items:center;gap:4px;font-size:.82em;cursor:pointer}
+
 .sticky-actions{position:fixed;bottom:0;left:0;width:400px;background:var(--card-bg);padding:12px 28px 14px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border-light);z-index:10;box-shadow:0 -4px 16px rgba(0,0,0,.06)}
+
 [data-theme="dark"] .sticky-actions{box-shadow:0 -4px 16px rgba(0,0,0,.3)}
+
 .sticky-actions .btn{flex:1;justify-content:center;font-size:.82em;padding:8px 14px}
+
 .floating-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 16px;background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius-sm)}
+
 .floating-bar .bar-title{font-weight:700;font-size:.88em;color:var(--accent)}
+
 .chart-wrapper{background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-sm);margin-bottom:18px}
+
 .chart-wrapper svg{width:100%;height:auto;max-width:780px;display:block;margin:0 auto}
+
 .analysis-content{font-size:.9rem;line-height:1.85;color:var(--text)}
+
 .a-card{background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow-sm);margin-bottom:14px}
+
 .a-card h2{font-size:.85em;font-weight:600;color:#8b6914;margin-bottom:10px}[data-theme="dark"] .a-card h2{color:var(--accent)}
+
 .a-card .body{font-size:.9rem;line-height:1.85;color:var(--text)}.a-card .body strong{color:var(--accent)}
+
 .loading{text-align:center;padding:60px;color:var(--text-muted)}.spinner{width:32px;height:32px;margin:0 auto 12px;border:3px solid var(--border-light);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@keyframes blink{50%{opacity:0}}
+
 .reasoning-details{margin:6px 0 10px 12px;padding:6px 10px 6px 14px;background:rgba(212,168,67,.04);border-left:2px solid rgba(212,168,67,.25);border-radius:4px;font-size:.82em;line-height:1.7}
+
 .reasoning-details summary{cursor:pointer;color:var(--text-muted);font-size:.78em;font-weight:600;user-select:none;padding:2px 0}
+
 .reasoning-details summary:hover{color:var(--accent)}
+
 .reasoning-details .step{margin:1px 0;padding:1px 0 1px 8px;border-left:1px solid rgba(212,168,67,.12)}
+
 .reasoning-details .step .risk{color:#ef5350}
+
 .reasoning-details .step .conclusion{color:var(--accent)}
+
 .pattern-row{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}.pat-badge{padding:3px 10px;border-radius:12px;font-size:.7em;font-weight:600}.pat-ex{background:linear-gradient(135deg,#d4a843,#8b6914);color:#fff;font-size:.75em}.pat-gd{background:rgba(46,125,50,.12);color:#2e7d32;border:1px solid rgba(46,125,50,.2);font-size:.72em}.pat-ne{background:rgba(120,120,120,.06);color:var(--text-muted);font-size:.68em}.pat-ca{background:rgba(198,40,40,.12);color:#ef5350;border:1px solid rgba(198,40,40,.2);font-size:.72em}
+
 @media(max-width:860px){.app-layout{flex-direction:column}.app-sidebar{width:100%;min-width:0;height:auto;position:static;border-right:none;padding:20px 16px 16px}.app-main{padding:20px 16px 80px}.sticky-actions{width:100%}}
+
+
+
+:root{--paper:#f5f1e8;--paper-deep:#ebe5d5;--paper-card:#faf6ec;--ink:#2b2825;--ink-soft:#6b6660;--ink-faint:#a8a298;--vermillion:#c1432f;--vermillion-deep:#8e2f20;--azure:#2e6da4;--jade:#4a7c4e;--jade-soft:#6f9971;--line:#8b8378;--line-soft:#c4bdb0;--line-faint:#e0d9c8;--radius:4px;--radius-sm:2px}
+
+html{font-size:15px;scroll-behavior:smooth}
+
+body{font-family:"Noto Serif SC","Source Han Serif SC","STSong","PingFang SC",serif;background:var(--paper);color:var(--ink);line-height:1.7;background-image:radial-gradient(circle at 15% 25%,rgba(180,160,130,.06),transparent 50%),radial-gradient(circle at 85% 75%,rgba(180,160,130,.05),transparent 50%);min-height:100vh}.hidden{display:none!important}
+
+.app-layout{display:flex;min-height:100vh}
+
+.app-sidebar{width:400px;min-width:400px;flex-shrink:0;background:var(--paper-card);border-right:1px solid var(--line-soft);padding:28px 24px 80px;position:sticky;top:0;height:100vh;overflow-y:auto}
+
+.app-sidebar .app-header{text-align:left;padding:0 0 12px}
+
+.app-sidebar .app-header h1{font-size:1.3rem;letter-spacing:2px;color:var(--ink);cursor:pointer}
+
+.app-sidebar .subtitle{font-size:.68em;color:var(--ink-faint)}
+
+.app-main{flex:1;min-width:0;padding:32px 40px 80px;overflow-y:auto}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border:1px solid var(--line-soft);border-radius:var(--radius-sm);background:var(--paper-card);color:var(--ink);font-size:.82em;font-family:"Noto Serif SC",serif;cursor:pointer;line-height:1.5;letter-spacing:.5px}.btn:hover{background:var(--paper-deep)}
+
+.btn-primary{background:var(--ink);color:var(--paper);border:none;letter-spacing:1px}.btn-primary:hover{opacity:.85}
+
+.btn-accent{background:var(--vermillion);color:var(--paper);border:none;letter-spacing:1px}.btn-accent:hover{opacity:.85}
+
+.quick{flex:1;padding:9px 12px;border:1.5px dashed var(--line-soft);border-radius:var(--radius-sm);background:var(--paper);color:var(--ink);font-size:1.05em;font-family:"Noto Serif SC","STSong",serif;letter-spacing:3px;text-align:center;outline:none}.quick:focus{border-color:var(--vermillion);border-style:solid}
+
+.quick-hint{color:var(--ink-faint);font-size:.68em;white-space:nowrap}
+
+.radio-group{display:flex;gap:10px}.radio-label{display:flex;align-items:center;gap:4px;font-size:.82em;cursor:pointer;color:var(--ink)}
+
+.sticky-actions{position:fixed;bottom:0;left:0;width:400px;background:var(--paper-card);padding:10px 24px 12px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line-soft);z-index:10}
+
+.sticky-actions .btn{flex:1;justify-content:center;font-size:.82em;padding:8px 14px}
+
+.floating-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:8px 14px;background:var(--paper-card);border:1px solid var(--line-soft);border-radius:var(--radius-sm)}
+
+.floating-bar .bar-title{font-weight:700;font-size:.85em;color:var(--ink)}
+
+.loading{text-align:center;padding:60px;color:var(--ink-soft)}.spinner{width:28px;height:28px;margin:0 auto 10px;border:2.5px solid var(--line-soft);border-top-color:var(--vermillion);border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 宫格 ── */
+
+.ziwei-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);height:540px;background:var(--line-soft);gap:1px;margin-bottom:14px}
+
+.palace{background:var(--paper);padding:6px 8px;font-size:10px;line-height:1.4;display:flex;flex-direction:column;overflow:hidden;cursor:pointer;transition:background .15s;font-family:"Noto Serif SC","Source Han Serif SC","STSong",serif}
+
+.palace:hover{background:var(--paper-card)}
+
+.palace .p-hint{display:none;font-size:7px;color:var(--ink-faint);margin-top:auto;text-align:right}
+
+.palace:hover .p-hint{display:block}
+
+.palace.ming{box-shadow:inset 0 0 0 2px var(--vermillion)}
+
+.palace .p-head{display:flex;align-items:center;gap:4px;flex-wrap:wrap;border-bottom:1px dashed var(--line-faint);padding-bottom:3px;margin-bottom:4px}
+
+.palace .p-dizhi{font-size:11px;font-weight:700;color:var(--ink)}
+
+.palace .p-gong{font-size:10px;font-weight:600;color:var(--ink)}
+
+.palace .p-ganzhi{font-size:9px;color:var(--ink-faint);margin-left:auto}
+
+.shen-badge{display:inline-block;color:var(--vermillion);border:1px solid var(--vermillion);border-radius:2px;font-size:8px;padding:0 3px;line-height:1.3}
+
+.palace .p-stars{flex:1;display:flex;flex-direction:column;gap:1px;overflow:hidden}
+
+.palace .star-row{display:flex;align-items:baseline;gap:3px;line-height:1.5}
+
+.palace .star-name{font-family:"STKaiti","KaiTi","Noto Serif SC",serif;font-size:13px;font-weight:700;color:var(--ink);line-height:1.35}
+
+.palace .star-name.empty-star{color:var(--ink-faint);font-size:11px;font-weight:400}
+
+.palace .star-bright{font-size:8px;color:var(--ink-faint);font-family:"Noto Serif SC",serif}
+
+.palace .star-bright.b-miao{color:var(--vermillion);font-weight:700}
+
+.palace .star-bright.b-wang{color:#c8742a;font-weight:700}
+
+.palace .mu-badge{font-size:8px;font-weight:700;padding:0 3px;border-radius:2px;line-height:1.4;display:inline-block}
+
+.palace .mu-badge.mu-lu{background:var(--vermillion);color:var(--paper)}
+
+.palace .mu-badge.mu-quan{background:var(--azure);color:var(--paper)}
+
+.palace .mu-badge.mu-ke{background:var(--jade);color:var(--paper)}
+
+.palace .mu-badge.mu-ji{background:var(--ink);color:var(--paper)}
+
+.palace .p-aux{padding-top:3px;margin-top:2px;border-top:1px dotted var(--line-faint);font-size:9px;line-height:1.5;font-family:"Noto Serif SC",serif}
+
+.palace .aux-auspicious{color:var(--ink)}
+
+.palace .aux-malefic{color:var(--vermillion-deep)}
+
+.palace .aux-sep{color:var(--ink-faint);margin:0 2px}
+
+.palace .p-daxian{margin-top:auto;padding-top:3px;border-top:1px dashed var(--line-faint);font-size:9px;color:var(--ink-soft);display:flex;justify-content:space-between;gap:4px}
+
+.palace.current .p-daxian{color:var(--vermillion);font-weight:700}
+
+/* 中心宫 */
+
+.center-palace{grid-column:2/4;grid-row:2/4;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--paper);padding:16px 18px;text-align:center;border-left:1px solid var(--line);border-right:1px solid var(--line);font-family:"Noto Serif SC","STSong",serif;position:relative}
+
+.center-palace::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(193,67,47,.04),transparent 70%);pointer-events:none}
+
+.center-palace .c-ju{font-size:13px;letter-spacing:3px;color:var(--ink-soft);margin-bottom:4px;position:relative}
+
+.center-palace .c-ming-star{font-family:"STKaiti","KaiTi","Noto Serif SC",serif;font-size:22px;font-weight:700;color:var(--vermillion);letter-spacing:2px;margin:6px 0 8px;position:relative}
+
+.center-palace .c-ming-star.empty{color:var(--ink-faint);font-size:16px}
+
+.center-palace .c-divider{width:40px;height:1px;background:var(--line-soft);margin:4px auto;position:relative}
+
+.center-palace .c-anchor{font-size:11px;color:var(--ink);margin:3px 0;position:relative}
+
+.center-palace .c-anchor .lbl{color:var(--ink-faint);margin-right:4px}
+
+.center-palace .c-anchor strong{color:var(--ink);font-weight:700}
+
+.center-palace .c-current{margin-top:8px;padding:4px 10px;border:1px solid var(--vermillion);color:var(--vermillion);font-size:10px;font-weight:700;position:relative}
+
+/* 确认卡片 */
+
+.confirm-card{border:1px solid var(--line-soft);background:var(--paper-card);padding:14px 18px;margin-bottom:14px;border-radius:var(--radius)}
+
+.confirm-card .cc-head{font-size:.85em;font-weight:700;color:var(--ink);margin-bottom:10px}
+
+.confirm-card .cc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:.82em}
+
+.confirm-card .cc-item{line-height:1.6}
+
+.confirm-card .cc-label{color:var(--ink-faint);font-size:.78em}
+
+.confirm-card .cc-value{color:var(--ink);font-weight:600}
+
+.confirm-card .cc-sihua{grid-column:1/-1;margin-top:4px;padding-top:6px;border-top:1px dashed var(--line-faint)}
+
+.confirm-card .cc-sihua .cc-label{display:inline;margin-right:6px}
+
+.confirm-card .cc-sihua .cc-value{font-weight:400;font-size:.9em}
+
+@media(max-width:860px){.app-layout{flex-direction:column}.app-sidebar{width:100%;min-width:0;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line-soft);padding:20px 16px 16px}.app-main{padding:20px 16px 80px}.sticky-actions{width:100%}.ziwei-grid{height:380px}.palace .star-name{font-size:11px}.palace .p-aux{font-size:8px}.palace .p-stars{gap:0}.center-palace .c-ming-star{font-size:18px}.center-palace .c-ju{font-size:11px}.center-palace .c-anchor{font-size:10px}.confirm-card .cc-grid{grid-template-columns:1fr 1fr}}
+
+
+
 </style>
+
 </head>
+
 <body>
+
+
+
+</head>
+
+<body>
+
 <div class="app-layout">
+
 <aside class="app-sidebar">
+
     <header class="app-header">
+
         <h1 onclick="location='/'">紫微斗数 <button id="btn-theme" onclick="event.stopPropagation();toggleTheme()" style="background:none;border:1px solid var(--border);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;line-height:1;vertical-align:middle;margin-left:4px">🌙</button></h1>
-        <p class="subtitle">iztro JS 原版引擎 · 命盘解读</p>
+
+        <p class="subtitle" style="color:var(--ink-faint)">iztro JS 原版引擎 · 命盘解读</p>
+
     </header>
+
     <section style="padding:0 0 40px">
+
         <input type="text" id="quick" class="quick" maxlength="12" inputmode="numeric" placeholder="200508190135" style="width:100%;margin-bottom:8px">
+
         <p class="quick-hint" style="margin-bottom:14px">快捷输入 200508190135 → 自动填表</p>
+
         <div style="background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius);overflow:visible;margin-bottom:10px">
+
             <div style="padding:14px 16px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;gap:12px">
+
                 <span style="font-weight:600;font-size:.8em;color:var(--accent)">历法</span>
+
                 <div class="radio-group"><label class="radio-label"><input type="radio" name="cal" value="solar" checked> 公历</label><label class="radio-label" style="margin-left:16px"><input type="radio" name="cal" value="lunar"> 农历</label></div>
+
             </div>
+
             <div style="display:flex;border-bottom:1px solid var(--border-light)">
-                <div style="flex:1;padding:12px 16px;border-right:1px solid var(--border-light)"><label style="display:block;font-size:.68em;color:var(--text-muted);margin-bottom:4px">年</label><input type="number" id="y" value="1991" min="1900" max="2100" style="width:100%;border:none;padding:4px 0;font-size:1em;background:transparent;color:var(--text);outline:none"></div>
+
+                <div style="flex:1;padding:12px 16px;border-right:1px solid var(--border-light)"><label style="display:block;font-size:.68em;color:var(--text-muted);margin-bottom:4px">年</label><input type="number" id="y" value="2005" min="1900" max="2100" style="width:100%;border:none;padding:4px 0;font-size:1em;background:transparent;color:var(--text);outline:none"></div>
+
                 <div style="flex:1;padding:12px 16px;border-right:1px solid var(--border-light)"><label style="display:block;font-size:.68em;color:var(--text-muted);margin-bottom:4px">月</label><input type="number" id="m" value="8" min="1" max="12" style="width:100%;border:none;padding:4px 0;font-size:1em;background:transparent;color:var(--text);outline:none"></div>
-                <div style="flex:1;padding:12px 16px"><label style="display:block;font-size:.68em;color:var(--text-muted);margin-bottom:4px">日</label><input type="number" id="d" value="15" min="1" max="31" style="width:100%;border:none;padding:4px 0;font-size:1em;background:transparent;color:var(--text);outline:none"></div>
+
+                <div style="flex:1;padding:12px 16px"><label style="display:block;font-size:.68em;color:var(--text-muted);margin-bottom:4px">日</label><input type="number" id="d" value="19" min="1" max="31" style="width:100%;border:none;padding:4px 0;font-size:1em;background:transparent;color:var(--text);outline:none"></div>
+
             </div>
+
             <div style="display:flex;border-bottom:1px solid var(--border-light)">
+
                 <div style="flex:1;padding:12px 16px;border-right:1px solid var(--border-light)"><label style="display:block;font-size:.68em;color:var(--text-muted);margin-bottom:4px">时</label><input type="number" id="h" value="1" min="0" max="23" style="width:100%;border:none;padding:4px 0;font-size:1em;background:transparent;color:var(--text);outline:none"></div>
-                <div style="flex:1;padding:12px 16px"><label style="display:block;font-size:.68em;color:var(--text-muted);margin-bottom:4px">分</label><input type="number" id="min" value="0" min="0" max="59" style="width:100%;border:none;padding:4px 0;font-size:1em;background:transparent;color:var(--text);outline:none"></div>
+
+                <div style="flex:1;padding:12px 16px"><label style="display:block;font-size:.68em;color:var(--text-muted);margin-bottom:4px">分</label><input type="number" id="min" value="35" min="0" max="59" style="width:100%;border:none;padding:4px 0;font-size:1em;background:transparent;color:var(--text);outline:none"></div>
+
             </div>
+
             <div style="padding:14px 16px;display:flex;align-items:center;gap:12px">
+
                 <span style="font-weight:600;font-size:.8em;color:var(--accent)">性别</span>
+
                 <div class="radio-group"><label class="radio-label"><input type="radio" name="g" value="男" checked> 男</label><label class="radio-label" style="margin-left:16px"><input type="radio" name="g" value="女"> 女</label></div>
+
             </div>
+
         </div>
+
         <label class="radio-label" style="margin-bottom:6px;display:flex;align-items:center;gap:8px;font-size:.9em;font-weight:600;color:var(--accent)"><input type="checkbox" id="use-true-solar" style="width:18px;height:18px"> ⏱ 真太阳时校正</label>
+
         <p style="font-size:.72em;color:var(--text-muted);margin-bottom:8px">北京时间以120°E为基准，出生地经度不同会产生时间偏移，可能跨越时辰分界线改变命盘。</p>
+
         <div id="solar-info" style="display:none;font-size:.8em;color:var(--accent);margin-bottom:8px;line-height:1.6"></div>
+
         <div id="solar-row" style="display:none;background:var(--card-bg);border:1px solid var(--border-light);border-radius:var(--radius-sm);margin-bottom:10px;position:relative">
+
             <div style="padding:14px 16px">
+
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+
                     <span style="font-weight:600;font-size:.82em;color:var(--accent);min-width:32px">经度</span>
+
                     <input type="number" id="longitude" step="0.01" placeholder="120" value="120" style="flex:1;border:1px solid var(--border-light);border-radius:6px;padding:7px 10px;font-size:.88em;background:var(--bg);color:var(--text);outline:none">
+
                 </div>
+
                 <div style="display:flex;align-items:center;gap:6px">
+
                     <span style="font-weight:600;font-size:.82em;color:var(--accent);min-width:32px">出生地</span>
+
                     <div style="flex:1;position:relative">
+
                         <input type="text" id="location" placeholder="城市名，如：东莞" autocomplete="off" style="width:100%;border:1px solid var(--border-light);border-radius:6px;padding:7px 10px;font-size:.88em;background:var(--bg);color:var(--text);outline:none">
+
                     </div>
+
                     <button id="btn-geocode" class="btn" style="font-size:.78em;padding:5px 12px;border-radius:6px;flex-shrink:0" onclick="geocodeCity()">🔍 定位</button>
+
                 </div>
+
             </div>
+
             <div id="geocode-status" style="display:none;padding:4px 16px 10px;font-size:.74em;color:#4caf50"></div>
+
         </div>
+
     </section>
+
     <div style="margin-top:auto;padding:12px 0;border-top:1px solid var(--border-light)">
+
             <details id="session-details" open><summary style="cursor:pointer;font-size:.82em;color:var(--accent);margin-bottom:8px;font-weight:600">💬 历史会话 (<span id="session-count">0</span>)</summary>
+
             <div id="session-list" style="max-height:240px;overflow-y:auto;font-size:.78em;line-height:1.6"></div>
+
             </details>
+
         </div>
+
     <div class="sticky-actions">
-        <button id="btn-render" class="btn btn-gold">🔮 排盘</button>
-        <button id="btn-analyze" class="btn btn-gold" disabled>🧠 AI 解读</button>
+
+        <button id="btn-render" class="btn btn-accent">🔮 排盘</button>
+
+        <button id="btn-analyze" class="btn btn-accent" disabled>🧠 AI 解读</button>
+
     </div>
+
 </aside>
+
 <main class="app-main">
-    <section id="welcome-section"><div style="text-align:center;padding:120px 40px;color:var(--text-muted)"><div style="font-size:3em;margin-bottom:16px">🔮</div><p style="font-size:1em;margin-bottom:8px">输入出生信息，点击「排盘」开始分析</p><p style="font-size:.75em">排盘后点击 AI 解读 → 自动跳转水墨报告页</p></div></section>
-    <section id="loading-section" class="hidden"><div class="loading"><div class="spinner"></div><p>紫微排盘中...</p></div></section>
-    <section id="result-section" class="hidden">
-        <div style="text-align:center;padding:60px 40px">
-            <div style="font-size:2em;margin-bottom:12px">✅</div>
-            <p style="font-size:.95em;color:var(--text);margin-bottom:8px">排盘完成</p>
-            <p style="font-size:.78em;color:var(--text-muted)">点击下方「AI 解读」生成水墨风格命盘报告</p>
-        </div>
-    </section>
-</main>
-</div>
-<div id="pw-overlay" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center">
-    <div style="background:var(--card-bg);border-radius:14px;padding:28px;width:340px;max-width:90vw;text-align:center">
-        <h3 style="margin-bottom:8px;color:var(--accent)">🔐 深度分析需要密码</h3>
-        <p style="font-size:.8em;color:var(--text-muted);margin-bottom:16px">API 调用成本较高，请向管理员获取密码</p>
-        <input type="password" id="pw-input" placeholder="请输入密码" style="width:100%;padding:10px;font-size:.9em;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;background:var(--bg);color:var(--text)">
-        <div id="pw-error" style="color:#ef5350;font-size:.78em;margin-bottom:8px"></div>
-        <div style="display:flex;gap:8px"><button id="btn-pw-cancel" class="btn" style="flex:1">取消</button><button id="btn-pw-confirm" class="btn btn-gold" style="flex:1">确认</button></div>
+
+    
+
+<section id="welcome-section"><div style="text-align:center;padding:100px 40px;color:var(--ink-soft)"><div style="font-size:3em;margin-bottom:14px">🔮</div><p style="font-size:.95em;margin-bottom:6px">输入出生信息，点击「排盘」开始分析</p><p style="font-size:.72em;color:var(--ink-faint)">排盘后确认命盘信息 → 点击 AI 解读</p></div></section>
+
+<section id="loading-section" class="hidden"><div class="loading"><div class="spinner"></div><p style="font-family:'Noto Serif SC',serif;letter-spacing:1px">紫微排盘中...</p></div></section>
+
+<section id="result-section" class="hidden">
+
+    <div class="ziwei-grid" id="grid"><div class="center-palace" style="grid-column:2/4;grid-row:2/4"><div class="loading" style="padding:0;color:var(--ink-faint)">读取命盘...</div></div></div>
+
+    <div class="confirm-card" id="confirm-card"></div>
+
+    <div class="btn-row" style="display:flex;gap:8px;margin-bottom:14px">
+
+        <button id="btn-re-render" class="btn" onclick="reRender()">⟲ 重新排盘</button>
+
+        <button id="btn-start-analyze" class="btn btn-accent" onclick="startAnalysis()">🧠 命盘解读</button>
+
     </div>
-</div>
-<div id="city-suggestions" style="display:none;position:fixed;z-index:99999;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;max-height:280px;overflow-y:auto;font-size:.82em;line-height:1.8;box-shadow:0 4px 24px rgba(0,0,0,.35)"></div>
+
+</section>
+
 <script>
+
 const $=id=>document.getElementById(id);
+
 let plateData=null;
 
+
+
 (function(){const t=localStorage.getItem('bazi_theme');$('btn-theme').textContent=t==='dark'?'☀️':'🌙'})();
+
 function toggleTheme(){const n=document.documentElement.getAttribute('data-theme')==='dark'?'':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('bazi_theme',n);$('btn-theme').textContent=n==='dark'?'☀️':'🌙'}
 
+
+
 $('quick').addEventListener('input',function(){const v=this.value.replace(/\D/g,'');if(v.length<8)return;$('y').value=v.slice(0,4);$('m').value=parseInt(v.slice(4,6));$('d').value=parseInt(v.slice(6,8));if(v.length>=10)$('h').value=parseInt(v.slice(8,10));if(v.length>=12)$('min').value=parseInt(v.slice(10,12))});
+
 $('quick').addEventListener('keydown',e=>{if(e.key==='Enter')$('btn-render').click()});
 
 function getB(){const c=document.querySelector('input[name="cal"]:checked')?.value||'solar';const g=document.querySelector('input[name="g"]:checked')?.value||'男';return{y:parseInt($('y').value),m:parseInt($('m').value),d:parseInt($('d').value),h:parseInt($('h').value),min:parseInt($('min').value||'0'),gender:g,cal:c}}
 
 function getAdjustedHour(h,min,lng){const o=Math.round((lng-120)*4);let t=h*60+min+o;if(t<0)t+=1440;if(t>=1440)t-=1440;return{hour:Math.floor(t/60),minute:Math.round(t%60),offset:o}}
 
+
+
 $('btn-render').addEventListener('click',()=>{
+
     const b=getB();if(!b.y||!b.m||!b.d)return;
-    $('welcome-section').classList.add('hidden');$('loading-section').classList.remove('hidden');
+
+    $('welcome-section').classList.add('hidden');$('loading-section').classList.remove('hidden');$('result-section').classList.add('hidden');
+
     let hh=b.h,mm=b.min;
+
     if($('use-true-solar').checked){const lng=parseFloat($('longitude').value)||120;const adj=getAdjustedHour(b.h,b.min,lng);hh=adj.hour;mm=adj.minute}
+
     fetch('/api/ziwei/paipan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({year:b.y,month:b.m,day:b.d,hour:hh,minute:mm,gender:b.gender,is_lunar:b.cal==='lunar',longitude:parseFloat($('longitude').value)||120,location:$('location').value||''})})
-    .then(r=>r.json()).then(d=>{plateData=d;$('loading-section').classList.add('hidden');$('result-section').classList.remove('hidden');$('btn-analyze').disabled=false})
-    .catch(()=>{$('loading-section').innerHTML='<p style="color:#ef5350">排盘失败</p>'});
+
+    .then(r=>r.json()).then(d=>{plateData=d;$('loading-section').classList.add('hidden');$('result-section').classList.remove('hidden');renderInPlace(d)})
+
+    .catch(()=>{$('loading-section').innerHTML='<p style="color:#ef5350;font-family:serif">排盘失败</p>'});
+
 });
 
-$('btn-analyze').addEventListener('click',async()=>{
+
+
+// ── 宫格渲染（同报告页） ──
+
+const GRID_POS={'巳':[0,0],'午':[1,0],'未':[2,0],'申':[3,0],'辰':[0,1],'酉':[3,1],'卯':[0,2],'戌':[3,2],'寅':[0,3],'丑':[1,3],'子':[2,3],'亥':[3,3]};
+
+const LAIYIN=['父母','福德','命宫','兄弟','夫妻','子女','财帛','疾厄','迁移','交友'];
+
+
+
+function renderInPlace(data){
+
+    renderGrid(data);
+
+    renderConfirm(data);
+
+}
+
+function renderGrid(plate){
+
+    const palaces=plate.palaces||[],soul=plate.soul_palace||'',body=plate.body_palace||'';
+
+    const cells=[];
+
+    for(const p of palaces){
+
+        const br=p.earthly_branch,pos=GRID_POS[br];if(!pos)continue;
+
+        const isSoul=p.name===soul,isBody=p.name===body,cls=isSoul?'palace ming':'palace';
+
+        const shenBadge=isBody?'<span class="shen-badge">身</span>':'';
+
+        const majors=p.major_stars||[];
+
+        let starsHtml=majors.length===0?'<div class="star-row"><span class="star-name empty-star">—</span></div>'
+
+            :majors.map(s=>{
+
+                const nameHtml='<span class="star-name">'+s.name+'</span>';
+
+                const brightHtml=s.brightness_css?'<span class="star-bright '+s.brightness_css+'">'+(s.brightness||'')+'</span>':'';
+
+                let muHtml='';
+
+                if(s.mutagen){
+
+                    const hua=(s.mutagen||'').replace('化','');
+
+                    const muCls={'禄':'mu-lu','权':'mu-quan','科':'mu-ke','忌':'mu-ji'}[hua]||'';
+
+                    if(muCls) muHtml='<span class="mu-badge '+muCls+'">'+hua+'</span>';
+
+                }
+
+                return '<div class="star-row">'+nameHtml+brightHtml+muHtml+'</div>';
+
+            }).join('');
+
+        const minors=p.minor_stars||[];
+
+        const auspicious=[],malefic=[],neutral=[];
+
+        for(const s of minors){
+
+            const css=s.css||'';
+
+            if(css==='star-malefic')malefic.push(s.name);
+
+            else if(css==='star-auspicious'||css==='star-helper'||css==='star-lucun')auspicious.push(s.name);
+
+            else neutral.push(s.name);
+
+        }
+
+        const parts=[];
+
+        if(auspicious.length)parts.push('<span class="aux-auspicious">'+auspicious.join(' ')+'</span>');
+
+        if(malefic.length)parts.push('<span class="aux-malefic">'+malefic.join(' ')+'</span>');
+
+        if(neutral.length)parts.push('<span style="color:var(--ink-faint)">'+neutral.join(' ')+'</span>');
+
+        const auxHtml=parts.join('<span class="aux-sep">┊</span>')||'<span style="color:var(--ink-faint)">　</span>';
+
+        const dr=p.decadal_range||'',ddz=p.decadal_dizhi||'';
+
+        const curAge=currentAge();let isCurrent=false;
+
+        if(dr){const p2=dr.split('-');if(p2.length===2){const s2=parseInt(p2[0]),e2=parseInt(p2[1]);if(s2<=curAge&&curAge<=e2)isCurrent=true;}}
+
+        cells.push({pos,br,name:p.name,cls,shenBadge,starsHtml,auxHtml,dr,ddz,isCurrent,dizhi:p.dizhi||br});
+
+    }
+
+    const gridEl=$('grid');gridEl.className='ziwei-grid';gridEl.innerHTML='';
+
+    for(const c of cells){
+
+        const div=document.createElement('div');
+
+        div.className=c.cls+(c.isCurrent?' current':'');
+
+        div.style.gridColumn=c.pos[0]+1;div.style.gridRow=c.pos[1]+1;
+
+        div.innerHTML='<div class="p-head"><span class="p-dizhi">'+c.br+'</span><span class="p-gong">'+c.name+'</span>'+c.shenBadge+'<span class="p-ganzhi">'+c.dizhi+'</span></div><div class="p-stars">'+c.starsHtml+'</div><div class="p-aux">'+c.auxHtml+'</div><div class="p-daxian">'+(c.dr?'<span>'+c.dr+'</span><span>'+c.ddz+'</span>':'')+'</div><div class="p-hint">双击详解</div>';
+
+        gridEl.appendChild(div);
+
+    }
+
+    const soulPalaceObj=palaces.find(p=>p.name===soul)||{};
+
+    const soulMajors=soulPalaceObj.major_stars||[];
+
+    const soulStarStr=soulMajors.map(s=>s.name).join('·')||'空宫';
+
+    const soulStarCls=soulMajors.length===0?'c-ming-star empty':'c-ming-star';
+
+    const curAge2=currentAge();let curDec='—';
+
+    for(const p of palaces){const dr=p.decadal_range||'';if(dr){const[s3,e3]=dr.split('-').map(Number);if(s3<=curAge2&&curAge2<=e3){curDec=(p.decadal_dizhi||'')+' '+p.name+' '+dr;break;}}}
+
+    const inp=plate.input||{};const birthYear=parseInt((inp.birth_datetime||'').split('-')[0])||0;
+
+    const laiyin=birthYear?LAIYIN[(birthYear-4)%10]:'—';
+
+    const center=document.createElement('div');center.className='center-palace';
+
+    center.innerHTML='<div class="c-ju">'+(plate.five_elements_class||'')+'</div><div class="'+soulStarCls+'">'+soulStarStr+'</div><div class="c-divider"></div><div class="c-anchor"><span class="lbl">命宫</span><strong>'+(soul||'—')+'</strong></div><div class="c-anchor"><span class="lbl">身宫</span><strong>'+(body||'—')+'</strong></div><div class="c-anchor"><span class="lbl">来因宫</span><strong>'+laiyin+'</strong></div><div class="c-current">今运 '+curDec+'</div>';
+
+    gridEl.appendChild(center);
+
+}
+
+function currentAge(){
+
+    const inp=plateData?.input||{};
+
+    const y=parseInt((inp.birth_datetime||'').split('-')[0])||2005;
+
+    return new Date().getFullYear()-y;
+
+}
+
+
+
+// ── 确认卡片 ──
+
+function renderConfirm(plate){
+
+    const inp=plate.input||{},ym=plate.year_mutagens||[];
+
+    const birthDt=inp.birth_datetime||'—',gender=inp.gender||'男';
+
+    const fec=plate.five_elements_class||'—',soul=plate.soul_palace||'—',body=plate.body_palace||'—';
+
+    const birthYear=parseInt(birthDt.split('-')[0])||0;
+
+    const laiyin=birthYear?LAIYIN[(birthYear-4)%10]:'—';
+
+    const sihuaStr=ym.map(m=>m.star+m.mutagen.replace('化','')+'在'+m.palace).join(' · ')||'无';
+
+    $('confirm-card').innerHTML='<div class="cc-head">✅ 确认命盘</div><div class="cc-grid"><div class="cc-item"><div class="cc-label">出生</div><div class="cc-value">'+birthDt+' '+gender+'</div></div><div class="cc-item"><div class="cc-label">五行局</div><div class="cc-value">'+fec+'</div></div><div class="cc-item"><div class="cc-label">命宫/身宫</div><div class="cc-value">'+soul+' / '+body+'</div></div><div class="cc-item"><div class="cc-label">来因宫</div><div class="cc-value">'+laiyin+'</div></div><div class="cc-sihua"><span class="cc-label">生年四化</span><span class="cc-value">'+sihuaStr+'</span></div></div>';
+
+}
+
+
+
+// ── 命盘解读触发 → 创建 session + SSE → 跳转报告页 ──
+
+async function startAnalysis(){
+
     if(!plateData)return;
-    $('btn-analyze').disabled=true;$('btn-analyze').textContent='分析中...';
-    $('result-section').classList.add('hidden');$('loading-section').classList.remove('hidden');$('loading-section').innerHTML='<p style="text-align:center;padding:60px;color:#666">正在请求AI解读...</p>';
+
+    const btn=$('btn-start-analyze');
+
+    btn.disabled=true;btn.textContent='分析中...';
+
     try{
+
         const title=$('y').value+'-'+$('m').value+'-'+$('d').value+' '+$('h').value+':00';
+
         const sr=await fetch('/api/ziwei/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,messages:[],plate_data:plateData,plate_summary:title})});
-        const sd=await sr.json();
-        const sid=sd.id;
-        $('loading-section').innerHTML='<p style="text-align:center;padding:60px;color:#666">AI分析中，即将跳转报告页...</p>';
-        let pw = '';
-        let r = await fetch('/api/ziwei/analyze/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData,password:''})});
-        if(r.status === 403){
-          pw = prompt('需要密码才能解读：');
-          if(!pw){ $('loading-section').innerHTML='<p style="color:#ef5350">已取消</p>'; $('btn-analyze').disabled=false; $('btn-analyze').textContent='重试'; return; }
-          r = await fetch('/api/ziwei/analyze/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData,password:pw})});
+
+        const sd=await sr.json();const sid=sd.id;
+
+        btn.textContent='即将跳转报告页...';
+
+        let pw='';
+
+        let r=await fetch('/api/ziwei/analyze/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData,password:''})});
+
+        if(r.status===403){
+
+            pw=await new Promise(resolve=>{
+              const ov=document.createElement('div');
+              ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center;font-family:Noto Serif SC,serif';
+              ov.innerHTML='<div style="background:var(--paper-card);border:1px solid var(--line-soft);padding:24px;width:320px;max-width:90vw;text-align:center;border-radius:4px"><h3 style="font-size:14px;margin-bottom:8px;color:var(--ink)">🔐 需要密码</h3><input type="password" id="ziwei-pw-input" placeholder="请输入密码" style="width:90%;padding:8px;font-size:.9em;border:1px solid var(--line-soft);border-radius:2px;margin-bottom:10px;background:var(--paper);color:var(--ink);font-family:inherit"><div style="display:flex;gap:8px"><button id="ziwei-pw-cancel" style="flex:1;padding:6px;border:1px solid var(--line-soft);background:var(--paper);color:var(--ink);cursor:pointer;border-radius:2px;font-family:inherit">取消</button><button id="ziwei-pw-ok" style="flex:1;padding:6px;background:var(--ink);color:var(--paper);border:none;cursor:pointer;border-radius:2px;font-family:inherit">确认</button></div></div>';
+              document.body.appendChild(ov);
+              const inp=ov.querySelector('#ziwei-pw-input');
+              inp.focus();
+              ov.querySelector('#ziwei-pw-ok').onclick=()=>{const v=inp.value;ov.remove();resolve(v);};
+              ov.querySelector('#ziwei-pw-cancel').onclick=()=>{ov.remove();resolve(null);};
+              inp.onkeydown=e=>{if(e.key==='Enter')ov.querySelector('#ziwei-pw-ok').click();};
+            });
+
+            if(!pw){btn.disabled=false;btn.textContent='命盘解读';$('result-section').classList.remove('hidden');return;}
+
+            r=await fetch('/api/ziwei/analyze/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData,password:pw})});
+
         }
+
         const reader=r.body.getReader();const decoder=new TextDecoder();let fullText='',buf='';
+
         while(true){
+
             const{value,done}=await reader.read();
+
             if(done){
+
                 await fetch('/api/ziwei/sessions/'+sid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'assistant',content:fullText}]})});
+
                 window.location.href='/ziwei/report/'+sid;return;
+
             }
+
             buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
+
             for(const line of lines){if(line.startsWith('data: '))try{const d=JSON.parse(line.slice(6));if(d.type==='content_block_delta'&&d.delta?.text)fullText+=d.delta.text}catch(e){}}
+
         }
-    }catch(e){$('loading-section').innerHTML='<p style="color:#ef5350">分析失败，请重试</p>';$('btn-analyze').disabled=false;$('btn-analyze').textContent='重试'}
-});
+
+    }catch(e){btn.disabled=false;btn.textContent='重试';alert('分析失败，请重试'+e.message);}
+
+}
+
+
+
+function reRender(){
+
+    $('result-section').classList.add('hidden');$('welcome-section').classList.remove('hidden');plateData=null;
+
+}
+
+
+
+// ── 历史会话 ──
 
 async function loadSessions(){
+
     try{const r=await fetch('/api/ziwei/sessions');const sessions=await r.json();$('session-count').textContent=sessions.length;
+
         if(sessions.length>0)$('session-details').open=true;
-        $('session-list').innerHTML=sessions.map(s=>'<div style="padding:6px 8px;margin:3px 0;border-radius:6px;cursor:pointer" onclick="window.location.href=\'/ziwei/report/'+s.id+'\'"><span style="color:var(--accent);font-weight:600">\u{1F4DD} '+s.title+'</span><span style="color:var(--text-muted);font-size:.8em;margin-left:4px">'+s.message_count+'\u6761</span><button onclick="event.stopPropagation();fetch(\'/api/ziwei/sessions/'+s.id+'{method:\'DELETE\'}).then(()=>loadSessions())" style="float:right;background:none;border:none;color:var(--text-muted);cursor:pointer">\u2715</button></div>').join('')||'<div style="color:var(--text-muted);padding:8px;text-align:center">\u6682\u65e0\u5386\u53f2\u4f1a\u8bdd</div>'}
+
+        $('session-list').innerHTML=sessions.map(s=>'<div style="padding:5px 8px;margin:2px 0;border-radius:2px;cursor:pointer;border-bottom:1px solid var(--line-faint)" onclick="window.location.href=&#39;/ziwei/report/&#39;+s.id+&#39;&#39;"><span style="color:var(--ink);font-weight:700;font-size:.9em">📝 '+s.title+'</span><span style="color:var(--ink-faint);float:right;font-size:.8em">'+(s.message_count||0)+'条</span></div>').join('')||'<div style="color:var(--ink-faint);padding:6px;text-align:center;font-size:.85em">暂无历史会话</div>'}
+
     catch(e){}
+
 }
+
 loadSessions();
+
 </script>
+
 </body>
+
 </html>

@@ -541,6 +541,19 @@ const GLOSSARY = {
 const HISTORY_KEY = 'bazi_history';
 function loadHistory(){ try{ return JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]'); }catch(e){ return []; } }
 function saveHistory(list){ localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); }
+
+async function askName(defVal, title){
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;font-family:Noto Serif SC,serif';
+    ov.innerHTML = '<div style="background:#faf6ec;border:1px solid #c4bdb0;padding:20px;width:340px;text-align:center;border-radius:4px"><p style="font-size:13px;color:#2b2825;margin-bottom:10px">'+title+'</p><input id="ask-name-input" value="'+defVal+'" style="width:90%;padding:8px;font-size:.9em;border:1px solid #c4bdb0;border-radius:2px;margin-bottom:10px;background:#f5f1e8;color:#2b2825;font-family:inherit"><div style="display:flex;gap:8px"><button id="ani-cancel" style="flex:1;padding:6px;border:1px solid #c4bdb0;background:#f5f1e8;color:#2b2825;cursor:pointer;border-radius:2px;font-family:inherit">取消</button><button id="ani-ok" style="flex:1;padding:6px;background:#2b2825;color:#f5f1e8;border:none;cursor:pointer;border-radius:2px;font-family:inherit">确定</button></div></div>';
+    document.body.appendChild(ov);
+    const inp = ov.querySelector('#ask-name-input'); inp.focus(); inp.select();
+    ov.querySelector('#ani-ok').onclick = () => { ov.remove(); resolve(inp.value); };
+    ov.querySelector('#ani-cancel').onclick = () => { ov.remove(); resolve(null); };
+    inp.onkeydown = e => { if(e.key==='Enter') ov.querySelector('#ani-ok').click(); };
+  });
+}
 function addToHistory(plate, analysis){
     const h = loadHistory();
     const input = plate.input || {};
@@ -555,14 +568,13 @@ function addToHistory(plate, analysis){
     saveHistory(h); renderHistory();
     // 新命例弹出命名提示
     if(!oldName){
-        setTimeout(()=>{ const name = prompt('为此命例起个名字（如"张三 2005"），方便以后查找：', autoLabel); if(name){ entry.name = name.trim(); saveHistory(h); renderHistory(); } }, 300);
+        setTimeout(async ()=>{ const name = await askName(autoLabel,'为此命例起个名字'); if(name){ entry.name = name.trim(); saveHistory(h); renderHistory(); } }, 300);
     }
 }
 function deleteHistory(id){ saveHistory(loadHistory().filter(e=>e.id!==id)); renderHistory(); }
 function renameHistory(id){
     const h = loadHistory(); const e = h.find(e=>e.id===id); if(!e) return;
-    const name = prompt('重命名：', e.name || e._autoLabel || '');
-    if(name){ e.name = e.name.trim(); saveHistory(h); renderHistory(); }
+    askName(e.name||e._autoLabel||'命例','重命名').then(name => { if(name){ e.name = name.trim(); saveHistory(h); renderHistory(); } });
 }
 function restoreHistory(id){
     const e = loadHistory().find(e=>e.id===id); if(!e) return;

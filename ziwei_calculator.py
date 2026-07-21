@@ -85,6 +85,26 @@ _BRIGHTNESS_FIX = {star: dict(zip('子丑寅卯辰巳午未申酉戌亥', [
     '破军': '庙庙陷旺旺陷庙庙陷陷旺平平',
 }.items()}
 
+# ═══ 十天干四化表（宫干飞星用，简体星名）═══
+# 与前端 ziwei-report.html GAN_SIHUA 保持一致
+_GAN_SIHUA_TABLE = {
+    '甲': [('禄','廉贞'),('权','破军'),('科','武曲'),('忌','太阳')],
+    '乙': [('禄','天机'),('权','天梁'),('科','紫微'),('忌','太阴')],
+    '丙': [('禄','天同'),('权','天机'),('科','文昌'),('忌','廉贞')],
+    '丁': [('禄','太阴'),('权','天同'),('科','天机'),('忌','巨门')],
+    '戊': [('禄','贪狼'),('权','太阴'),('科','右弼'),('忌','天机')],
+    '己': [('禄','武曲'),('权','贪狼'),('科','天梁'),('忌','文曲')],
+    '庚': [('禄','太阳'),('权','武曲'),('科','太阴'),('忌','天同')],
+    '辛': [('禄','巨门'),('权','太阳'),('科','文曲'),('忌','文昌')],
+    '壬': [('禄','天梁'),('权','紫微'),('科','左辅'),('忌','武曲')],
+    '癸': [('禄','破军'),('权','巨门'),('科','太阴'),('忌','贪狼')],
+}
+
+# 繁简归一化（iztro 星名可能返回繁体，飞星表用简体）
+_FAN_TO_JIAN = str.maketrans('機陰貪門', '机阴贪门')
+def _norm_star(name: str) -> str:
+    return name.translate(_FAN_TO_JIAN)
+
 
 def hour_to_shichen_index(hour: int) -> int:
     """0-23 小时 → iztro-py hour_index (0=早子, 1=丑, ..., 11=亥, 12=晚子)"""
@@ -225,6 +245,31 @@ def ziwei_paipan(year: int, month: int, day: int, hour: int, minute: int = 0,
                 s['brightness'] = fix_b
                 s['brightness_css'] = {'庙': 'b-miao', '旺': 'b-wang', '得': 'b-de', '利': 'b-li', '平': 'b-ping', '不': 'b-bu', '陷': 'b-xian'}.get(fix_b, '')
 
+    # ═══ 飞星：宫干四化飞入他宫 ═══
+    # 建归一化星名 → 宫位索引（同星多宫取首命中）
+    _star_to_palace = {}
+    for _pal in palaces:
+        for _s in _pal.get('major_stars', []) + _pal.get('minor_stars', []) + _pal.get('adjective_stars', []):
+            _n = _norm_star(_s.get('name', ''))
+            if _n:
+                _star_to_palace.setdefault(_n, _pal)
+    for _pal in palaces:
+        _gan = _pal.get('heavenly_stem', '')
+        _sihua_list = _GAN_SIHUA_TABLE.get(_gan, [])
+        _flying = []
+        for _mu_type, _star_name in _sihua_list:
+            _target = _star_to_palace.get(_norm_star(_star_name))
+            if _target:
+                _flying.append({
+                    'from': _pal['name'],
+                    'from_branch': _pal['earthly_branch'],
+                    'to': _target['name'],
+                    'to_branch': _target['earthly_branch'],
+                    'type': _mu_type,
+                    'star': _star_name,
+                })
+        _pal['flying_sihua'] = _flying
+
     result = {
         'five_elements_class': five_elements,
         'soul_palace': BRANCH_CN.get(soul_p.earthly_branch, ''),
@@ -313,6 +358,25 @@ def get_horoscope(year: int, month: int, day: int, hour: int, gender: str,
         })
     liuyao = calculate_liuyao(yi_gan, yi_zhi, natal_list)
 
+    # ═══ 流月四化 ═══
+    mo = getattr(horo, 'monthly', None)
+    monthly_mutagen_stars = []
+    monthly_gz = ''
+    monthly_palace_name = '?'
+    monthly_palace_index = -1
+    monthly_gan = ''
+    monthly_zhi = ''
+    if mo:
+        if hasattr(mo, 'mutagen') and mo.mutagen:
+            for sname in mo.mutagen:
+                monthly_mutagen_stars.append(_translate_star_key(sname))
+        mo_idx = mo.index if hasattr(mo, 'index') else -1
+        monthly_palace_name = PALACE_NAMES_CN[mo_idx] if 0 <= mo_idx < 12 else '?'
+        monthly_palace_index = mo_idx
+        monthly_gan = STEM_CN.get(mo.heavenly_stem, '') if hasattr(mo, 'heavenly_stem') else ''
+        monthly_zhi = BRANCH_CN.get(mo.earthly_branch, '') if hasattr(mo, 'earthly_branch') else ''
+        monthly_gz = monthly_gan + monthly_zhi
+
     return {
         'year': target_year,
         'yearly_gz': yi_gan + yi_zhi,
@@ -326,6 +390,12 @@ def get_horoscope(year: int, month: int, day: int, hour: int, gender: str,
         'liuyao': liuyao,
         'yearly_gan': yi_gan,
         'yearly_zhi': yi_zhi,
+        'monthly_gz': monthly_gz,
+        'monthly_palace': monthly_palace_name,
+        'monthly_palace_index': monthly_palace_index,
+        'monthly_mutagens': monthly_mutagen_stars,
+        'monthly_gan': monthly_gan,
+        'monthly_zhi': monthly_zhi,
     }
 
 
@@ -333,7 +403,7 @@ def get_horoscope(year: int, month: int, day: int, hour: int, gender: str,
 def _translate_star_key(key: str) -> str:
     _STAR_KEY_MAP = {
         'ziweiMaj': '紫微', 'tianjiMaj': '天機', 'taiyangMaj': '太陽', 'wuquMaj': '武曲',
-        'tianfuMaj': '天府', 'tianyinMaj': '太陰', 'tanlangMaj': '貪狼', 'jumenMaj': '巨門',
+        'tianfuMaj': '天府', 'taiyinMaj': '太陰', 'tanlangMaj': '貪狼', 'jumenMaj': '巨門',
         'tianxiangMaj': '天相', 'tianliangMaj': '天梁', 'qishaMaj': '七殺', 'pojunMaj': '破軍',
         'lianzhenMaj': '廉貞', 'tiantongMaj': '天同',
         'zuofuMin': '左輔', 'youbiMin': '右弼', 'wenchangMin': '文昌', 'wenquMin': '文曲',

@@ -54,7 +54,7 @@ for key, env_var in [
         API_CONFIG[key] = val
 
 # 2) settings.json（本地开发回退）
-if not API_CONFIG.get("api_key"):
+if not API_CONFIG.get("api_key") or not API_CONFIG.get("model"):
     SETTINGS_PATH = os.path.join(os.path.expanduser("~"), ".claude", "settings.json")
     if os.path.exists(SETTINGS_PATH):
         try:
@@ -67,17 +67,17 @@ if not API_CONFIG.get("api_key"):
         except Exception:
             pass
 
-# 3) config.local.py（本地/部署敏感配置，不提交 Git）
-if not API_CONFIG.get("api_key"):
-    CONFIG_LOCAL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.local.py")
-    if os.path.exists(CONFIG_LOCAL):
+# 3) config.local.py（项目级配置，优先级最高，覆盖前两层）
+CONFIG_LOCAL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.local.py")
+if os.path.exists(CONFIG_LOCAL):
         try:
             import importlib.util
             spec = importlib.util.spec_from_file_location("config_local", CONFIG_LOCAL)
             cfg = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(cfg)
             for k in ("base_url", "model", "api_key"):
-                API_CONFIG.setdefault(k, getattr(cfg, "API_CONFIG", {}).get(k, ""))
+                v = getattr(cfg, "API_CONFIG", {}).get(k, "")
+                if v: API_CONFIG[k] = v
         except Exception:
             pass
 

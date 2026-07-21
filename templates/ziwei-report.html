@@ -51,71 +51,189 @@
     height: 540px; background: var(--line-soft); gap: 1px; margin-bottom: 16px;
   }
   .palace {
-    background: var(--paper); padding: 5px 7px; font-size: 10px; line-height: 1.4;
+    background: var(--paper); padding: 6px 8px; font-size: 10px; line-height: 1.4;
     display: flex; flex-direction: column; overflow: hidden; cursor: pointer;
     transition: background .15s;
+    font-family: "Noto Serif SC","Source Han Serif SC","STSong","PingFang SC",serif;
   }
   .palace:hover { background: var(--paper-card); }
   .palace .p-hint { display:none; font-size:7px; color:var(--ink-faint); margin-top:auto; text-align:right; }
   .palace:hover .p-hint { display:block; }
   .palace.ming { box-shadow: inset 0 0 0 2px var(--vermillion); }
+  /* 第一层：宫位头 */
   .palace .p-head {
     display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
-    border-bottom: 1px dashed var(--line-faint); padding-bottom: 2px; margin-bottom: 3px;
+    border-bottom: 1px dashed var(--line-faint); padding-bottom: 3px; margin-bottom: 4px;
   }
-  .palace .p-dizhi { font-size: 11px; font-weight: 700; color: var(--ink-soft); }
+  .palace .p-dizhi { font-size: 11px; font-weight: 700; color: var(--ink); }
   .palace .p-gong { font-size: 10px; font-weight: 600; color: var(--ink); }
   .palace .p-ganzhi { font-size: 9px; color: var(--ink-faint); margin-left: auto; }
   .shen-badge {
     display: inline-block; color: var(--vermillion); border: 1px solid var(--vermillion);
     border-radius: 2px; font-size: 8px; padding: 0 3px; line-height: 1.3;
   }
-  .palace .main-star { font-size: 12px; font-weight: 700; line-height: 1.5; }
-  .palace .aux-star { color: var(--ink-soft); font-size: 10px; line-height: 1.5; }
-  .palace .sihua-mark { font-size: 9px; margin-left: 1px; }
-  .sihua-禄 { color: var(--vermillion); } .sihua-权 { color: var(--azure); }
-  .sihua-科 { color: var(--jade); } .sihua-忌 { color: var(--ink); text-decoration: underline; }
-  .palace .daxian {
-    margin-top: auto; padding-top: 3px; border-top: 1px dashed var(--line-faint);
-    font-size: 9px; color: var(--ink-soft);
+  /* 第二层：主星区（楷体大字 + 亮度角标 + 四化色块） */
+  .palace .p-stars { flex: 1; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+  .palace .star-row { display: flex; align-items: baseline; gap: 3px; line-height: 1.5; }
+  .palace .star-name {
+    font-family: "STKaiti","KaiTi","Noto Serif SC",serif;
+    font-size: 13px; font-weight: 700; color: var(--ink); line-height: 1.35;
   }
-  .palace.current .daxian { color: var(--vermillion); font-weight: 700; }
+  .palace .star-name.empty-star { color: var(--ink-faint); font-size: 11px; font-weight: 400; }
+  .palace .star-bright { font-size: 8px; color: var(--ink-faint); font-family: "Noto Serif SC",serif; }
+  .palace .star-bright.b-miao { color: var(--vermillion); font-weight: 700; }
+  .palace .star-bright.b-wang { color: #c8742a; font-weight: 700; }
+  .palace .mu-badge { font-size: 8px; font-weight: 700; padding: 0 3px; border-radius: 2px; line-height: 1.4; }
+  .palace .mu-badge.mu-lu { background: var(--vermillion); color: var(--paper); }
+  .palace .mu-badge.mu-quan { background: var(--azure); color: var(--paper); }
+  .palace .mu-badge.mu-ke { background: var(--jade); color: var(--paper); }
+  .palace .mu-badge.mu-ji { background: var(--ink); color: var(--paper); }
+  /* 第三层：辅星（吉墨煞红） */
+  .palace .p-aux {
+    padding-top: 3px; margin-top: 2px; border-top: 1px dotted var(--line-faint);
+    font-size: 9px; line-height: 1.5; font-family: "Noto Serif SC",serif;
+  }
+  .palace .aux-auspicious { color: var(--ink); }
+  .palace .aux-malefic { color: var(--vermillion-deep); }
+  .palace .aux-sep { color: var(--ink-faint); margin: 0 2px; }
+  /* 底部条：大限 */
+  .palace .p-daxian {
+    margin-top: auto; padding-top: 3px; border-top: 1px dashed var(--line-faint);
+    font-size: 9px; color: var(--ink-soft); display: flex; justify-content: space-between; gap: 4px;
+  }
+  .palace.current .p-daxian { color: var(--vermillion); font-weight: 700; }
+  /* 飞星标记层 */
+  .palace .p-fly {
+    padding: 2px 0 0; font-size: 8px; line-height: 1.4; color: var(--ink-faint);
+    display: flex; flex-wrap: wrap; gap: 1px 4px;
+  }
+  .palace .p-fly .fly-tag { display: inline-block; padding: 0 2px; border-radius: 2px; font-weight: 600; line-height: 1.3; }
+  .palace .p-fly .fly-lu { color: var(--vermillion); }
+  .palace .p-fly .fly-quan { color: var(--azure); }
+  .palace .p-fly .fly-ke { color: var(--jade); }
+  .palace .p-fly .fly-ji { color: var(--ink); text-decoration: underline; }
+  .palace .p-fly .fly-arrow { color: var(--ink-faint); font-size: 7px; }
+  .palace .p-fly .fly-target { color: var(--ink-soft); }
+  /* 三合四正连线 */
+  #grid-lines .sanhe-line { fill: none; stroke: var(--line-soft); stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .7; }
+  #grid-lines .sanhe-line.highlight { stroke: var(--ink-soft); stroke-dasharray: none; opacity: 1; stroke-width: 1.8; }
+  .palace.hovering-sanhe { background: rgba(180,160,130,0.08) !important; }
 
-  /* 中间 info */
+  /* 中间 info：命盘三锚点 */
   .center-palace {
     grid-column: 2 / 4; grid-row: 2 / 4;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: var(--paper); padding: 14px; text-align: center;
+    background: var(--paper); padding: 16px 18px; text-align: center;
     border-left: 1px solid var(--line); border-right: 1px solid var(--line);
+    font-family: "Noto Serif SC","STSong",serif; position: relative;
   }
-  .center-palace h3 { font-size: 16px; letter-spacing: 4px; margin-bottom: 8px; }
-  .center-palace .info { font-size: 11px; color: var(--ink-soft); margin: 2px 0; }
-  .center-palace .pillars { display: flex; gap: 8px; margin-top: 10px; }
-  .center-palace .pillar {
-    background: var(--paper-deep); border: 1px solid var(--line-soft);
-    padding: 4px 8px; text-align: center;
+  .center-palace::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, rgba(193,67,47,0.04), transparent 70%);
+    pointer-events: none;
   }
-  .center-palace .pillar .pname { font-size: 9px; color: var(--ink-faint); }
-  .center-palace .pillar .pgan { font-size: 14px; font-weight: 700; }
-  .center-palace .pillar .pzhi { font-size: 13px; color: var(--ink-soft); }
+  .center-palace .c-ju { font-size: 13px; letter-spacing: 3px; color: var(--ink-soft); margin-bottom: 4px; position: relative; }
+  .center-palace .c-ming-star {
+    font-family: "STKaiti","KaiTi","Noto Serif SC",serif;
+    font-size: 22px; font-weight: 700; color: var(--vermillion); letter-spacing: 2px;
+    margin: 6px 0 8px; position: relative;
+  }
+  .center-palace .c-ming-star.empty { color: var(--ink-faint); font-size: 16px; }
+  .center-palace .c-divider { width: 40px; height: 1px; background: var(--line-soft); margin: 4px auto; position: relative; }
+  .center-palace .c-anchor { font-size: 11px; color: var(--ink); margin: 3px 0; position: relative; }
+  .center-palace .c-anchor .lbl { color: var(--ink-faint); margin-right: 4px; }
+  .center-palace .c-anchor strong { color: var(--ink); font-weight: 700; }
+  .center-palace .c-current { margin-top: 8px; padding: 4px 10px; border: 1px solid var(--vermillion); color: var(--vermillion); font-size: 10px; font-weight: 700; position: relative; }
 
-  /* ── 大运条 ── */
-  .dayun-strip { margin-bottom: 16px; border: 1px solid var(--line-soft); }
-  .strip-head {
-    background: var(--paper-deep); padding: 5px 12px;
-    font-size: 12px; border-bottom: 1px solid var(--line-soft);
+  /* ── 运限三层架构 ── */
+  .yun-strip {
+    margin-bottom: 14px; border: 1px solid var(--line-soft); background: var(--paper-card);
   }
-  .strip-row { display: grid; grid-template-columns: repeat(10, 1fr); }
-  .strip-cell {
-    border-right: 1px solid var(--line-faint); padding: 4px 2px;
-    text-align: center; font-size: 9px; cursor: pointer;
+  .yun-overview {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 8px 14px; background: var(--paper-deep);
+    border-bottom: 1px solid var(--line-soft); font-size: 12px;
   }
-  .strip-cell:last-child { border-right: none; }
-  .strip-cell .gz { font-size: 11px; font-weight: 700; }
-  .strip-cell .ages { color: var(--ink-soft); font-size: 8px; }
-  .strip-cell.current { background: rgba(193,67,47,0.08); }
-  .strip-cell.current .gz { color: var(--vermillion); }
-  #flow-row { grid-template-columns: repeat(12, 1fr); }
+  .yun-overview .ov-label { color: var(--ink-faint); font-size: 11px; }
+  .yun-overview .ov-value { color: var(--ink); font-weight: 700; font-family: "Noto Serif SC",serif; }
+  .yun-overview .ov-current { color: var(--vermillion); font-weight: 700; }
+  .yun-overview .ov-year-input {
+    width: 60px; padding: 2px 4px; font-size: 11px;
+    border: 1px solid var(--line-soft); background: var(--paper); color: var(--ink); border-radius: 2px;
+    font-family: inherit;
+  }
+  /* 大限轴 */
+  .yun-decade {
+    display: grid; grid-template-columns: repeat(12, 1fr);
+    position: relative; border-bottom: 1px solid var(--line-soft);
+  }
+  .yun-decade .dec-cell {
+    padding: 5px 2px; text-align: center; font-size: 9px; cursor: pointer;
+    border-right: 1px solid var(--line-faint); position: relative;
+    transition: background .15s;
+  }
+  .yun-decade .dec-cell:last-child { border-right: none; }
+  .yun-decade .dec-cell:hover { background: var(--paper); }
+  .yun-decade .dec-cell .d-gz { font-size: 11px; font-weight: 700; font-family: "Noto Serif SC",serif; }
+  .yun-decade .dec-cell .d-ages { color: var(--ink-soft); font-size: 8px; }
+  .yun-decade .dec-cell.current { background: rgba(193,67,47,0.06); }
+  .yun-decade .dec-cell.current .d-gz { color: var(--vermillion); }
+  .yun-decade .dec-cell.current::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--vermillion);
+  }
+  .yun-decade .dec-cell.active { background: rgba(46,109,164,0.08); box-shadow: inset 0 0 0 1px var(--azure); }
+  /* 聚焦摘要行 + 下钻 */
+  .yun-focus {
+    display: flex; align-items: center; gap: 0; padding: 0; border-top: 1px solid var(--line-faint);
+  }
+  .yun-focus .focus-pill {
+    flex: 1; padding: 7px 10px; cursor: pointer; text-align: center;
+    border-right: 1px solid var(--line-faint); transition: background .15s;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+  }
+  .yun-focus .focus-pill:last-child { border-right: none; }
+  .yun-focus .focus-pill:hover { background: var(--paper); }
+  .yun-focus .focus-pill.active { color: var(--vermillion); font-weight: 700; }
+  .yun-focus .fp-label { font-size: 10px; color: var(--ink-faint); }
+  .yun-focus .fp-value { font-size: 11px; color: var(--ink); font-family: "Noto Serif SC",serif; }
+  .yun-focus .focus-pill.active .fp-value { color: var(--vermillion); }
+  /* 下钻面板 */
+  .yun-drill {
+    display: none; padding: 6px 10px; background: var(--paper-deep);
+    border-top: 1px solid var(--line-faint);
+  }
+  .yun-drill.open { display: block; }
+  .yun-drill .drill-grid { display: grid; gap: 2px; }
+  .yun-drill .drill-cell {
+    padding: 4px; text-align: center; font-size: 9px; cursor: pointer;
+    border: 1px solid var(--line-faint); background: var(--paper);
+  }
+  .yun-drill .drill-cell:hover { background: var(--paper-card); }
+  .yun-drill .drill-cell .dc-gz { font-size: 11px; font-weight: 700; font-family: "Noto Serif SC",serif; }
+  .yun-drill .drill-cell .dc-sub { color: var(--ink-soft); font-size: 8px; }
+  .yun-drill .drill-cell.active { background: rgba(46,109,164,0.1); }
+  .yun-drill .drill-cell.active .dc-gz { color: var(--azure); }
+  /* 盘顶状态指示条 */
+  .scope-status {
+    display: none; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 5px 12px; background: rgba(46,109,164,0.06);
+    border: 1px solid rgba(46,109,164,0.2); border-radius: 2px;
+    margin-bottom: 10px; font-size: 11px; color: var(--ink);
+  }
+  .scope-status.show { display: flex; }
+  .scope-status .ss-label { color: var(--azure); font-weight: 700; font-size: 10px; }
+  .scope-status .ss-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 7px; border-radius: 2px; font-size: 10px; font-weight: 600;
+  }
+  .scope-status .ss-chip.decade { background: var(--azure); color: var(--paper); }
+  .scope-status .ss-chip.yearly { background: var(--vermillion); color: var(--paper); }
+  .scope-status .ss-chip.monthly { background: var(--jade); color: var(--paper); }
+  .scope-status .ss-clear {
+    margin-left: auto; font-size: 10px; color: var(--ink-soft);
+    cursor: pointer; border: 1px solid var(--line-soft); padding: 1px 8px; border-radius: 2px;
+  }
+  .scope-status .ss-clear:hover { color: var(--vermillion); border-color: var(--vermillion); }
 
   /* ── 分析 + 追问 ── */
   .analysis-area {
@@ -123,11 +241,39 @@
     padding: 18px 20px; margin-bottom: 14px;
   }
   .analysis-area h2 {
-    font-size: 15px; letter-spacing: 1px; margin-bottom: 10px;
-    border-left: 3px solid var(--vermillion); padding-left: 10px;
+    font-size: 15px; letter-spacing: 1px; margin: 16px 0 10px;
+    border-left: 3px solid var(--vermillion); padding: 4px 0 4px 10px;
+    font-weight: 700; line-height: 1.4;
+  }
+  .analysis-area h2:first-child { margin-top: 0; }
+  .analysis-area h3 {
+    font-size: 13px; letter-spacing: .5px; margin: 12px 0 6px;
+    border-left: 2px solid var(--azure); padding: 2px 0 2px 8px;
+    font-weight: 600; color: var(--ink-soft);
+  }
+  .analysis-area h4 {
+    font-size: 12px; margin: 8px 0 4px;
+    color: var(--ink-soft); font-weight: 600;
   }
   .analysis-text { font-size: 13px; line-height: 1.9; color: var(--ink); min-height: 100px; }
-  .analysis-text strong { color: var(--ink); }
+  .analysis-text strong { color: var(--ink); font-weight: 700; }
+  .analysis-text em { color: var(--vermillion); font-style: normal; font-weight: 600; }
+  .analysis-text p { margin: 0 0 10px; }
+  .analysis-text ul, .analysis-text ol { margin: 6px 0 10px; padding-left: 18px; }
+  .analysis-text li { margin-bottom: 4px; line-height: 1.8; }
+  .analysis-text blockquote {
+    margin: 8px 0 12px; padding: 8px 12px;
+    background: rgba(180,160,130,0.06);
+    border-left: 2px solid var(--line-soft);
+    font-size: .95em; color: var(--ink-soft);
+  }
+  .analysis-text hr {
+    border: none; border-top: 1px dashed var(--line-faint);
+    margin: 14px 0;
+  }
+  .analysis-text .key-good { color: var(--jade); font-weight: 600; }
+  .analysis-text .key-warn { color: var(--vermillion); font-weight: 600; }
+  .analysis-text .key-info { color: var(--azure); font-weight: 600; }
   .chat-area { margin-top: 14px; }
   .chat-msg {
     margin: 6px 0; padding: 8px 12px; border-radius: 2px;
@@ -189,10 +335,14 @@
     .info-bar { grid-template-columns: 1fr; font-size: 11px; }
     .ziwei-grid { height: 380px; }
     .palace { font-size: 9px; padding: 3px 5px; }
-    .palace .main-star { font-size: 10px; }
-    .center-palace h3 { font-size: 13px; }
-    .strip-row { grid-template-columns: repeat(5, 1fr); }
-    .strip-cell:nth-child(n+6) { display: none; }  /* 手机只显示前5个大运 */
+    .palace .star-name { font-size: 11px; }
+    .palace .p-aux { font-size: 8px; }
+    .palace .p-stars { gap: 0; }
+    .center-palace .c-ming-star { font-size: 18px; }
+    .center-palace .c-ju { font-size: 11px; }
+    .center-palace .c-anchor { font-size: 10px; }
+    .strip-row { grid-template-columns: repeat(5, 1fr); overflow-x: auto; }
+    .strip-cell:nth-child(n+6) { display: flex !important; }  /* 杀掉裁剪，改为横向滚动 */
   }
 </style>
 </head>
@@ -215,20 +365,43 @@
     <svg id="grid-lines" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></svg>
   </div>
 
-  <!-- 运限控制 -->
-  <div class="dayun-strip no-print" id="dayun-strip">
-    <div class="strip-head" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <span>大限（虚岁）</span>
-      <input type="number" id="horo-year" value="2026" min="1900" max="2100" style="width:56px;padding:2px 4px;font-size:10px;border:1px solid var(--line-soft);background:var(--paper);color:var(--ink);border-radius:2px" onchange="renderFlowYears()">
-    </div>
-    <div class="strip-row" id="dayun-row" style="grid-template-columns:repeat(12,1fr)"></div>
+  <!-- 盘顶状态指示条 -->
+  <div class="scope-status" id="scope-status">
+    <span class="ss-label">📍 当前叠盘</span>
+    <span id="ss-chips"></span>
+    <button id="btn-scope-analyze" class="btn btn-accent" onclick="analyzeScope()" style="display:none;font-size:11px;padding:3px 10px;margin:0 8px">📜 叠盘分析</button>
+    <span class="ss-clear" onclick="clearAllScope()">清除全部 ✕</span>
   </div>
-  <!-- 流年/流月/流日 条 -->
-  <div class="dayun-strip no-print">
-    <div class="strip-head">流年 · 流月 · 流日 <span style="color:var(--ink-faint);font-size:10px">（点击展开叠盘）</span></div>
-    <div class="strip-row" id="flow-row" style="grid-template-columns:repeat(12,1fr)"></div>
-    <div class="strip-row" id="month-row" style="grid-template-columns:repeat(12,1fr);border-top:1px solid var(--line-faint)"></div>
-    <div class="strip-row" id="day-row" style="grid-template-columns:repeat(15,1fr);border-top:1px solid var(--line-faint);font-size:8px"></div>
+  <!-- 运限三层架构 -->
+  <div class="yun-strip no-print">
+    <!-- 第一层：大限概览 -->
+    <div class="yun-overview" id="yun-overview">
+      <span class="ov-label">大限</span>
+      <span class="ov-current" id="ov-current">—</span>
+      <span class="ov-label">· 年份</span>
+      <input type="number" class="ov-year-input" id="horo-year" value="2026" min="1900" max="2100" onchange="renderFlowYears()">
+    </div>
+    <!-- 第二层：大限宫位轴 -->
+    <div class="yun-decade" id="yun-decade"></div>
+    <!-- 第三层：聚焦摘要行 -->
+    <div class="yun-focus">
+      <div class="focus-pill" id="fp-year" onclick="toggleDrill('year')">
+        <span class="fp-label">流年</span><span class="fp-value" id="fpv-year">—</span>
+      </div>
+      <div class="focus-pill" id="fp-month" onclick="toggleDrill('month')">
+        <span class="fp-label">流月</span><span class="fp-value" id="fpv-month">—</span>
+      </div>
+      <div class="focus-pill" id="fp-day" onclick="highlightDayOnly()">
+        <span class="fp-label">流日</span><span class="fp-value" id="fpv-day">—</span>
+      </div>
+    </div>
+    <!-- 下钻面板 -->
+    <div class="yun-drill" id="drill-year">
+      <div class="drill-grid" id="drill-year-grid" style="grid-template-columns:repeat(12,1fr)"></div>
+    </div>
+    <div class="yun-drill" id="drill-month">
+      <div class="drill-grid" id="drill-month-grid" style="grid-template-columns:repeat(12,1fr)"></div>
+    </div>
   </div>
 
   <!-- 分析 -->
@@ -275,8 +448,10 @@ async function load(){
     renderInfo(s);
     if(plateData && plateData.palaces){
       renderGrid(plateData);
-      renderDayun(plateData);
+      renderYunDecade(plateData);
       renderFlowYears();
+      applyAllScope();
+      setTimeout(renderSanheLines, 200);
     }
     const msgs = s.messages || [];
     const validAnalysis = msgs.find(m => m.role === 'assistant' && m.content && m.content.length > 50);
@@ -347,31 +522,52 @@ function renderGrid(plate){
     const isBody = p.name === body;
     const cls = isSoul ? 'palace ming' : 'palace';
     const shenBadge = isBody ? '<span class="shen-badge">身</span>' : '';
-    // 主星+亮度+四化
-    const mainStars = (p.major_stars || []).map(s => {
-      let html = s.name;
-      if(s.brightness) html += `<span style="font-size:9px;color:var(--ink-soft)">[${s.brightness}]</span>`;
-      if(s.mutagen){
-        const hua = SIHUA[s.mutagen] || s.mutagen;
-        const cls = {'禄':'sihua-禄','权':'sihua-权','科':'sihua-科','忌':'sihua-忌'}[hua] || '';
-        html += `<span class="sihua-mark ${cls}">◈${hua}</span>`;
-      }
-      return html;
-    }).join('') || '<span style="color:var(--ink-faint)">—</span>';
-    const auxStars = (p.minor_stars || []).slice(0,4).map(s => s.name).join(' ') || '';
+    // 第二层：主星（楷体大字 + 亮度角标 + 四化色块）
+    const majors = p.major_stars || [];
+    let starsHtml;
+    if(majors.length === 0){
+      starsHtml = '<div class="star-row"><span class="star-name empty-star">—</span></div>';
+    } else {
+      starsHtml = majors.map(s => {
+        const nameHtml = `<span class="star-name">${s.name}</span>`;
+        const brightHtml = s.brightness_css ? `<span class="star-bright ${s.brightness_css}">${s.brightness||''}</span>` : '';
+        let muHtml = '';
+        if(s.mutagen){
+          const hua = (s.mutagen||'').replace('化','');
+          const muCls = {'禄':'mu-lu','权':'mu-quan','科':'mu-ke','忌':'mu-ji'}[hua] || '';
+          if(muCls) muHtml = `<span class="mu-badge ${muCls}">${hua}</span>`;
+        }
+        return `<div class="star-row">${nameHtml}${brightHtml}${muHtml}</div>`;
+      }).join('');
+    }
+    // 第三层：辅星分吉墨煞红
+    const minors = p.minor_stars || [];
+    const auspicious = [], malefic = [], neutral = [];
+    for(const s of minors){
+      const css = s.css || '';
+      if(css === 'star-malefic') malefic.push(s.name);
+      else if(css === 'star-auspicious' || css === 'star-helper' || css === 'star-lucun') auspicious.push(s.name);
+      else neutral.push(s.name);
+    }
+    const parts = [];
+    if(auspicious.length) parts.push(`<span class="aux-auspicious">${auspicious.join(' ')}</span>`);
+    if(malefic.length) parts.push(`<span class="aux-malefic">${malefic.join(' ')}</span>`);
+    if(neutral.length) parts.push(`<span style="color:var(--ink-faint)">${neutral.join(' ')}</span>`);
+    const auxHtml = parts.join('<span class="aux-sep">┊</span>') || '<span style="color:var(--ink-faint)">　</span>';
+    // 底部条：大限
     const dr = p.decadal_range || '';
-    // 当前大限高亮
+    const ddz = p.decadal_dizhi || '';
     const curAge = currentAge();
     let isCurrent = false;
     if(dr){
-      const parts = dr.split('-');
-      if(parts.length===2){
-        const s = parseInt(parts[0]), e = parseInt(parts[1]);
-        if(s <= curAge && curAge <= e) isCurrent = true;
+      const parts2 = dr.split('-');
+      if(parts2.length===2){
+        const s2 = parseInt(parts2[0]), e2 = parseInt(parts2[1]);
+        if(s2 <= curAge && curAge <= e2) isCurrent = true;
       }
     }
     cells.push({
-      pos, br, name: p.name, cls, shenBadge, mainStars, auxStars, dr, isCurrent,
+      pos, br, name: p.name, cls, shenBadge, starsHtml, auxHtml, dr, ddz, isCurrent,
       dizhi: p.dizhi || br,
     });
   }
@@ -379,7 +575,6 @@ function renderGrid(plate){
   const gridEl = $('grid');
   gridEl.className = 'ziwei-grid';
   gridEl.innerHTML = '';
-  const gEls = [];
   for(const c of cells){
     const div = document.createElement('div');
     div.className = c.cls + (c.isCurrent ? ' current' : '');
@@ -390,63 +585,100 @@ function renderGrid(plate){
         <span class="p-gong">${c.name}</span>${c.shenBadge}
         <span class="p-ganzhi">${c.dizhi}</span>
       </div>
-      <div class="main-star">${c.mainStars}</div>
-      <div class="aux-star">${c.auxStars}</div>
-      <div class="daxian">${c.dr ? '大限 '+c.dr : ''}</div>
-      <div class="p-hint">双击详情</div>
+      <div class="p-stars">${c.starsHtml}</div>
+      <div class="p-aux">${c.auxHtml}</div>
+      <div class="p-daxian">${c.dr ? `<span>${c.dr}</span><span>${c.ddz}</span>` : ''}</div>
+      <div class="p-hint">双击详解</div>
     `;
     div.onclick = () => { selectPalace(c.br, plate); };
     div.ondblclick = () => { showPalaceDetail(c.name, plate); };
     gridEl.appendChild(div);
   }
-  // center
+  // center：命盘三锚点
+  const soulPalaceObj = palaces.find(p => p.name === soul) || {};
+  const soulMajors = soulPalaceObj.major_stars || [];
+  const soulStarStr = soulMajors.map(s => s.name).join('·') || '空宫';
+  const soulStarCls = soulMajors.length === 0 ? 'c-ming-star empty' : 'c-ming-star';
+  const curAge2 = currentAge();
+  let curDec = '—';
+  for(const p of palaces){
+    const dr = p.decadal_range || '';
+    if(dr){
+      const [s3,e3] = dr.split('-').map(Number);
+      if(s3 <= curAge2 && curAge2 <= e3){ curDec = `${p.decadal_dizhi||''} ${p.name} ${dr}`; break; }
+    }
+  }
+  const inp = plate.input || {};
+  const birthYear = parseInt((inp.birth_datetime||'').split('-')[0]) || 0;
+  const LAIYIN = ['父母','福德','命宫','兄弟','夫妻','子女','财帛','疾厄','迁移','交友'];
+  const laiyin = birthYear ? LAIYIN[(birthYear-4)%10] : '—';
   const center = document.createElement('div');
   center.className = 'center-palace';
-  center.innerHTML = `<h3>${plate.five_elements_class || ''}</h3>
-    <div class="info">命宫：${soul}　身宫：${body}</div>`;
+  center.innerHTML = `
+    <div class="c-ju">${plate.five_elements_class || ''}</div>
+    <div class="${soulStarCls}">${soulStarStr}</div>
+    <div class="c-divider"></div>
+    <div class="c-anchor"><span class="lbl">命宫</span><strong>${soul||'—'}</strong></div>
+    <div class="c-anchor"><span class="lbl">身宫</span><strong>${body||'—'}</strong></div>
+    <div class="c-anchor"><span class="lbl">来因宫</span><strong>${laiyin}</strong></div>
+    <div class="c-current">今运 ${curDec}</div>
+  `;
   gridEl.appendChild(center);
 }
 
-// ── 大运条 ──
-function renderDayun(plate){
+// ── 运限三层架构 ──
+const GAN_ARR = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const ZHI_ARR = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const GAN_SIHUA = {'甲':['廉贞','破军','武曲','太阳'],'乙':['天机','天梁','紫微','太阴'],'丙':['天同','天机','文昌','廉贞'],'丁':['太阴','天同','天机','巨门'],'戊':['贪狼','太阴','右弼','天机'],'己':['武曲','贪狼','天梁','文曲'],'庚':['太阳','武曲','太阴','天同'],'辛':['巨门','太阳','文曲','文昌'],'壬':['天梁','紫微','左辅','武曲'],'癸':['破军','巨门','太阴','贪狼']};
+const LIMIT_NAMES = ['命宫','兄弟','夫妻','子女','财帛','疾厄','迁移','交友','官禄','田宅','福德','父母'];
+// 叠盘状态：三层可叠加
+let scope = { decade: null, yearly: null, monthly: null, dayOnly: null };
+let horoscopeData = null;  // 当前拉取的流年数据
+
+function renderYunDecade(plate){
   const palaces = plate.palaces || [];
   const curAge = currentAge();
-  const row = $('dayun-row');
-  row.innerHTML = palaces.map(p => {
+  let curDecStr = '—';
+  for(const p of palaces){
     const dr = p.decadal_range || '';
-    let cls = 'strip-cell';
     if(dr){
       const [s,e] = dr.split('-').map(Number);
-      if(s <= curAge && curAge <= e) cls += ' current';
+      if(s <= curAge && curAge <= e){ curDecStr = p.decadal_dizhi||'' + ' ' + p.name + ' ' + dr; break; }
     }
-    return `<div class="${cls}" onclick="highlightDecade('${p.name}')">
-      <div class="gz">${p.decadal_dizhi||''}</div>
-      <div class="ages">${dr}</div>
-    </div>`;
-  }).join('');
+  }
+  $('ov-current').textContent = curDecStr;
+  const decEl = $('yun-decade');
+  decEl.innerHTML = '';
+  palaces.forEach((p, idx) => {
+    const dr = p.decadal_range || '';
+    const div = document.createElement('div');
+    div.className = 'dec-cell';
+    div.dataset.idx = idx;
+    div.dataset.pname = p.name;
+    if(dr){
+      const [s,e] = dr.split('-').map(Number);
+      if(s <= curAge && curAge <= e) div.classList.add('current');
+    }
+    div.innerHTML = '<div class="d-gz">'+(p.decadal_dizhi||'')+'</div><div class="d-ages">'+(dr||'')+'</div>';
+    div.onclick = () => toggleScope('decade', { pName: p.name, palaceIdx: idx });
+    decEl.appendChild(div);
+  });
 }
 function renderFlowYears(){
   const ty = parseInt($('horo-year')?.value) || new Date().getFullYear();
-  const GAN = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
-  const ZHI = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-  const ZHI_NAMES = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-
-  // 流年
-  const fRow = $('flow-row');
-  fRow.innerHTML = '';
+  const yg = $('drill-year-grid');
+  yg.innerHTML = '';
   for(let i=0; i<12; i++){
     const y = ty - (ty % 12) + i;
-    const gz = GAN[(y-4)%10] + ZHI[(y-4)%12];
-    const br = ZHI[(y-4)%12];
+    const gz = GAN_ARR[(y-4)%10] + ZHI_ARR[(y-4)%12];
+    const br = ZHI_ARR[(y-4)%12];
     const div = document.createElement('div');
-    div.className = 'strip-cell';
-    if(y === ty) div.classList.add('current');
-    div.innerHTML = `<div class="gz">${gz}</div><div class="ages">${y}年</div>`;
-    div.onclick = () => { clearScope(); highlightFlow(br, `${y}年`, gz); };
-    fRow.appendChild(div);
+    div.className = 'drill-cell';
+    if(y === ty) div.classList.add('active');
+    div.innerHTML = '<div class="dc-gz">'+gz+'</div><div class="dc-sub">'+y+'年</div>';
+    div.onclick = () => toggleScope('yearly', { year: y, gz, br });
+    yg.appendChild(div);
   }
-
-  // 流月：斗君计算
   const inp = plateData?.input || {};
   const birthDt = inp.birth_datetime || '';
   const birthM = parseInt(birthDt.split('-')[1]) || 1;
@@ -454,136 +686,398 @@ function renderFlowYears(){
   const sc = Math.floor((birthH + 1) / 2) % 12;
   const yearIdx = (ty - 4) % 12;
   const dj = (((yearIdx - (birthM - 1)) % 12 + 12) % 12 + sc) % 12;
-  const palaces = plateData?.palaces || [];
-
-  // 流月条
-  const mRow = $('month-row');
-  mRow.innerHTML = '';
+  const mg = $('drill-month-grid');
+  mg.innerHTML = '';
+  const ygan = GAN_ARR[(ty-4)%10];
   for(let m=1; m<=12; m++){
     const idx = (dj + m - 1) % 12;
-    const br = ZHI[idx];
+    const br = ZHI_ARR[idx];
+    const mgz = ygan + br;
     const div = document.createElement('div');
-    div.className = 'strip-cell';
-    div.innerHTML = `<div class="gz">${m}月</div><div class="ages">${br}宫</div>`;
-    div.onclick = () => { clearScope(); highlightFlow(br, `${m}月`, ''); };
-    mRow.appendChild(div);
+    div.className = 'drill-cell';
+    div.innerHTML = '<div class="dc-gz">'+m+'月 '+br+'</div><div class="dc-sub">'+br+'宫</div>';
+    div.onclick = () => toggleScope('monthly', { month: m, br, gz: mgz });
+    mg.appendChild(div);
   }
-
-  // 流日条（15列显示前30天，每天对应一个地支）
-  const dRow = $('day-row');
-  dRow.innerHTML = '';
-  for(let d=1; d<=30; d++){
-    const br = ZHI[(d-1)%12];
-    const div = document.createElement('div');
-    div.className = 'strip-cell';
-    div.innerHTML = `<div class="gz">${d}日</div><div class="ages">${br}</div>`;
-    div.onclick = () => { clearScope(); highlightFlow(br, `${d}日`, ''); };
-    dRow.appendChild(div);
+  if(!scope.yearly) $('fpv-year').textContent = '—';
+  if(!scope.monthly) $('fpv-month').textContent = '—';
+  $('fpv-day').textContent = '—';
+}
+function toggleDrill(kind){
+  const y = $('drill-year'), m = $('drill-month');
+  if(kind === 'year'){ y.classList.toggle('open'); m.classList.remove('open'); }
+  else if(kind === 'month'){ m.classList.toggle('open'); y.classList.remove('open'); }
+}
+async function fetchHoroscope(year){
+  const ss = $('scope-status');
+  if(ss && ss.classList.contains('show')){
+    const ld = document.createElement('span'); ld.id='horo-loading'; ld.textContent='流曜加载中...'; ld.style.cssText='font-size:10px;color:var(--ink-faint);margin:0 6px;animation:blink 1s infinite';
+    ss.appendChild(ld);
+  }
+  try{
+    const inp = plateData?.input || {};
+    const birthDt = inp.birth_datetime || '';
+    const parts = birthDt.match(/(\d{4})-(\d{2})-(\d{2})\s(\d{1,2}):(\d{2})/);
+    if(!parts){ $('horo-loading')?.remove(); return; }
+    const body = {
+      year: parseInt(parts[1]), month: parseInt(parts[2]), day: parseInt(parts[3]),
+      hour: parseInt(parts[4]), gender: inp.gender || '男',
+      target_year: year, is_lunar: inp.is_lunar || false
+    };
+    const r = await fetch('/api/ziwei/horoscope', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    if(r.ok){ horoscopeData = await r.json(); }
+  }catch(e){ horoscopeData = null; }
+  $('horo-loading')?.remove();
+}
+async function toggleScope(kind, data){
+  const cur = scope[kind];
+  if(cur && JSON.stringify(cur) === JSON.stringify(data)){
+    scope[kind] = null;
+  } else {
+    scope[kind] = data;
+  }
+  // 拉取流年数据
+  if(kind === 'yearly' && scope.yearly){
+    await fetchHoroscope(scope.yearly.year);
+  }
+  if(kind === 'monthly' && scope.monthly){
+    if(!horoscopeData) await fetchHoroscope(new Date().getFullYear());
+  }
+  updateFocusPills();
+  applyAllScope();
+}
+function updateFocusPills(){
+  document.querySelectorAll('.yun-decade .dec-cell').forEach(c => c.classList.remove('active'));
+  if(scope.decade){
+    document.querySelectorAll('.yun-decade .dec-cell').forEach(c => {
+      if(c.dataset.pname === scope.decade.pName) c.classList.add('active');
+    });
+  }
+  const fy = $('fp-year'), fm = $('fp-month'), fd = $('fp-day');
+  if(scope.yearly){ fy.classList.add('active'); $('fpv-year').textContent = scope.yearly.year+' '+scope.yearly.gz; }
+  else { fy.classList.remove('active'); $('fpv-year').textContent = '—'; }
+  if(scope.monthly){ fm.classList.add('active'); $('fpv-month').textContent = scope.monthly.month+'月 '+scope.monthly.gz[1]; }
+  else { fm.classList.remove('active'); $('fpv-month').textContent = '—'; }
+  document.querySelectorAll('#drill-year-grid .drill-cell').forEach(c => {
+    c.classList.remove('active');
+    if(scope.yearly && c.querySelector('.dc-sub')?.textContent === scope.yearly.year+'年') c.classList.add('active');
+  });
+  document.querySelectorAll('#drill-month-grid .drill-cell').forEach(c => {
+    c.classList.remove('active');
+    if(scope.monthly && c.textContent.includes(scope.monthly.month+'月')) c.classList.add('active');
+  });
+  updateScopeStatus();
+}
+function highlightDayOnly(){
+  scope.dayOnly = scope.dayOnly ? null : { day: new Date().getDate(), br: ZHI_ARR[(new Date().getDate()-1)%12] };
+  if(scope.dayOnly){
+    $('fp-day').textContent = scope.dayOnly.day+'日 '+scope.dayOnly.br;
+    $('fp-day').classList.add('active');
+  } else {
+    $('fp-day').textContent = '—';
+    $('fp-day').classList.remove('active');
   }
 }
-
-let activeFlowLabel = null;
-function clearScope(){
-  document.querySelectorAll('.palace').forEach(el => {
-    el.querySelector('.scope-badge')?.remove(); el.querySelector('.sihua-flow')?.remove();
-    if(!el.classList.contains('ming')) el.style.boxShadow = '';
+// ── 三合四正连线 ──
+function renderSanheLines(){
+  const svg = document.getElementById('grid-lines');
+  if(!svg) return;
+  const grid = document.getElementById('grid');
+  if(!grid || !grid.children.length) return;
+  const rect = grid.getBoundingClientRect();
+  const svgRect = svg.getBoundingClientRect();
+  const ox = rect.left - svgRect.left, oy = rect.top - svgRect.top;
+  const cellW = rect.width / 4, cellH = rect.height / 4;
+  // 地支→grid 坐标 (col,row) 已经定义在 GRID_POS
+  const brs = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+  // 每组三合 g0-g1-g2
+  const groups = [
+    { br: '申', mates: ['子','辰'] },  // 申子辰
+    { br: '巳', mates: ['酉','丑'] },  // 巳酉丑
+    { br: '寅', mates: ['午','戌'] },  // 寅午戌
+    { br: '亥', mates: ['卯','未'] },  // 亥卯未
+  ];
+  let html = '';
+  groups.forEach((g, gi) => {
+    const all = [g.br, ...g.mates];
+    const pts = all.map(b => {
+      const pos = GRID_POS[b];
+      return [ox + pos[0] * cellW + cellW/2, oy + pos[1] * cellH + cellH/2];
+    });
+    // 三角形: g0→g1, g1→g2, g2→g0
+    html += '<polyline class="sanhe-line" data-group="'+gi+'" points="'+
+      pts[0][0]+','+pts[0][1]+' '+pts[1][0]+','+pts[1][1]+' '+pts[2][0]+','+pts[2][1]+' '+pts[0][0]+','+pts[0][1]+'"/>';
   });
-  document.querySelectorAll('.strip-cell').forEach(c => c.style.background = '');
-  activeFlowLabel = null;
-}
-function highlightFlow(br, label, gz){
-  // 清除其他流年/月/日
-  document.querySelectorAll('.palace').forEach(el => {
-    el.style.boxShadow = ''; el.querySelector('.scope-badge')?.remove(); el.querySelector('.sihua-flow')?.remove();
-  });
-  document.querySelectorAll('.strip-cell').forEach(c => c.style.background = '');
-  activeFlowLabel = label;
-  if(gz){
-    const GAN_SIHUA = {'甲':['廉贞','破军','武曲','太阳'],'乙':['天机','天梁','紫微','太阴'],'丙':['天同','天机','文昌','廉贞'],'丁':['太阴','天同','天机','巨门'],'戊':['贪狼','太阴','右弼','天机'],'己':['武曲','贪狼','天梁','文曲'],'庚':['太阳','武曲','太阴','天同'],'辛':['巨门','太阳','文曲','文昌'],'壬':['天梁','紫微','左辅','武曲'],'癸':['破军','巨门','太阴','贪狼']};
-    const gan = gz[0];
-    const sihua = GAN_SIHUA[gan];
-    const huaNames = ['禄','权','科','忌'];
-    const palaces = plateData?.palaces || [];
-    if(sihua){
-      // 标注流年四化星在哪宫
-      document.querySelectorAll('.palace').forEach(el => {
-        el.querySelector('.sihua-flow')?.remove();
-        const pName = el.querySelector('.p-gong')?.textContent?.trim();
-        if(pName && sihua){
-          for(let i=0; i<4; i++){
-            const star = sihua[i];
-            const found = palaces.find(p =>
-              (p.major_stars||[]).some(s => s.name === star) ||
-              (p.minor_stars||[]).some(s => s.name === star)
-            );
-            if(found && found.name === pName){
-              const tag = document.createElement('span');
-              tag.className = 'sihua-flow';
-              tag.textContent = `流${huaNames[i]}`;
-              tag.style.cssText = 'font-size:8px;margin-left:1px;font-weight:700';
-              tag.style.color = ['#c1432f','#2e6da4','#4a7c4e','#000'][i];
-              el.querySelector('.main-star')?.appendChild(tag);
-            }
+  // 对宫线（地支相隔6位）
+  for(let i=0; i<6; i++){
+    const b1=brs[i], b2=brs[i+6];
+    const p1=GRID_POS[b1], p2=GRID_POS[b2];
+    html += '<line class="sanhe-line" data-duigong="'+b1+'-'+b2+'" x1="'+(ox+p1[0]*cellW+cellW/2)+'" y1="'+(oy+p1[1]*cellH+cellH/2)+'" x2="'+(ox+p2[0]*cellW+cellW/2)+'" y2="'+(oy+p2[1]*cellH+cellH/2)+'"/>';
+  }
+  svg.innerHTML = html;
+  // hover 交互：鼠标悬停宫格时高亮对应三合连线和四正
+  grid.querySelectorAll('.palace').forEach(el => {
+    if(!el.dataset.hooked){
+      el.dataset.hooked = '1';
+      el.addEventListener('mouseenter', function(){
+        const br = el.querySelector('.p-dizhi')?.textContent?.trim();
+        if(!br) return;
+        const idx = brs.indexOf(br);
+        if(idx < 0) return;
+        // 找到所属三合组
+        const groupBrs = [br];
+        [4,8].forEach(d => groupBrs.push(brs[(idx+d)%12]));
+        // 四正=三合+对宫
+        groupBrs.push(brs[(idx+6)%12]);
+        // 高亮线条
+        svg.querySelectorAll('.sanhe-line').forEach(l => l.classList.remove('highlight'));
+        svg.querySelectorAll('.sanhe-line').forEach(l => {
+          const pts = l.getAttribute('points') || '';
+          const dg = l.getAttribute('data-duigong') || '';
+          const hit = groupBrs.some(b => pts.includes(b) !== false) || dg.split('-').some(b => b === br);
+          // check if line connects to our branch
+          let match = false;
+          if(pts){
+            groupBrs.forEach(gb => {
+              // can't check points for branch names, check if any end matches
+              if(brs.some(b => pts.split(' ').some(p => {
+                const x = parseFloat(p.split(',')[0]); return !isNaN(x);
+              }))){
+                // this is getting complex, simpler approach
+              }
+            });
           }
-        }
+        });
+        // simpler: highlight by finding palace cells and checking if they share a branch
+        let hlBr = new Set();
+        const gi = groups.findIndex(g => g.br === br || g.mates.includes(br));
+        if(gi >= 0) svg.querySelector('.sanhe-line[data-group="'+gi+'"]')?.classList.add('highlight');
+        svg.querySelector('.sanhe-line[data-duigong*="'+br+'"]')?.classList.add('highlight');
+        // 高亮宫格
+        [4,6,8].forEach(d => hlBr.add(brs[(idx+d)%12])); hlBr.add(br);
+        grid.querySelectorAll('.palace').forEach(p => p.classList.remove('hovering-sanhe'));
+        grid.querySelectorAll('.palace').forEach(p => {
+          const b = p.querySelector('.p-dizhi')?.textContent?.trim();
+          if(hlBr.has(b)) p.classList.add('hovering-sanhe');
+        });
+      });
+      el.addEventListener('mouseleave', function(){
+        svg.querySelectorAll('.sanhe-line').forEach(l => l.classList.remove('highlight'));
+        grid.querySelectorAll('.palace').forEach(p => p.classList.remove('hovering-sanhe'));
       });
     }
-  }
-  document.querySelectorAll('.palace').forEach(el => {
-    const dz = el.querySelector('.p-dizhi');
-    if(dz && dz.textContent.trim() === br){
-      el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
-      const badge = document.createElement('span');
-      badge.className = 'scope-badge';
-      badge.textContent = label;
-      badge.style.cssText = 'font-size:8px;color:var(--azure);border:1px solid var(--azure);border-radius:2px;padding:0 3px;margin-left:2px;font-weight:700';
-      el.querySelector('.p-head')?.appendChild(badge);
-      el.scrollIntoView({behavior:'smooth', block:'center'});
-    }
-  });
-  // 高亮流年/月/日条
-  ['flow-row','month-row','day-row'].forEach(id => {
-    document.querySelectorAll('#'+id+' .strip-cell').forEach(c => {
-      const g = c.querySelector('.gz');
-      if(g && g.textContent === label) c.style.background = 'rgba(74,124,78,0.12)';
-    });
   });
 }
-function highlightDecade(pName){
-  // 清除所有
+
+function applyAllScope(){
+  const palaces = plateData?.palaces || [];
   document.querySelectorAll('.palace').forEach(el => {
-    el.style.boxShadow = ''; el.querySelector('.living-badge')?.remove(); el.querySelector('.scope-badge')?.remove();
+    el.style.boxShadow = '';
+    el.querySelectorAll('.scope-badge, .sihua-flow, .living-badge, .daxian-sihua, .p-fly, .liuyao-row').forEach(b => b.remove());
   });
-  document.querySelectorAll('.strip-cell').forEach(c => c.style.background = '');
-  activeFlowLabel = null;
-  // 高亮大限宫位
-  let targetIdx = -1;
-  document.querySelectorAll('.palace').forEach((el, i) => {
-    const gong = el.querySelector('.p-gong');
-    if(gong && gong.textContent.trim() === pName){
-      el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
-      el.scrollIntoView({behavior:'smooth', block:'center'});
-      targetIdx = i;
-    }
-  });
-  // 高亮大运条
-  document.querySelectorAll('#dayun-row .strip-cell').forEach(c => {
-    const gz = c.querySelector('.gz');
-    if(gz && gz.textContent.trim() === pName) c.style.background = 'rgba(193,67,47,0.1)';
-  });
-  // 叠盘：大限宫位 → 限年命宫，宫名旋转
-  if(targetIdx >= 0 && plateData){
-    const LIMIT_NAMES = ['命宫','兄弟','夫妻','子女','财帛','疾厄','迁移','交友','官禄','田宅','福德','父母'];
+  // 大限层：宫名旋转 + 大限命宫青边框
+  if(scope.decade){
+    const tIdx = scope.decade.palaceIdx;
+    const decPal = palaces[tIdx] || {};
+    const decStem = (decPal.decadal_dizhi || '')[0];
+    const decSihua = GAN_SIHUA[decStem];
+    const decNames = ['禄','权','科','忌'];
+    const decColors = ['var(--vermillion)','var(--azure)','var(--jade)','var(--ink)'];
     document.querySelectorAll('.palace').forEach((el, i) => {
-      const limitName = LIMIT_NAMES[(i - targetIdx + 12) % 12];
+      const limitName = LIMIT_NAMES[(i - tIdx + 12) % 12];
       const badge = document.createElement('span');
       badge.className = 'living-badge';
       badge.textContent = limitName;
-      badge.style.cssText = 'font-size:7px;color:var(--azure);border:1px solid var(--azure);border-radius:2px;padding:0 2px;margin-left:2px';
+      badge.style.cssText = 'font-size:7px;color:var(--azure);border:1px solid var(--azure);border-radius:2px;padding:0 2px;margin-left:2px;font-weight:700;display:inline-block;line-height:1.3';
       el.querySelector('.p-head')?.appendChild(badge);
+      const pName = el.querySelector('.p-gong')?.textContent?.trim();
+      if(pName && pName === scope.decade.pName){
+        el.style.boxShadow = 'inset 0 0 0 2px var(--azure)';
+      }
+      // 大限四化标注
+      if(pName && decSihua){
+        for(let j=0; j<4; j++){
+          const star = decSihua[j];
+          const found = palaces.find(p =>
+            (p.major_stars||[]).some(s => s.name === star) ||
+            (p.minor_stars||[]).some(s => s.name === star)
+          );
+          if(found && found.name === pName){
+            const tag = document.createElement('span');
+            tag.className = 'daxian-sihua';
+            tag.textContent = '限'+decNames[j];
+            tag.style.cssText = 'font-size:8px;font-weight:700;color:'+decColors[j]+';border:1px solid '+decColors[j]+';border-radius:2px;padding:0 2px;margin-left:2px;display:inline-block;line-height:1.3';
+            el.querySelector('.p-stars')?.appendChild(tag);
+          }
+        }
+      }
     });
   }
+  // 流年层：流年命宫朱红标 + 四化
+  if(scope.yearly){
+    const ybr = scope.yearly.br;
+    const sihua = GAN_SIHUA[scope.yearly.gz[0]];
+    const huaNames = ['禄','权','科','忌'];
+    const muColors = ['var(--vermillion)','var(--azure)','var(--jade)','var(--ink)'];
+    document.querySelectorAll('.palace').forEach(el => {
+      const dz = el.querySelector('.p-dizhi');
+      if(dz && dz.textContent.trim() === ybr){
+        const existing = el.style.boxShadow;
+        el.style.boxShadow = (existing ? existing + ', ' : '') + 'inset 0 0 0 2px var(--vermillion)';
+        const badge = document.createElement('span');
+        badge.className = 'scope-badge';
+        badge.textContent = scope.yearly.year+'年';
+        badge.style.cssText = 'font-size:8px;color:var(--vermillion);border:1px solid var(--vermillion);border-radius:2px;padding:0 3px;margin-left:2px;font-weight:700;display:inline-block;line-height:1.3';
+        el.querySelector('.p-head')?.appendChild(badge);
+      }
+      const pName = el.querySelector('.p-gong')?.textContent?.trim();
+      if(pName && sihua){
+        for(let i=0; i<4; i++){
+          const star = sihua[i];
+          const found = palaces.find(p =>
+            (p.major_stars||[]).some(s => s.name === star) ||
+            (p.minor_stars||[]).some(s => s.name === star)
+          );
+          if(found && found.name === pName){
+            const tag = document.createElement('span');
+            tag.className = 'sihua-flow';
+            tag.textContent = '流'+huaNames[i];
+            tag.style.cssText = 'font-size:8px;font-weight:700;color:'+muColors[i]+';border:1px solid '+muColors[i]+';border-radius:2px;padding:0 2px;margin-left:2px;display:inline-block;line-height:1.3';
+            el.querySelector('.p-stars')?.appendChild(tag);
+          }
+        }
+      }
+    });
+  }
+  // 流月层：流月命宫绿色标
+  if(scope.monthly){
+    const mbr = scope.monthly.br;
+    document.querySelectorAll('.palace').forEach(el => {
+      const dz = el.querySelector('.p-dizhi');
+      if(dz && dz.textContent.trim() === mbr){
+        const existing = el.style.boxShadow;
+        if(!existing.includes('var(--jade)')) el.style.boxShadow = (existing ? existing + ', ' : '') + 'inset 0 0 0 2px var(--jade)';
+        const badge = document.createElement('span');
+        badge.className = 'scope-badge';
+        badge.textContent = scope.monthly.month+'月';
+        badge.style.cssText = 'font-size:8px;color:var(--jade);border:1px solid var(--jade);border-radius:2px;padding:0 3px;margin-left:2px;font-weight:700;display:inline-block;line-height:1.3';
+        el.querySelector('.p-head')?.appendChild(badge);
+      }
+    });
+  }
+  // 流曜标记层（流禄、流羊、流陀等）
+  if(horoscopeData && horoscopeData.liuyao){
+    const liuyao = horoscopeData.liuyao;
+    const liuColors = {'流禄':'#c1432f','流羊':'#ef5350','流陀':'#e57373','流马':'#ff9800','流昌':'#9c27b0','流曲':'#7b1fa2','流魁':'#4caf50','流钺':'#2e7d32','流鸾':'#e91e63','流喜':'#e91e63'};
+    document.querySelectorAll('.palace').forEach(el => {
+      const pName = el.querySelector('.p-gong')?.textContent?.trim();
+      if(!pName) return;
+      const tags = [];
+      for(const [key, palaces] of Object.entries(liuyao)){
+        if(palaces && palaces.includes(pName)){
+          tags.push('<span style="font-size:8px;font-weight:600;color:'+(liuColors[key]||'var(--ink-soft)')+'" title="'+key+'">'+key.slice(1)+'</span>');
+        }
+      }
+      if(tags.length > 0){
+        const flyDiv = document.createElement('div');
+        flyDiv.className = 'liuyao-row';
+        flyDiv.innerHTML = tags.join(' ');
+        el.appendChild(flyDiv);
+      }
+    });
+  }
+  // 飞星标记层（默认渲染，不需叠盘触发）
+  document.querySelectorAll('.palace').forEach(el => {
+    const pName = el.querySelector('.p-gong')?.textContent?.trim();
+    if(!pName) return;
+    const pal = palaces.find(p => p.name === pName);
+    if(!pal || !pal.flying_sihua || pal.flying_sihua.length === 0) return;
+    const flyDiv = document.createElement('div');
+    flyDiv.className = 'p-fly';
+    const flyCls = {'禄':'fly-lu','权':'fly-quan','科':'fly-ke','忌':'fly-ji'};
+    flyDiv.innerHTML = pal.flying_sihua.map(f =>
+      '<span class="fly-tag '+flyCls[f.type]+'">'+f.type+'</span><span class="fly-arrow">→</span><span class="fly-target">'+f.to+'</span>'
+    ).join(' ');
+    el.appendChild(flyDiv);
+  });
+  updateScopeStatus();
 }
+function updateScopeStatus(){
+  const ss = $('scope-status'), chips = $('ss-chips');
+  const btn = $('btn-scope-analyze');
+  const has = scope.decade || scope.yearly || scope.monthly;
+  if(!has){ ss.classList.remove('show'); if(btn) btn.style.display='none'; return; }
+  ss.classList.add('show');
+  if(btn) btn.style.display = 'inline-flex';
+  let html = '';
+  if(scope.decade) html += '<span class="ss-chip decade">大限 '+scope.decade.pName+'</span>';
+  if(scope.yearly) html += '<span class="ss-chip yearly">流年 '+scope.yearly.gz+'</span>';
+  if(scope.monthly) html += '<span class="ss-chip monthly">流月 '+scope.monthly.gz[1]+'</span>';
+  chips.innerHTML = html;
+}
+function clearAllScope(){
+  scope = { decade: null, yearly: null, monthly: null, dayOnly: null };
+  horoscopeData = null;
+  $('drill-year').classList.remove('open');
+  $('drill-month').classList.remove('open');
+  $('fp-year').classList.remove('active'); $('fpv-year').textContent = '—';
+  $('fp-month').classList.remove('active'); $('fpv-month').textContent = '—';
+  $('fp-day').classList.remove('active'); $('fpv-day').textContent = '—';
+  document.querySelectorAll('.yun-decade .dec-cell').forEach(c => c.classList.remove('active'));
+  applyAllScope();
+}
+
+// ── 叠盘分析 ──
+async function analyzeScope(){
+  if(!plateData) return;
+  const btn = $('btn-scope-analyze');
+  btn.disabled = true; btn.textContent = '分析中...';
+  try{
+    // 构建叠盘描述
+    const decPal = scope.decade ? plateData.palaces[scope.decade.palaceIdx] : null;
+    let prompt = '请基于以下叠盘配置进行针对性分析：\n\n';
+    if(scope.decade && decPal){
+      const dz = decPal.decadal_dizhi || '';
+      prompt += '- 大限：' + dz + ' ' + scope.decade.pName + '（' + (decPal.decadal_range||'') + '）\n';
+    }
+    if(scope.yearly){
+      prompt += '- 流年：' + scope.yearly.year + ' ' + scope.yearly.gz + '年\n';
+    }
+    if(scope.monthly){
+      prompt += '- 流月：' + scope.monthly.month + '月 ' + scope.monthly.br + '宫\n';
+    }
+    prompt += '\n请分析：\n1. 大限与流年（流月）叠加对本命盘的综合影响\n2. 当前叠盘对事业、财运、人际、健康等关键领域的影响\n3. 叠盘四化星和流曜的关键提示';
+    // 调用续接 API
+    const r = await fetch('/api/ziwei/sessions/'+sid);
+    const s = await r.json();
+    const msgs = s.messages || [];
+    const res = await fetch('/api/ziwei/analyze/continue', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages: msgs, reply: prompt})
+    });
+    const d = await res.json();
+    if(d.success && d.analysis){
+      // 追加到会话
+      msgs.push({role:'user', content: prompt});
+      msgs.push({role:'assistant', content: d.analysis});
+      await fetch('/api/ziwei/sessions/'+sid, {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({messages: msgs})
+      });
+      // 渲染到分析区（追加在已有分析后面）
+      $('analysis-text').innerHTML += '<hr style="border:none;border-top:1px dashed var(--line-faint);margin:14px 0"><h2>📜 叠盘分析</h2>' + formatText(d.analysis);
+    } else {
+      alert('叠盘分析失败: '+(d.error||'未知错误'));
+    }
+  }catch(e){
+    alert('网络错误: '+e.message);
+  }
+  btn.disabled = false; btn.textContent = '📜 叠盘分析';
+}
+
 // ── 流式分析 ──
 async function startAnalysis(plate, password){
   if(!plate) return;
@@ -609,7 +1103,17 @@ async function startAnalysis(plate, password){
         return;
       }
       if(d.need_password){
-        pw = prompt('需要密码才能解读：');
+        pw = await new Promise(resolve => {
+          const overlay = document.createElement('div');
+          overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center;font-family:Noto Serif SC,serif';
+          overlay.innerHTML = '<div style="background:var(--paper-card);border:1px solid var(--line);padding:24px;width:320px;max-width:90vw;text-align:center;border-radius:4px"><h3 style="font-size:14px;margin-bottom:8px;color:var(--ink)">🔐 需要密码</h3><input type="password" id="ziwei-pw-input" placeholder="请输入密码" style="width:90%;padding:8px;font-size:.9em;border:1px solid var(--line-soft);border-radius:2px;margin-bottom:10px;background:var(--paper);color:var(--ink);font-family:inherit"><div style="display:flex;gap:8px"><button id="ziwei-pw-cancel" style="flex:1;padding:6px;border:1px solid var(--line-soft);background:var(--paper);color:var(--ink);cursor:pointer;border-radius:2px;font-family:inherit">取消</button><button id="ziwei-pw-ok" style="flex:1;padding:6px;background:var(--ink);color:var(--paper);border:none;cursor:pointer;border-radius:2px;font-family:inherit">确认</button></div></div>';
+          document.body.appendChild(overlay);
+          const inp = overlay.querySelector('#ziwei-pw-input');
+          inp.focus();
+          overlay.querySelector('#ziwei-pw-ok').onclick = () => { const v = inp.value; overlay.remove(); resolve(v); };
+          overlay.querySelector('#ziwei-pw-cancel').onclick = () => { overlay.remove(); resolve(null); };
+          inp.onkeydown = e => { if(e.key==='Enter') overlay.querySelector('#ziwei-pw-ok').click(); };
+        });
         if(!pw){ area.innerHTML = '<span style="color:var(--vermillion)">已取消</span>'; return; }
         continue;
       }
@@ -629,10 +1133,42 @@ function renderAnalysis(messages){
   $('analysis-text').innerHTML = html;
 }
 function formatText(t){
-  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/^## (.+)$/gm,'<h2 style="font-size:14px;letter-spacing:1px;margin:14px 0 8px;border-left:3px solid var(--vermillion);padding-left:8px">$1</h2>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\n/g,'<br>');
+  // 第一阶段：标记块级语法（先于 HTML 转义）
+  t = t.replace(/^> /gm,'\u0001Q ');
+  t = t.replace(/^[-*] /gm,'\u0001UL ');
+  t = t.replace(/^(\d+)\. /gm,'\u0001OL ');
+  t = t.replace(/^---+$/gm,'\u0001HR');
+  // HTML 转义
+  t = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // 第二阶段：逐行转 HTML
+  const lines = t.split('\n');
+  const out = [];
+  let inList = 0; // 0=none, 1=ul, 2=ol
+  function closeList(){ if(inList){ out.push(inList===2?'</ol>':'</ul>'); inList=0; } }
+  for(const raw of lines){
+    let line = raw.trim();
+    if(!line){ closeList(); out.push('<br>'); continue; }
+    // 还原 Unicode 标记
+    if(line.startsWith('\u0001Q ')){ closeList(); out.push('<blockquote>'+line.slice(3)+'</blockquote>'); continue; }
+    if(line.startsWith('\u0001UL ')){
+      if(inList!==1){ closeList(); out.push('<ul>'); inList=1; }
+      out.push('<li>'+line.slice(4)+'</li>'); continue;
+    }
+    if(line.startsWith('\u0001OL ')){
+      if(inList!==2){ closeList(); out.push('<ol>'); inList=2; }
+      out.push('<li>'+line.slice(4)+'</li>'); continue;
+    }
+    if(line === '\u0001HR'){ closeList(); out.push('<hr>'); continue; }
+    if(/^#### (.+)/.test(line)){ closeList(); out.push('<h4>'+line.slice(5)+'</h4>'); continue; }
+    if(/^### (.+)/.test(line)){ closeList(); out.push('<h3>'+line.slice(4)+'</h3>'); continue; }
+    if(/^## (.+)/.test(line)){ closeList(); out.push('<h2>'+line.slice(3)+'</h2>'); continue; }
+    closeList(); out.push('<p>'+line+'</p>');
+  }
+  closeList();
+  // 第三阶段：行内格式化
+  let html = out.join('');
+  html = html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  return html;
 }
 
 // ── 追问 ──
