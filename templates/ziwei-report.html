@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded',function(){ document.getElementById
 const $ = id => document.getElementById(id);
 const sid = window.location.pathname.split('/').pop();
 let plateData = null;
-let reportPw = '';  // 缓存密码，后续 API 调用复用
+let reportPw = sessionStorage.getItem('ziwei_pw') || '';
 
 // ── 加载数据 ──
 async function load(){
@@ -1104,7 +1104,7 @@ async function startAnalysis(plate, password){
   const area = $('analysis-text');
   area.innerHTML = '正在推算命盘...';
   try{
-    let pw = password || '';
+    let pw = reportPw || password || '';
     // 最多尝试2次（密码错误可重试）
     for(let attempt=0; attempt<2; attempt++){
       const r = await fetch('/api/ziwei/analyze', {
@@ -1115,6 +1115,7 @@ async function startAnalysis(plate, password){
       let d;
       try{ d = JSON.parse(text); }catch(e){ area.innerHTML = '<span style="color:#c1432f">API返回异常: '+text.slice(0,200)+'</span>'; return; }
       if(d.success && d.analysis){
+        if(pw) sessionStorage.setItem('ziwei_pw', pw);
         area.innerHTML = formatText(d.analysis);
         await fetch(`/api/ziwei/sessions/${sid}`, {
           method:'PATCH', headers:{'Content-Type':'application/json'},
@@ -1136,6 +1137,7 @@ async function startAnalysis(plate, password){
         });
         if(!pw){ area.innerHTML = '<span style="color:var(--vermillion)">已取消</span>'; return; }
         reportPw = pw;
+        sessionStorage.setItem('ziwei_pw', pw);
         continue;
       }
       area.innerHTML = '<span style="color:var(--vermillion)">分析失败: '+(d.error||'未知错误')+'</span>';
