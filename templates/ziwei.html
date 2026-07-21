@@ -539,15 +539,21 @@ function renderGrid(plate){
 
         if(neutral.length)parts.push('<span style="color:var(--ink-faint)">'+neutral.join(' ')+'</span>');
 
+        const adjStars=(p.adjective_stars||[]).map(s=>s.name);
+
+        if(adjStars.length)parts.push('<span style="color:var(--ink-faint);font-size:8px">'+adjStars.join(' ')+'</span>');
+
         const auxHtml=parts.join('<span class="aux-sep">┊</span>')||'<span style="color:var(--ink-faint)">　</span>';
 
         const dr=p.decadal_range||'',ddz=p.decadal_dizhi||'';
+
+        const cs=p.changsheng||'';
 
         const curAge=currentAge();let isCurrent=false;
 
         if(dr){const p2=dr.split('-');if(p2.length===2){const s2=parseInt(p2[0]),e2=parseInt(p2[1]);if(s2<=curAge&&curAge<=e2)isCurrent=true;}}
 
-        cells.push({pos,br,name:p.name,cls,shenBadge,starsHtml,auxHtml,dr,ddz,isCurrent,dizhi:p.dizhi||br});
+        cells.push({pos,br,name:p.name,cls,shenBadge,starsHtml,auxHtml,dr,ddz,isCurrent,changsheng:cs,dizhi:p.dizhi||br});
 
     }
 
@@ -561,7 +567,7 @@ function renderGrid(plate){
 
         div.style.gridColumn=c.pos[0]+1;div.style.gridRow=c.pos[1]+1;
 
-        div.innerHTML='<div class="p-head"><span class="p-dizhi">'+c.br+'</span><span class="p-gong">'+c.name+'</span>'+c.shenBadge+'<span class="p-ganzhi">'+c.dizhi+'</span></div><div class="p-stars">'+c.starsHtml+'</div><div class="p-aux">'+c.auxHtml+'</div><div class="p-daxian">'+(c.dr?'<span>'+c.dr+'</span><span>'+c.ddz+'</span>':'')+'</div><div class="p-hint">双击详解</div>';
+        div.innerHTML='<div class="p-head"><span class="p-dizhi">'+c.br+'</span>'+(c.changsheng?'<span style="font-size:7px;color:var(--ink-faint);margin-left:1px">'+c.changsheng+'</span>':'')+'<span class="p-gong">'+c.name+'</span>'+c.shenBadge+'<span class="p-ganzhi">'+c.dizhi+'</span></div><div class="p-stars">'+c.starsHtml+'</div><div class="p-aux">'+c.auxHtml+'</div><div class="p-daxian">'+(c.dr?'<span>'+c.dr+'</span><span>'+c.ddz+'</span>':'')+'</div><div class="p-hint">双击详解</div>';
 
         gridEl.appendChild(div);
 

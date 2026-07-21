@@ -570,11 +570,15 @@ function renderGrid(plate){
       else neutral.push(s.name);
     }
     const parts = [];
-    if(auspicious.length) parts.push(`<span class="aux-auspicious">${auspicious.join(' ')}</span>`);
-    if(malefic.length) parts.push(`<span class="aux-malefic">${malefic.join(' ')}</span>`);
-    if(neutral.length) parts.push(`<span style="color:var(--ink-faint)">${neutral.join(' ')}</span>`);
-    const auxHtml = parts.join('<span class="aux-sep">┊</span>') || '<span style="color:var(--ink-faint)">　</span>';
-    // 底部条：大限
+    if(auspicious.length) parts.push('<span class="aux-auspicious">'+auspicious.join(' ')+'</span>');
+    if(malefic.length) parts.push('<span class="aux-malefic">'+malefic.join(' ')+'</span>');
+    if(neutral.length) parts.push('<span style="color:var(--ink-faint)">'+neutral.join(' ')+'</span>');
+    // 杂曜（adjective stars）
+    const adjStars = (p.adjective_stars || []).map(s => s.name);
+    if(adjStars.length) parts.push('<span style="color:var(--ink-faint);font-size:8px">'+adjStars.join(' ')+'</span>');
+    const auxHtml = parts.join('<span class="aux-sep">┊</span>') || '<span style="color:var(--ink-faint)"> </span>';
+    // 十二长生
+    const cs = p.changsheng || '';
     const dr = p.decadal_range || '';
     const ddz = p.decadal_dizhi || '';
     const curAge = currentAge();
@@ -587,7 +591,7 @@ function renderGrid(plate){
       }
     }
     cells.push({
-      pos, br, name: p.name, cls, shenBadge, starsHtml, auxHtml, dr, ddz, isCurrent,
+      pos, br, name: p.name, cls, shenBadge, starsHtml, auxHtml, dr, ddz, isCurrent, changsheng: cs,
       dizhi: p.dizhi || br,
     });
   }
@@ -601,7 +605,7 @@ function renderGrid(plate){
     div.style.gridColumn = c.pos[0]+1; div.style.gridRow = c.pos[1]+1;
     div.innerHTML = `
       <div class="p-head">
-        <span class="p-dizhi">${c.br}</span>
+        <span class="p-dizhi">${c.br}</span>${c.changsheng ? '<span style="font-size:7px;color:var(--ink-faint);margin-left:1px">'+c.changsheng+'</span>' : ''}
         <span class="p-gong">${c.name}</span>${c.shenBadge}
         <span class="p-ganzhi">${c.dizhi}</span>
       </div>
