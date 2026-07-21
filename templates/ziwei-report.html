@@ -331,6 +331,8 @@
   .skeleton-line { height: 14px; margin: 8px 0; width: 80%; }
   .skeleton-line:last-child { width: 60%; }
   @keyframes pulse { 0%{opacity:.6} 50%{opacity:1} 100%{opacity:.6} }
+  .load-dot { display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink);animation:load-dot-pulse 1.4s ease-in-out infinite }
+  @keyframes load-dot-pulse { 0%,80%,100%{opacity:.2;transform:scale(.8)} 40%{opacity:1;transform:scale(1.2)} }
 
   /* ── 打印 ── */
   @media print {
@@ -1115,7 +1117,7 @@ async function analyzeScope(){
 async function startAnalysis(plate, password){
   if(!plate) return;
   const area = $('analysis-text');
-  area.innerHTML = '正在推算命盘...';
+  area.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:200px;gap:16px;padding:40px 20px"><div style="display:flex;gap:6px"><span class="load-dot" style="animation-delay:0s"></span><span class="load-dot" style="animation-delay:.2s"></span><span class="load-dot" style="animation-delay:.4s"></span></div><div style="font-size:16px;font-weight:700;color:var(--ink)">正在推算命盘</div><div style="font-size:12px;color:var(--ink-soft);width:300px;line-height:1.7">深度分析约需 2~4 分钟<br>请耐心等待，页面无需刷新</div></div>';
   try{
     let pw = reportPw || password || '';
     // 最多尝试2次（密码错误可重试）
