@@ -174,7 +174,7 @@ def _compute_bazi_ref(plate_dict: dict) -> dict | None:
         qiyun = getattr(bp, 'qiyun', {})
         qiyun_age = getattr(qiyun, 'qiyun_age', 0) if hasattr(qiyun, 'qiyun_age') else qiyun.get('qiyun_age', 0)
         qiyun_str = f"{qiyun_age:.1f}岁起运（{qiyun.get('direction','')}）" if qiyun else ""
-        return {
+        result = {
             "rizhu": bp.sizhu["day"]["gz"],
             "ri_gan": day_gan,
             "ri_gan_wuxing": _WX_G.get(day_gan, "?"),
@@ -183,6 +183,30 @@ def _compute_bazi_ref(plate_dict: dict) -> dict | None:
             "qiyun": qiyun_str,
             "dayun": dayun_list,
         }
+        # ═══ 八字快速预分析（格局+喜用+旺衰）═══
+        try:
+            from analysis_service import _call_api
+            sizhu_str = ' '.join(p['gz'] for p in pillars)
+            pre_prompt = f"""四柱：{sizhu_str}，日主{day_gan}（{_WX_G.get(day_gan,'?')}），{gender}命。
+请判断格局、喜用神、旺衰，输出JSON：
+{{"geju":"格局","xiyong":["喜神","用神"],"wangsan":"旺衰","jieshuo":"一句话综述"}}"""
+            pre_res = _call_api("你是八字命理师。只输出JSON，不输出其他内容。",
+                [{"role":"user","content":pre_prompt}],
+                max_tokens=512, temperature=0.1, timeout=30)
+            if pre_res.get("success") and pre_res.get("text"):
+                import json as _json
+                try:
+                    txt = pre_res["text"].strip()
+                    if txt.startswith("```"): txt = txt.split("```")[1]; txt = txt.replace("json","",1)
+                    ai = _json.loads(txt)
+                    result["geju"] = ai.get("geju","")
+                    result["xiyong"] = ai.get("xiyong",[])
+                    result["wangsan"] = ai.get("wangsan","")
+                    result["jieshuo"] = ai.get("jieshuo","")
+                except: pass
+        except Exception:
+            pass  # LLM 失败不影响基础数据返回
+        return result
     except Exception as e:
         import logging
         logging.warning("bazi_ref generation failed: %s", e)
