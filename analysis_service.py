@@ -1459,15 +1459,36 @@ def _build_ziwei_user_message(plate_dict: dict, bazi_ref: dict = None) -> str:
             parts.append("")
     # ═══ 八字参考注入 ═══
     if bazi_ref:
-        parts.append("## 八字参考（用于交叉验证）")
-        parts.append(f"日主：{bazi_ref.get('rizhu', '?')}（{bazi_ref.get('ri_gan_wuxing', '?')}，{bazi_ref.get('strength', '?')}）")
-        xiyong = bazi_ref.get('xiyong')
-        if xiyong:
-            parts.append(f"喜用：{'、'.join(xiyong)}")
-        if bazi_ref.get('geju'):
-            parts.append(f"格局：{bazi_ref['geju']}")
-        if bazi_ref.get('dayun'):
-            parts.append(f"当前大运：{bazi_ref['dayun']}")
+        parts.append("## 八字参考（交叉验证用）")
+        # 四柱
+        pillars = bazi_ref.get('pillars', [])
+        if pillars:
+            parts.append("| | 年柱 | 月柱 | 日柱 | 时柱 |")
+            parts.append("|---|---|---|---|---|")
+            row_gz = "| 干支 |"
+            row_ss = "| 十神 |"
+            for p in pillars:
+                row_gz += f" {p['gz']}（{p['gan_wx']}/{p['zhi_wx']}) |"
+                row_ss += f" {p['shishen']} |"
+            parts.append(row_gz)
+            parts.append(row_ss)
+        # 五行
+        wx = bazi_ref.get('wuxing', {})
+        if wx:
+            parts.append(f"\n五行统计：{' · '.join(f'{k}{v}' for k,v in wx.items())}")
+        # 起运 + 大运
+        if bazi_ref.get('qiyun'):
+            parts.append(f"\n起运：{bazi_ref['qiyun']}")
+        dayun = bazi_ref.get('dayun', [])
+        if dayun:
+            parts.append(f"大运：{' → '.join(dayun)}")
+        # 交叉验证指令（基于测天机方法论）
+        parts.append("")
+        parts.append("**交叉验证要求**：请结合以上八字数据，在分析紫微盘时做到：")
+        parts.append("1. **象的比对**：八字十神与紫微宫位对应（财星↔财帛宫、官星↔官禄宫、印星↔父母宫、比劫↔兄弟宫），比对两者信号是否趋同")
+        parts.append("2. **分歧处理**：如八字显示某方向强（如木旺印星重）但紫微对应宫位弱（如父母宫空劫），说明八字的能力/资源 ≠ 该领域的具体关系质量，需分层表述")
+        parts.append("3. **时间叠合**：当前大限与八字大运的时间段做对齐，大限与流年叠盘时参考八字的流年干支")
+        parts.append("4. **综合结论**：八字定基调（贫富寿夭层次），紫微定场景（职业类型、人际关系具体形态），在分析每个章节时，如八字与紫微信号一致则强化结论，若冲突则指出矛盾并给出辩证解读")
         parts.append("")
     # 分析要求
     parts.append("## 分析要求")

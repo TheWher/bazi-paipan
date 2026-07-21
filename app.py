@@ -131,7 +131,7 @@ def _cache_set(key: str, result: dict):
 FEEDBACK_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedback")
 
 def _compute_bazi_ref(plate_dict: dict) -> dict | None:
-    """从紫微 plate_dict 提取生辰，排八字参考信息用于交叉验证"""
+    """从紫微 plate_dict 提取生辰，排完整八字参考信息用于交叉验证"""
     input_info = plate_dict.get("input", {})
     birth_dt_str = input_info.get("birth_datetime", "")
     gender = input_info.get("gender", "")
@@ -142,23 +142,51 @@ def _compute_bazi_ref(plate_dict: dict) -> dict | None:
     if not m:
         return None
     try:
-        from bazi_calculator import paipan
+        from bazi_calculator import paipan, get_shishen
         y, mo, d, h, mi = int(m[1]), int(m[2]), int(m[3]), int(m[4]), int(m[5])
         bp = paipan(y, mo, d, h, mi, gender=gender, apply_solar_correction=False)
+        bp.compute()  # 需调用 compute 生成 shishen/qiyun 等
         day_gan = bp.sizhu["day"]["gan"]
-        _WX = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'}
-        dayun_str = ""
+        _WX_G = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'}
+        _WX_Z = {'子':'水','丑':'土','寅':'木','卯':'木','辰':'土','巳':'火','午':'火','未':'土','申':'金','酉':'金','戌':'土','亥':'水'}
+        # 十神
+        ss = getattr(bp, 'shishen', {})
+        # 四柱详情
+        pillars = []
+        for key, label in [('year','年柱'),('month','月柱'),('day','日柱'),('hour','时柱')]:
+            p = bp.sizhu[key]
+            pillars.append({
+                'label': label, 'gz': p['gz'], 'gan': p['gan'], 'zhi': p['zhi'],
+                'gan_wx': _WX_G.get(p['gan'],'?'), 'zhi_wx': _WX_Z.get(p['zhi'],'?'),
+                'shishen': ss.get(key, '')
+            })
+        # 五行统计
+        wx_count = {'木':0,'火':0,'土':0,'金':0,'水':0}
+        for p in pillars:
+            wx_count[p['gan_wx']] += 1
+            wx_count[p['zhi_wx']] += 1
+        # 大运
+        dayun_list = []
         if getattr(bp, "dayun", []):
-            du = bp.dayun[0]
-            dayun_str = f"{du['gz']}（{du['start_age']}-{du['end_age']}岁）"
+            for i, du in enumerate(bp.dayun[:8]):
+                dayun_list.append(f"{du['gz']}（{du['start_age']:.0f}-{du['end_age']:.0f}岁）")
+        # 起运
+        qiyun = getattr(bp, 'qiyun', {})
+        qiyun_age = getattr(qiyun, 'qiyun_age', 0) if hasattr(qiyun, 'qiyun_age') else qiyun.get('qiyun_age', 0)
+        qiyun_str = f"{qiyun_age:.1f}岁起运（{qiyun.get('direction','')}）" if qiyun else ""
         return {
             "rizhu": bp.sizhu["day"]["gz"],
-            "ri_gan_wuxing": _WX.get(day_gan, "?"),
-            "strength": "身强" if getattr(bp, "shenqiang", False) else "身弱",
-            "xiyong": getattr(bp, "xiyong", [])[:3],
-            "geju": getattr(bp, "geju", ""),
-            "dayun": dayun_str,
+            "ri_gan": day_gan,
+            "ri_gan_wuxing": _WX_G.get(day_gan, "?"),
+            "pillars": pillars,
+            "wuxing": wx_count,
+            "qiyun": qiyun_str,
+            "dayun": dayun_list,
         }
+    except Exception as e:
+        import logging
+        logging.warning("bazi_ref generation failed: %s", e)
+        return None
     except Exception as e:
         import logging
         logging.warning("bazi_ref generation failed: %s", e)
