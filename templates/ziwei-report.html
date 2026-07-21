@@ -115,8 +115,13 @@
   .palace .p-fly .fly-arrow { color: var(--ink-faint); font-size: 7px; }
   .palace .p-fly .fly-target { color: var(--ink-soft); }
   /* 三合四正连线 */
-  #grid-lines .sanhe-line { fill: none; stroke: var(--line-soft); stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .7; }
-  #grid-lines .sanhe-line.highlight { stroke: var(--ink-soft); stroke-dasharray: none; opacity: 1; stroke-width: 1.8; }
+  #grid-lines .sanhe-line { fill: none; stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .65; }
+  #grid-lines .sanhe-line.g0 { stroke: #2e6da4; }  /* 申子辰 水局 — 青 */
+  #grid-lines .sanhe-line.g1 { stroke: #c1432f; }  /* 巳酉丑 金局 — 朱 */
+  #grid-lines .sanhe-line.g2 { stroke: #4a7c4e; }  /* 寅午戌 火局 — 绿 */
+  #grid-lines .sanhe-line.g3 { stroke: #b8860b; }  /* 亥卯未 木局 — 金 */
+  #grid-lines .sanhe-line.duigong { stroke: var(--line-soft); stroke-dasharray: 2 4; opacity: .45; }
+  #grid-lines .sanhe-line.highlight { stroke-dasharray: none; opacity: 1; stroke-width: 2.2; }  /* 保持分组色，加粗变实线 */
   .palace.hovering-sanhe { background: rgba(180,160,130,0.08) !important; }
 
   /* 中间 info：命盘三锚点 */
@@ -809,14 +814,14 @@ function renderSanheLines(){
       return [ox + pos[0] * cellW + cellW/2, oy + pos[1] * cellH + cellH/2];
     });
     // 三角形: g0→g1, g1→g2, g2→g0
-    html += '<polyline class="sanhe-line" data-group="'+gi+'" points="'+
+    html += '<polyline class="sanhe-line g'+gi+'" data-group="'+gi+'" points="'+
       pts[0][0]+','+pts[0][1]+' '+pts[1][0]+','+pts[1][1]+' '+pts[2][0]+','+pts[2][1]+' '+pts[0][0]+','+pts[0][1]+'"/>';
   });
   // 对宫线（地支相隔6位）
   for(let i=0; i<6; i++){
     const b1=brs[i], b2=brs[i+6];
     const p1=GRID_POS[b1], p2=GRID_POS[b2];
-    html += '<line class="sanhe-line" data-duigong="'+b1+'-'+b2+'" x1="'+(ox+p1[0]*cellW+cellW/2)+'" y1="'+(oy+p1[1]*cellH+cellH/2)+'" x2="'+(ox+p2[0]*cellW+cellW/2)+'" y2="'+(oy+p2[1]*cellH+cellH/2)+'"/>';
+    html += '<line class="sanhe-line duigong" data-duigong="'+b1+'-'+b2+'" x1="'+(ox+p1[0]*cellW+cellW/2)+'" y1="'+(oy+p1[1]*cellH+cellH/2)+'" x2="'+(ox+p2[0]*cellW+cellW/2)+'" y2="'+(oy+p2[1]*cellH+cellH/2)+'"/>';
   }
   svg.innerHTML = html;
   // hover 交互：鼠标悬停宫格时高亮对应三合连线和四正
