@@ -1069,7 +1069,14 @@ async function analyzeScope(){
     if(scope.monthly){
       prompt += '- 流月：' + scope.monthly.month + '月 ' + scope.monthly.br + '宫\n';
     }
-    prompt += '\n请分析：\n1. 大限与流年（流月）叠加对本命盘的综合影响\n2. 当前叠盘对事业、财运、人际、健康等关键领域的影响\n3. 叠盘四化星和流曜的关键提示';
+    prompt += '\n请分析：\n1. 大限与流年（流月）叠加对本命盘的综合影响\n2. 当前叠盘对事业、财运、人际、健康等关键领域的影响\n3. 叠盘四化星和流曜的关键提示\n4. 重点关注叠盘宫干引发的飞星（飞出/飞入），分析宫位间的能量流向和互动关系\n\n命盘飞星数据：\n';
+    const palaces = plateData.palaces || [];
+    for(const p of palaces){
+      const fly = p.flying_sihua || [];
+      if(fly.length > 0){
+        prompt += p.name + '(' + p.dizhi + ')：' + fly.map(f => f.type + f.star + '→' + f.to).join('、') + '\n';
+      }
+    }
     // 调用续接 API
     const r = await fetch('/api/ziwei/sessions/'+sid);
     const s = await r.json();
