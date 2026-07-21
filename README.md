@@ -4,6 +4,8 @@
 
 **符号计算 + LLM 推理的混合 AI 架构 · 双术数系统**
 
+🔗 **体验地址：[https://thewher.pythonanywhere.com](https://thewher.pythonanywhere.com)**
+
 [![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)](https://python.org)
 [![Flask](https://img.shields.io/badge/Flask-3.1-black?logo=flask)](https://flask.palletsprojects.com/)
 [![DeepSeek](https://img.shields.io/badge/AI-DeepSeek%20v4--pro-purple)](https://deepseek.com)
