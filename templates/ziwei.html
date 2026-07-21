@@ -356,8 +356,6 @@ body{font-family:"Noto Serif SC","Source Han Serif SC","STSong","PingFang SC",se
 
         <button id="btn-render" class="btn btn-accent">🔮 排盘</button>
 
-        <button id="btn-analyze" class="btn btn-accent" disabled>🧠 AI 解读</button>
-
     </div>
 
 </aside>
@@ -379,8 +377,6 @@ body{font-family:"Noto Serif SC","Source Han Serif SC","STSong","PingFang SC",se
     <div class="btn-row" style="display:flex;gap:8px;margin-bottom:14px">
 
         <button id="btn-re-render" class="btn" onclick="reRender()">⟲ 重新排盘</button>
-
-        <button id="btn-start-analyze" class="btn btn-accent" onclick="startAnalysis()">🧠 命盘解读</button>
 
     </div>
 
@@ -590,7 +586,7 @@ function renderConfirm(plate){
 
     const sihuaStr=ym.map(m=>m.star+m.mutagen.replace('化','')+'在'+m.palace).join(' · ')||'无';
 
-    $('confirm-card').innerHTML='<div class="cc-head">✅ 确认命盘</div><div class="cc-grid"><div class="cc-item"><div class="cc-label">出生</div><div class="cc-value">'+birthDt+' '+gender+'</div></div><div class="cc-item"><div class="cc-label">五行局</div><div class="cc-value">'+fec+'</div></div><div class="cc-item"><div class="cc-label">命宫/身宫</div><div class="cc-value">'+soul+' / '+body+'</div></div><div class="cc-item"><div class="cc-label">来因宫</div><div class="cc-value">'+laiyin+'</div></div><div class="cc-sihua"><span class="cc-label">生年四化</span><span class="cc-value">'+sihuaStr+'</span></div></div>';
+    $('confirm-card').innerHTML='<div class="cc-head">✅ 确认命盘</div><div class="cc-grid"><div class="cc-item"><div class="cc-label">出生</div><div class="cc-value">'+birthDt+' '+gender+'</div></div><div class="cc-item"><div class="cc-label">五行局</div><div class="cc-value">'+fec+'</div></div><div class="cc-item"><div class="cc-label">命宫/身宫</div><div class="cc-value">'+soul+' / '+body+'</div></div><div class="cc-item"><div class="cc-label">来因宫</div><div class="cc-value">'+laiyin+'</div></div><div class="cc-sihua"><span class="cc-label">生年四化</span><span class="cc-value">'+sihuaStr+'</span></div></div><div style="text-align:center;margin-top:10px"><button id="btn-confirm-analyze" class="btn btn-accent" onclick="startAnalysis()" style="font-size:.85em;padding:6px 20px">📜 确认并解读</button></div>';
 
 }
 
@@ -602,7 +598,7 @@ async function startAnalysis(){
 
     if(!plateData)return;
 
-    const btn=$('btn-start-analyze');
+    const btn=$('btn-confirm-analyze');
 
     btn.disabled=true;btn.textContent='分析中...';
 
