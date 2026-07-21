@@ -11,6 +11,14 @@
     --vermillion: #c1432f; --vermillion-deep: #8e2f20;
     --azure: #2e6da4; --jade: #4a7c4e; --jade-soft: #6f9971;
     --line: #8b8378; --line-soft: #c4bdb0; --line-faint: #e0d9c8;
+    --radius: 4px; --radius-sm: 2px;
+  }
+  [data-theme="dark"] {
+    --paper: #1a1512; --paper-deep: #12100e; --paper-card: #221c18;
+    --ink: #e0d8cf; --ink-soft: #a09890; --ink-faint: #706860;
+    --vermillion: #e05545; --vermillion-deep: #a03020;
+    --azure: #5a9dd4; --jade: #5aaa5e; --jade-soft: #4a8a4e;
+    --line: #3a3028; --line-soft: #2a2018; --line-faint: #1a120e;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
@@ -35,6 +43,7 @@
     border: 1px solid var(--line-soft); padding: 4px 12px; border-radius: 2px;
   }
   .nav-bar .btn-back:hover { border-color: var(--vermillion); color: var(--vermillion); }
+  .nav-bar .btn-theme { background: none; border: 1px solid var(--line-soft); border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-size: 14px; line-height: 1; color: var(--ink); padding: 0; }
 
   /* ── 命盘概要 ── */
   .info-bar {
@@ -357,6 +366,7 @@
   <div class="nav-bar no-print">
     <span class="title">🔮 紫微斗数 · 命盘报告</span>
     <a href="/ziwei" class="btn-back">← 重新排盘</a>
+    <button class="btn-theme" id="btn-theme" onclick="toggleTheme()">🌙</button>
   </div>
 
   <!-- 命盘概要 -->
@@ -439,6 +449,10 @@
 </div>
 
 <script>
+// 暗色主题
+(function(){ var t=localStorage.getItem('ziwei_theme'); if(t){ document.documentElement.setAttribute('data-theme',t); } })();
+function toggleTheme(){ var n=document.documentElement.getAttribute('data-theme')==='dark'?'':'dark'; document.documentElement.setAttribute('data-theme',n); localStorage.setItem('ziwei_theme',n); document.getElementById('btn-theme').textContent=n==='dark'?'☀️':'🌙'; }
+document.addEventListener('DOMContentLoaded',function(){ document.getElementById('btn-theme').textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️':'🌙'; });
 const $ = id => document.getElementById(id);
 const sid = window.location.pathname.split('/').pop();
 let plateData = null;
