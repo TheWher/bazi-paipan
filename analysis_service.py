@@ -1519,9 +1519,12 @@ def _build_ziwei_user_message(plate_dict: dict, bazi_ref: dict = None) -> str:
     parts.append("5. ## 🔮 当前大限 — 当前十年核心课题")
     parts.append("6. ## 📅 近三年流年 — 关键节点提示")
     parts.append("")
-    parts.append("**解读原则**：详细充实，充分展开分析，不要简略。每个结论给出依据。每个章节至少写500字以上。")
+    parts.append("每个章节按三段式展开：")
+    parts.append("1. **宫位意义** — 该宫位在此命盘中的核心意涵和基调")
+    parts.append("2. **主星与辅星影响** — 主星+辅星+杂曜逐个分析，说明每颗星如何调整宫位吉凶和事件细节")
+    parts.append("3. **星系组合** — 将主星、辅星、杂曜、四化串联，给出整合判断和矛盾点的辩证解读")
     parts.append("")
-    parts.append("**辅星与杂曜**：辅星（昌曲魁钺辅弼禄马羊陀火铃空劫）和杂曜（鸾喜姚咸刑哭龙凤等）直接影响宫位细节。请在每个章节中对相关辅星杂曜进行解读，说明如何调整主星的吉凶程度。")
+    parts.append("详细充实，充分展开分析，不要简略。每个结论给出依据。每个章节至少写500字以上。")
 
     return "\n".join(parts)
 
