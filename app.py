@@ -145,13 +145,15 @@ def _compute_bazi_ref(plate_dict: dict) -> dict | None:
         from bazi_calculator import paipan
         y, mo, d, h, mi = int(m[1]), int(m[2]), int(m[3]), int(m[4]), int(m[5])
         bp = paipan(y, mo, d, h, mi, gender=gender, apply_solar_correction=False)
+        day_gan = bp.sizhu["day"]["gan"]
+        _WX = {'甲':'木','乙':'木','丙':'火','丁':'火','戊':'土','己':'土','庚':'金','辛':'金','壬':'水','癸':'水'}
         dayun_str = ""
         if getattr(bp, "dayun", []):
             du = bp.dayun[0]
             dayun_str = f"{du['gz']}（{du['start_age']}-{du['end_age']}岁）"
         return {
             "rizhu": bp.sizhu["day"]["gz"],
-            "ri_gan_wuxing": bp.sizhu["day"]["gan_wuxing"],
+            "ri_gan_wuxing": _WX.get(day_gan, "?"),
             "strength": "身强" if getattr(bp, "shenqiang", False) else "身弱",
             "xiyong": getattr(bp, "xiyong", [])[:3],
             "geju": getattr(bp, "geju", ""),
