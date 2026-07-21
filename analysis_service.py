@@ -1282,15 +1282,17 @@ def _build_ziwei_user_message(plate_dict: dict, bazi_ref: dict = None) -> str:
     # 十二宫表
     parts.append("## 十二宫分布")
     parts.append("")
-    parts.append("| 宫位 | 干支 | 主星 | 辅星 | 四化 | 大限 | 标记 |")
-    parts.append("|------|------|------|------|------|------|------|")
+    parts.append("| 宫位 | 干支 | 主星 | 辅星 | 杂曜 | 十二长生 | 四化 | 大限 | 标记 |")
+    parts.append("|------|------|------|------|------|------|------|------|------|")
     for pal in palaces:
         stars_str = '、'.join(f"{s['name']}[{s['brightness']}]" if isinstance(s, dict) and s.get('brightness') else (s['name'] if isinstance(s, dict) else s) for s in pal['major_stars']) if pal['major_stars'] else '空宫'
-        minor_str = '、'.join(s['name'] if isinstance(s, dict) else s for s in pal['minor_stars'][:3]) if pal['minor_stars'] else '—'
+        minor_str = '、'.join(s['name'] if isinstance(s, dict) else s for s in pal['minor_stars'][:4]) if pal['minor_stars'] else '—'
+        adj_str = '、'.join(s['name'] if isinstance(s, dict) else s for s in pal.get('adjective_stars',[])[:4]) if pal.get('adjective_stars') else '—'
+        cs_str = pal.get('changsheng','—')
         mut_str = '、'.join(f"{m['star']}{m['mutagen']}" for m in pal['mutagens']) if pal['mutagens'] else '—'
         tags_str = '、'.join(pal['tags']) if pal['tags'] else ''
         parts.append(
-            f"| {pal['name']} | {pal['dizhi']} | {stars_str} | {minor_str} | {mut_str} | {pal['decadal_range']} | {tags_str} |"
+            f"| {pal['name']} | {pal['dizhi']} | {stars_str} | {minor_str} | {adj_str} | {cs_str} | {mut_str} | {pal['decadal_range']} | {tags_str} |"
         )
     parts.append("")
 
@@ -1517,7 +1519,9 @@ def _build_ziwei_user_message(plate_dict: dict, bazi_ref: dict = None) -> str:
     parts.append("5. ## 🔮 当前大限 — 当前十年核心课题")
     parts.append("6. ## 📅 近三年流年 — 关键节点提示")
     parts.append("")
-    parts.append('**解读原则**：详细充实，充分展开分析，不要简略。有主见有判断、用日常语言翻译术语、先讲优势再讲挑战、不说"你一定会"。每个结论给出依据（"因为XX星在XX宫+三方有XX，所以..."）。像写文章一样娓娓道来，每个章节至少写500字以上。')
+    parts.append("**解读原则**：详细充实，充分展开分析，不要简略。每个结论给出依据。每个章节至少写500字以上。")
+    parts.append("")
+    parts.append("**辅星与杂曜**：辅星（昌曲魁钺辅弼禄马羊陀火铃空劫）和杂曜（鸾喜姚咸刑哭龙凤等）直接影响宫位细节。请在每个章节中对相关辅星杂曜进行解读，说明如何调整主星的吉凶程度。")
 
     return "\n".join(parts)
 
