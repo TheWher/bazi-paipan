@@ -1057,58 +1057,74 @@ function clearAllScope(){
 // ── 叠盘分析 ──
 async function analyzeScope(){
   if(!plateData) return;
-  const btn = $('btn-scope-analyze');
+  const btn = document.getElementById('btn-scope-analyze');
   btn.disabled = true; btn.textContent = '分析中...';
   try{
-    // 构建叠盘描述
     const decPal = scope.decade ? plateData.palaces[scope.decade.palaceIdx] : null;
-    let prompt = '请基于以下叠盘配置进行针对性分析：\n\n';
+    let prompt = '请基于以下叠盘配置进行针对性分析：
+
+';
     if(scope.decade && decPal){
       const dz = decPal.decadal_dizhi || '';
-      prompt += '- 大限：' + dz + ' ' + scope.decade.pName + '（' + (decPal.decadal_range||'') + '）\n';
+      prompt += '- 大限：' + dz + ' ' + scope.decade.pName + '（' + (decPal.decadal_range||'') + '）
+';
     }
-    if(scope.yearly){
-      prompt += '- 流年：' + scope.yearly.year + ' ' + scope.yearly.gz + '年\n';
-    }
-    if(scope.monthly){
-      prompt += '- 流月：' + scope.monthly.month + '月 ' + scope.monthly.br + '宫\n';
-    }
-    prompt += '\n请分析：\n1. 大限与流年（流月）叠加对本命盘的综合影响\n2. 当前叠盘对事业、财运、人际、健康等关键领域的影响\n3. 叠盘四化星和流曜的关键提示\n4. 重点关注叠盘宫干引发的飞星（飞出/飞入），分析宫位间的能量流向和互动关系\n\n命盘飞星数据：\n';
+    if(scope.yearly){ prompt += '- 流年：' + scope.yearly.year + ' ' + scope.yearly.gz + '年
+'; }
+    if(scope.monthly){ prompt += '- 流月：' + scope.monthly.month + '月 ' + scope.monthly.br + '宫
+'; }
+    prompt += '
+请分析：
+1. 大限与流年（流月）叠加对本命盘的综合影响
+2. 当前叠盘对事业、财运、人际、健康等关键领域的影响
+3. 叠盘四化星和流曜的关键提示
+4. 重点关注叠盘宫干引发的飞星（飞出/飞入），分析宫位间的能量流向和互动关系
+
+命盘飞星数据：
+';
     const palaces = plateData.palaces || [];
     for(const p of palaces){
       const fly = p.flying_sihua || [];
-      if(fly.length > 0){
-        prompt += p.name + '(' + p.dizhi + ')：' + fly.map(f => f.type + f.star + '→' + f.to).join('、') + '\n';
-      }
+      if(fly.length > 0) prompt += p.name + '(' + p.dizhi + ')：' + fly.map(f => f.type+f.star+'→'+f.to).join('、') + '
+';
     }
-    // 调用续接 API
     const r = await fetch('/api/ziwei/sessions/'+sid);
     const s = await r.json();
     const msgs = s.messages || [];
-    const res = await fetch('/api/ziwei/analyze/continue', {
+    let res = await fetch('/api/ziwei/analyze/continue', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({messages: msgs, reply: prompt, password: reportPw})
     });
+    if(res.status === 403){
+      reportPw = await new Promise(resolve => {
+        const ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center;font-family:Noto Serif SC,serif';
+        ov.innerHTML = '<div style="background:var(--paper-card);border:1px solid var(--line);padding:24px;width:320px;text-align:center;border-radius:4px"><h3 style="font-size:14px;color:var(--ink);margin-bottom:8px">🔐 需要密码</h3><input type="password" id="sc-pw-inp" placeholder="请输入密码" style="width:90%;padding:8px;font-size:.9em;border:1px solid var(--line-soft);border-radius:2px;margin-bottom:10px;background:var(--paper);color:var(--ink);font-family:inherit"><div style="display:flex;gap:8px"><button id="sc-pw-cancel" style="flex:1;padding:6px;border:1px solid var(--line-soft);background:var(--paper);color:var(--ink);cursor:pointer;border-radius:2px;font-family:inherit">取消</button><button id="sc-pw-ok" style="flex:1;padding:6px;background:var(--ink);color:var(--paper);border:none;cursor:pointer;border-radius:2px;font-family:inherit">确认</button></div></div>';
+        document.body.appendChild(ov);
+        const inp = ov.querySelector('#sc-pw-inp'); inp.focus();
+        ov.querySelector('#sc-pw-ok').onclick = () => { ov.remove(); resolve(inp.value); };
+        ov.querySelector('#sc-pw-cancel').onclick = () => { ov.remove(); resolve(null); };
+        inp.onkeydown = e => { if(e.key==='Enter') ov.querySelector('#sc-pw-ok').click(); };
+      });
+      if(!reportPw){ btn.disabled = false; btn.textContent = '叠盘分析'; return; }
+      sessionStorage.setItem('ziwei_pw', reportPw);
+      res = await fetch('/api/ziwei/analyze/continue', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({messages: msgs, reply: prompt, password: reportPw})
+      });
+    }
     const d = await res.json();
     if(d.success && d.analysis){
-      // 追加到会话
       msgs.push({role:'user', content: prompt});
       msgs.push({role:'assistant', content: d.analysis});
-      await fetch('/api/ziwei/sessions/'+sid, {
-        method:'PATCH', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({messages: msgs})
-      });
-      // 渲染到分析区（追加在已有分析后面）
-      $('analysis-text').innerHTML += '<hr style="border:none;border-top:1px dashed var(--line-faint);margin:14px 0"><h2>📜 叠盘分析</h2>' + formatText(d.analysis);
+      await fetch('/api/ziwei/sessions/'+sid, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({messages: msgs}) });
+      document.getElementById('analysis-text').innerHTML += '<hr style="border:none;border-top:1px dashed var(--line-faint);margin:14px 0"><h2>📜 叠盘分析</h2>' + formatText(d.analysis);
     } else {
       alert('叠盘分析失败: '+(d.error||'未知错误'));
     }
-  }catch(e){
-    alert('网络错误: '+e.message);
-  }
+  }catch(e){ alert('网络错误: '+e.message); }
   btn.disabled = false; btn.textContent = '📜 叠盘分析';
 }
-
 // ── 流式分析 ──
 async function startAnalysis(plate, password){
   if(!plate) return;
