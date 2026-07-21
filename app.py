@@ -130,6 +130,9 @@ def _cache_set(key: str, result: dict):
 # 反馈日志目录
 FEEDBACK_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feedback")
 
+# 八字分析缓存（同一四柱只分析一次）
+_bazi_analysis_cache = {}
+
 def _compute_bazi_ref(plate_dict: dict) -> dict | None:
     """从紫微 plate_dict 提取生辰，排完整八字参考信息用于交叉验证"""
     input_info = plate_dict.get("input", {})
@@ -183,29 +186,42 @@ def _compute_bazi_ref(plate_dict: dict) -> dict | None:
             "qiyun": qiyun_str,
             "dayun": dayun_list,
         }
-        # ═══ 八字快速预分析（格局+喜用+旺衰）═══
-        try:
-            from analysis_service import _call_api
-            sizhu_str = ' '.join(p['gz'] for p in pillars)
-            pre_prompt = f"""四柱：{sizhu_str}，日主{day_gan}（{_WX_G.get(day_gan,'?')}），{gender}命。
-请判断格局、喜用神、旺衰，输出JSON：
-{{"geju":"格局","xiyong":["喜神","用神"],"wangsan":"旺衰","jieshuo":"一句话综述"}}"""
-            pre_res = _call_api("你是八字命理师。只输出JSON，不输出其他内容。",
-                [{"role":"user","content":pre_prompt}],
-                max_tokens=512, temperature=0.1, timeout=30)
-            if pre_res.get("success") and pre_res.get("text"):
-                import json as _json
-                try:
-                    txt = pre_res["text"].strip()
-                    if txt.startswith("```"): txt = txt.split("```")[1]; txt = txt.replace("json","",1)
-                    ai = _json.loads(txt)
-                    result["geju"] = ai.get("geju","")
-                    result["xiyong"] = ai.get("xiyong",[])
-                    result["wangsan"] = ai.get("wangsan","")
-                    result["jieshuo"] = ai.get("jieshuo","")
-                except: pass
-        except Exception:
-            pass  # LLM 失败不影响基础数据返回
+        # ═══ 八字 Agent 独立分析（缓存在进程内存） ═══
+        sizhu_key = ' '.join(p['gz'] for p in pillars)
+        if sizhu_key not in _bazi_analysis_cache:
+            try:
+                from analysis_service import _load_system_prompt as _load_bazi_sp, _call_api
+                sp = _load_bazi_sp()
+                pil_info = '\\n'.join(f"{p['label']} {p['gz']} {p['shishen']} {p['gan_wx']}/{p['zhi_wx']}" for p in pillars)
+                wx_info = ' '.join(f"{k}:{v}" for k,v in wx_count.items())
+                qy_full = f"{qiyun_str}，大运：{' → '.join(dayun_list[:4])}"
+                ba_user = f"""请对以下八字按梁湘润体系完成调候→格局→旺衰→病药分析，输出：
+
+## 格局
+
+## 旺衰
+
+## 喜用神
+
+## 调候
+
+## 一句话综述
+
+四柱：
+{pil_info}
+
+五行统计：{wx_info}
+{qy_full}
+
+注意：这是交叉验证用途的预分析，不需要验盘。"""
+                a_res = _call_api(sp, [{"role":"user","content":ba_user}],
+                    max_tokens=4096, temperature=0.3, timeout=120)
+                if a_res.get("success") and a_res.get("text"):
+                    _bazi_analysis_cache[sizhu_key] = a_res["text"]
+            except Exception:
+                pass
+        if sizhu_key in _bazi_analysis_cache:
+            result["bazi_analysis"] = _bazi_analysis_cache[sizhu_key]
         return result
     except Exception as e:
         import logging

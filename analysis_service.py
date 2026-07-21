@@ -1482,16 +1482,21 @@ def _build_ziwei_user_message(plate_dict: dict, bazi_ref: dict = None) -> str:
         dayun = bazi_ref.get('dayun', [])
         if dayun:
             parts.append(f"大运：{' → '.join(dayun)}")
-        # 八字分析结论
-        if bazi_ref.get('geju'):
+        # 八字独立分析结论
+        if bazi_ref.get('bazi_analysis'):
+            parts.append("")
+            parts.append("## 八字独立分析（梁湘润体系）")
+            parts.append(bazi_ref['bazi_analysis'])
+            parts.append("")
+            parts.append("以上为同一生辰的八字独立分析结论。请在解读紫微盘时，将八字结论作为交叉验证的基准线。")
+        elif bazi_ref.get('geju'):
+            # 兼容旧格式
             parts.append(f"\n**八字分析结论**：")
             parts.append(f"- 格局：{bazi_ref['geju']}")
             parts.append(f"- 旺衰：{bazi_ref.get('wangsan','?')}")
             xiyong = bazi_ref.get('xiyong', [])
-            if xiyong:
-                parts.append(f"- 喜用：{'、'.join(xiyong)}")
-            if bazi_ref.get('jieshuo'):
-                parts.append(f"- 综述：{bazi_ref['jieshuo']}")
+            if xiyong: parts.append(f"- 喜用：{'、'.join(xiyong)}")
+            if bazi_ref.get('jieshuo'): parts.append(f"- 综述：{bazi_ref['jieshuo']}")
         # 交叉验证指令（基于测天机方法论）
         parts.append("")
         parts.append("**交叉验证要求**：请结合以上八字数据，在分析紫微盘时做到：")
