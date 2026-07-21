@@ -13,28 +13,26 @@
 .hidden { display: none !important; }
 
 :root {
-    --bg: #fff;
-    --card-bg: #fff;
-    --text: #000;
-    --text-muted: #666;
-    --accent: #000;
-    --primary: #000;
-    --primary-hover: #333;
-    --border: #ccc;
-    --border-light: #e5e5e5;
-    --shadow-sm: 0 0 0 1px rgba(0,0,0,0.04);
-    --shadow: 0 0 0 1px rgba(0,0,0,0.06);
-    --shadow-lg: 0 2px 16px rgba(0,0,0,0.08);
-    --gold: #000;
-    --radius: 18px;
-    --radius-sm: 12px;
+    --paper: #f5f1e8; --paper-card: #faf6ec; --paper-deep: #ebe5d5;
+    --ink: #2b2825; --ink-soft: #6b6660; --ink-faint: #a8a298;
+    --vermillion: #c1432f; --vermillion-deep: #8e2f20;
+    --azure: #2e6da4; --jade: #4a7c4e;
+    --line-soft: #c4bdb0; --line-faint: #e0d9c8;
+    --radius: 4px; --radius-sm: 2px;
+    --bg: var(--paper); --card-bg: var(--paper-card); --text: var(--ink);
+    --text-muted: var(--ink-soft); --accent: var(--vermillion);
+    --primary: var(--ink); --primary-hover: var(--ink-soft);
+    --border: var(--line-soft); --border-light: var(--line-faint);
+    --gold: var(--vermillion);
+    --shadow-sm: 0 0 0 1px rgba(0,0,0,.04); --shadow: 0 0 0 1px rgba(0,0,0,.06);
+    --shadow-lg: 0 2px 16px rgba(0,0,0,.08);
 }
 
 html { font-size: 16px; scroll-behavior: smooth; }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: #fefefe;
+    background: var(--paper);
     color: var(--text);
     line-height: 1.6;
     position: relative;
@@ -45,7 +43,7 @@ body {
 body::before {
     content: '';
     position: fixed; inset: 0; pointer-events: none; z-index: 0;
-    background: radial-gradient(ellipse at 50% 25%, rgba(212,168,67,0.06) 0%, transparent 55%);
+    background: radial-gradient(ellipse at 50% 25%, rgba(180,160,130,0.06), transparent 55%);
     animation: bgBreathe 10s ease-in-out infinite;
 }
 @keyframes bgBreathe {
@@ -437,18 +435,23 @@ a, button, input, select, textarea, .card, .form-section { transition: all 0.3s 
 
 /* ========== 夜晚模式 ========== */
 [data-theme="dark"] {
-    --bg: #1a1a2e; --card-bg: #16213e; --text: #e0e0e0; --text-muted: #999;
-    --accent: #d4a843; --primary: #d4a843; --primary-hover: #e8c860;
-    --border: #444; --border-light: #2a2a3e;
-    --shadow-sm: 0 0 0 1px rgba(255,255,255,.03);
-    --shadow: 0 0 0 1px rgba(255,255,255,.05);
-    --shadow-lg: 0 2px 16px rgba(0,0,0,.3);
-    --gold: #d4a843;
+    --paper: #1a1512; --paper-card: #221c18; --paper-deep: #12100e;
+    --ink: #e0d8cf; --ink-soft: #a09890; --ink-faint: #706860;
+    --vermillion: #e05545; --vermillion-deep: #a03020;
+    --azure: #5a9dd4; --jade: #5aaa5e;
+    --line-soft: #2a2018; --line-faint: #1a120e;
+    --bg: var(--paper); --card-bg: var(--paper-card); --text: var(--ink);
+    --text-muted: var(--ink-soft); --accent: var(--vermillion);
+    --primary: var(--ink); --primary-hover: var(--ink-soft);
+    --border: var(--line-soft); --border-light: var(--line-faint);
+    --gold: var(--vermillion);
+    --shadow-sm: 0 0 0 1px rgba(0,0,0,.3); --shadow: 0 0 0 1px rgba(0,0,0,.3);
+    --shadow-lg: 0 2px 16px rgba(0,0,0,.4);
 }
-[data-theme="dark"] body { background: #0f0f1a; }
-[data-theme="dark"] body::before { background: radial-gradient(ellipse at 50% 25%, rgba(212,168,67,0.08) 0%, transparent 55%); }
-[data-theme="dark"] .app-sidebar { background: linear-gradient(180deg, rgba(212,168,67,0.04) 0%, rgba(15,15,26,0) 40%); }
-[data-theme="dark"] .sticky-actions { background: #16213e; box-shadow: 0 -4px 16px rgba(0,0,0,.4); }
+[data-theme="dark"] body { background: var(--paper); }
+[data-theme="dark"] body::before { background: radial-gradient(ellipse at 50% 25%, rgba(180,160,130,0.04), transparent 55%); }
+[data-theme="dark"] .app-sidebar { background: var(--paper-card); }
+[data-theme="dark"] .sticky-actions { background: var(--paper-card); box-shadow: 0 -4px 16px rgba(0,0,0,.4); }
 [data-theme="dark"] .floating-bar { background: rgba(22,33,62,.92); }
 [data-theme="dark"] .floating-bar .bar-title { color: #d4a843; }
 [data-theme="dark"] .floating-bar .bar-status { color: #888; }
