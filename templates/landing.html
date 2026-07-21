@@ -3,252 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>八字 & 紫微 · AI命理分析</title>
+<title>Destiny Agent · 八字&紫微</title>
 <style>
-:root{
-  --bg:#050508;--surface:#0a0a10;--border:#1a1a25;--border-glow:#252535;
-  --text:#a5a5b5;--text-dim:#5a5a70;--gold:#d4a853;--gold-light:#e8c878;
-  --radius:10px;
-}
+:root{--paper:#f5f1e8;--paper-card:#faf6ec;--ink:#2b2825;--ink-soft:#6b6660;--ink-faint:#a8a298;--vermillion:#c1432f;--line-soft:#c4bdb0;--line-faint:#e0d9c8}
 *{margin:0;padding:0;box-sizing:border-box}
-body{
-  background:var(--bg);color:var(--text);
-  font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;
-  min-height:100vh;display:flex;flex-direction:column;
-  -webkit-font-smoothing:antialiased;overflow-x:hidden;
-}
-
-/* ── 动态粒子背景 ── */
-#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
-
-/* ── 导航 ── */
-nav{
-  position:fixed;top:0;left:0;right:0;z-index:100;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 2rem;height:52px;
-  border-bottom:1px solid var(--border);
-  background:rgba(5,5,8,.75);backdrop-filter:blur(20px);
-}
-nav .logo{font-size:.82rem;font-weight:600;color:#e0e0e0;letter-spacing:.06em;text-decoration:none}
-nav .logo i{color:var(--gold);font-style:normal}
-nav .links{display:flex;gap:1.5rem;align-items:center}
-nav .links a{font-size:.73rem;color:var(--text-dim);text-decoration:none;transition:color .2s}
-nav .links a:hover{color:#d0d0d0}
-nav .badge{
-  font-size:.65rem;color:var(--gold);border:1px solid rgba(212,168,83,.25);
-  padding:.2rem .6rem;border-radius:99px
-}
-
-/* ── 主内容 ── */
-main{
-  flex:1;display:flex;flex-direction:column;align-items:center;
-  padding:7rem 2rem 4rem;z-index:1;max-width:1000px;margin:0 auto;width:100%;
-}
-
-/* ── Hero ── */
-.hero{text-align:center;margin-bottom:4rem}
-.hero .pretitle{
-  font-size:.7rem;text-transform:uppercase;letter-spacing:.25em;
-  color:var(--gold);margin-bottom:1.2rem;
-}
-.hero h1{
-  font-size:clamp(2.4rem,5.5vw,4rem);font-weight:700;letter-spacing:.02em;
-  line-height:1.1;margin-bottom:1rem;
-  background:linear-gradient(180deg,#f0e0c0 0%,#c8a860 40%,#8a6830 100%);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-  background-clip:text;
-}
-.hero p{
-  font-size:.95rem;color:var(--text-dim);max-width:460px;margin:0 auto;line-height:1.65;
-}
-
-/* ── Bento 网格 ── */
-.bento{
-  display:grid;grid-template-columns:1fr 1fr 1fr;
-  grid-template-rows:auto auto;gap:.7rem;width:100%;margin-bottom:3rem;
-}
-.bento .card{
-  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
-  padding:1.5rem;cursor:default;text-decoration:none;color:inherit;
-  transition:all .3s;position:relative;overflow:hidden;
-}
-.bento .card::after{
-  content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;
-  background:radial-gradient(500px circle at var(--x,50%) var(--y,50%),rgba(212,168,83,.05),transparent 60%);
-}
-.bento .card:hover{transform:translateY(-2px);border-color:var(--border-glow)}
-.bento .card:hover::after{opacity:1}
-.bento .card.lg{grid-column:span 2}
-.bento .card .icon{font-size:1.4rem;margin-bottom:.7rem;opacity:.85}
-.bento .card h3{font-size:.88rem;font-weight:600;color:#e0d8c8;margin-bottom:.35rem}
-.bento .card p{font-size:.73rem;color:var(--text-dim);line-height:1.55}
-
-/* 大卡特殊样式 */
-.bento .card.lg{
-  display:flex;flex-direction:column;justify-content:center;
-  background:linear-gradient(135deg,var(--surface),#0d0d18 60%);
-}
-.bento .card.lg h3{font-size:1rem}
-.bento .card.lg .highlight{font-size:2rem;font-weight:700;color:var(--gold);margin:.3rem 0}
-
-/* ── CTA ── */
-.cta{text-align:center}
-.btn{
-  display:inline-flex;align-items:center;gap:.4rem;
-  padding:.8rem 2.8rem;font-size:.9rem;font-weight:600;letter-spacing:.04em;
-  color:#050508;background:linear-gradient(135deg,var(--gold-light),var(--gold));
-  border-radius:6px;text-decoration:none;transition:all .25s;
-  box-shadow:0 2px 12px rgba(212,168,83,.12);
-}
-.btn:hover{background:linear-gradient(135deg,#f0d080,#d8b060);transform:translateY(-1px);box-shadow:0 8px 30px rgba(212,168,83,.2)}
-.btn-arrow{font-size:1.1rem;transition:transform .2s}
-.btn:hover .btn-arrow{transform:translateX(3px)}
-.cta-hint{font-size:.7rem;color:var(--text-dim);margin-top:.7rem}
-
-footer{
-  padding:1rem 2rem;text-align:center;font-size:.68rem;color:#3a3a48;
-  border-top:1px solid var(--border);z-index:1;display:flex;justify-content:space-between;
-}
-
-@media(max-width:700px){
-  .bento{grid-template-columns:1fr;grid-template-rows:auto}
-  .bento .card.lg{grid-column:span 1}
-  .hero h1{font-size:1.8rem}
-  nav .links{display:none}
-}
+html{font-size:16px}
+body{font-family:"Noto Serif SC","Source Han Serif SC",serif;background:var(--paper);color:var(--ink);line-height:1.7;background-image:radial-gradient(circle at 20% 10%,rgba(180,160,130,.08),transparent 50%),radial-gradient(circle at 80% 90%,rgba(180,160,130,.05),transparent 50%);min-height:100vh;display:flex;flex-direction:column;align-items:center;-webkit-font-smoothing:antialiased}
+main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem 2rem;max-width:860px;width:100%}
+.hero{text-align:center;margin-bottom:3rem}
+.hero .mark{display:inline-block;font-size:.72rem;letter-spacing:.2em;color:var(--vermillion);border:1px solid var(--vermillion);padding:3px 14px;border-radius:2px;margin-bottom:1.4rem}
+.hero h1{font-family:"STKaiti","KaiTi","Noto Serif SC",serif;font-size:clamp(2rem,5vw,3rem);font-weight:400;color:var(--ink);letter-spacing:.08em;margin-bottom:.6rem;line-height:1.3}
+.hero p{font-size:.9rem;color:var(--ink-soft);max-width:420px;margin:0 auto;line-height:1.8}
+.systems{display:grid;grid-template-columns:1fr 1fr;gap:1rem;width:100%;margin-bottom:2rem}
+.card{display:flex;flex-direction:column;align-items:center;text-align:center;padding:2.2rem 1.8rem;background:var(--paper-card);border:1px solid var(--line-soft);border-radius:4px;cursor:pointer;text-decoration:none;color:inherit;transition:all .3s}
+.card:hover{transform:translateY(-2px);border-color:var(--ink-soft);box-shadow:0 4px 20px rgba(0,0,0,.06)}
+.card .icon{font-size:2.2rem;margin-bottom:.6rem}
+.card .tag{font-size:.66rem;letter-spacing:.1em;margin-bottom:.8rem;padding:2px 10px;border-radius:2px;font-weight:600}
+.card .tag.bazi{color:var(--ink);border:1px solid var(--ink)}
+.card .tag.ziwei{color:var(--vermillion);border:1px solid var(--vermillion)}
+.card h2{font-family:"STKaiti","KaiTi","Noto Serif SC",serif;font-size:1.4rem;font-weight:400;margin-bottom:.4rem;letter-spacing:.05em}
+.card p{font-size:.8rem;color:var(--ink-faint);line-height:1.7;max-width:260px}
+.card .specs{display:flex;gap:.8rem;margin-top:.8rem;font-size:.68rem;color:var(--ink-soft)}
+.card .specs span{padding:2px 8px;border:1px solid var(--line-faint);border-radius:2px}
+footer{text-align:center;font-size:.68rem;color:var(--ink-faint);padding:1rem;letter-spacing:.04em}
+@media(max-width:640px){.systems{grid-template-columns:1fr}.hero h1{font-size:1.6rem}.card{padding:1.6rem 1rem}}
 </style>
 </head>
 <body>
-
-<canvas id="bg-canvas"></canvas>
-
-<nav>
-  <a href="/" class="logo"><i>☰</i> Destiny Agent</a>
-  <div class="links">
-    <a href="/app">八字排盘</a>
-    <a href="/ziwei">紫微斗数</a>
-    <span class="badge">DeepSeek v4</span>
-  </div>
-</nav>
-
 <main>
-  <section class="hero">
-    <div class="pretitle">八字 & 紫微斗数 · AI 推理引擎</div>
-    <h1>推命 · 观星 · 知运</h1>
-    <p>符号计算引擎 + 大语言模型推理。八字梁湘润体系9级递进链，紫微三合中州派 v7 Agent · 24格局分层判定</p>
-  </section>
-
-  <div class="bento" id="bento">
-    <a href="/app" class="card lg">
-      <div class="icon">☰</div>
-      <h3>八字排盘</h3>
-      <span class="highlight">sxtwl + 纯Python</span>
-      <p>四柱·十神·纳音·藏干·神煞 · 真太阳时校正 · 夜子时专用分支 · 梁湘润体系9级递进</p>
-    </a>
-    <a href="/ziwei" class="card">
-      <div class="icon">🔮</div>
-      <h3>紫微斗数</h3>
-      <p>iztro-py排盘+亮度全量修正 · 24格局三列核验+五层穿透破格 · 身宫框架·对宫冲照 · v7 Agent</p>
-    </a>
-    <a href="/app" class="card lg">
-      <div class="icon">◎</div>
-      <h3>验盘闭环</h3>
-      <span class="highlight">S~E 6级流年精度</span>
-      <p>Agent预测→用户确认→后处理硬校验 · 双模式分流（极端冲合信号 / 均衡十神到位）· 盲测83%命中率</p>
-    </a>
-    <a href="/app" class="card">
-      <div class="icon">⚡</div>
-      <h3>SSE流式管道</h3>
-      <p>三通道analysis→commentary→final · stop_sequences截停 · 14阶段进度 · 多轮续接</p>
-    </a>
-    <a href="/app" class="card">
-      <div class="icon">◈</div>
-      <h3>可视化</h3>
-      <p>五行环图 · 十二长生轮盘 · 大运环图 · 紫微十二宫Grid(文墨天机风格) · 干支关系图</p>
-    </a>
-    <a href="/app" class="card">
-      <div class="icon">⌘</div>
-      <h3>交互体验</h3>
-      <p>八字+紫微双系统独立页面 · 纯文本多轮追问 · 星曜点击详情弹窗 · 断线自动恢复 · 验盘反馈面板</p>
-    </a>
-  </div>
-
-  <div class="cta" style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center">
-    <a href="/app" class="btn">☰ 八字排盘 <span class="btn-arrow">→</span></a>
-    <a href="/ziwei" class="btn" style="background:linear-gradient(135deg,#7c4dff,#5e35b1)">🔮 紫微斗数 <span class="btn-arrow">→</span></a>
-    <p class="cta-hint" style="width:100%;text-align:center;margin-top:.5rem">输入生辰，双系统独立分析 · 紫微 v7 Agent</p>
-  </div>
+<section class="hero"><div class="mark">符号计算 + LLM 推理</div><h1>推命 · 观星 · 知运</h1><p>八字梁湘润体系9级递进 · 紫微三合中州派v8 Agent · 双体系交叉验证</p></section>
+<div class="systems">
+<a href="/app" class="card"><div class="icon">&#x2630;</div><div class="tag bazi">八字</div><h2>四柱推命</h2><p>sxtwl C++ + Meeus 双引擎 · 调候→格局→旺衰→病药9级递进 · 验盘闭环</p><div class="specs"><span>真太阳时</span><span>夜子时</span><span>250+城市</span></div></a>
+<a href="/ziwei" class="card"><div class="icon">&#x1F52E;</div><div class="tag ziwei">紫微</div><h2>斗数观星</h2><p>iztro-py排盘+14主星亮度修正 · 三层叠盘 · 三合四正连线 · 飞星流曜 · 交叉验证</p><div class="specs"><span>24格局</span><span>三层叠盘</span><span>v8 Agent</span></div></a>
+</div>
+<footer>八字 sxtwl + 紫微 iztro-py · Flask · DeepSeek v4-pro</footer>
 </main>
-
-<footer>
-  <span>八字 sxtwl + 紫微 iztro-py · Flask + DeepSeek</span>
-  <span>梁湘润体系 · 三合中州派 v7</span>
-</footer>
-
-<script>
-// ── 粒子引擎 ──
-(function(){
-  const c=document.getElementById('bg-canvas'),ctx=c.getContext('2d');
-  let W,H,particles=[],mouse={x:-999,y:-999};
-  const N=80,D=120,COLOR='212,168,83';
-
-  function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight}
-  resize();window.addEventListener('resize',resize);
-
-  class P{
-    constructor(){this.reset(true)}
-    reset(init){
-      this.x=Math.random()*W;this.y=init?Math.random()*H:H+20;
-      this.vx=(Math.random()-.5)*.3;this.vy=-(Math.random()*.3+.15);
-      this.r=Math.random()*1.5+.5;this.a=Math.random()*.5+.2;
-    }
-    update(){
-      this.x+=this.vx;this.y+=this.vy;
-      // 鼠标微斥
-      const dx=this.x-mouse.x,dy=this.y-mouse.y,dd=Math.sqrt(dx*dx+dy*dy);
-      if(dd<150){const f=(1-dd/150)*.5;this.vx+=dx/dd*f*.02;this.vy+=dy/dd*f*.02}
-      // 阻尼
-      this.vx*=.999;this.vy*=.999;
-      if(this.y<-20||this.x<-20||this.x>W+20)this.reset(false);
-    }
-    draw(){
-      ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
-      ctx.fillStyle=`rgba(${COLOR},${this.a})`;ctx.fill();
-    }
-  }
-
-  for(let i=0;i<N;i++)particles.push(new P());
-
-  function loop(){
-    ctx.clearRect(0,0,W,H);
-    // 连线
-    for(let i=0;i<N;i++){
-      for(let j=i+1;j<N;j++){
-        const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y;
-        const dd=Math.sqrt(dx*dx+dy*dy);
-        if(dd<D){
-          ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);
-          ctx.strokeStyle=`rgba(${COLOR},${.06*(1-dd/D)})`;ctx.lineWidth=.5;ctx.stroke();
-        }
-      }
-    }
-    particles.forEach(p=>{p.update();p.draw()});
-    requestAnimationFrame(loop);
-  }
-  loop();
-
-  document.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
-  document.addEventListener('mouseleave',()=>{mouse.x=-999;mouse.y=-999});
-
-  // 卡片光效
-  document.querySelectorAll('.card').forEach(card=>{
-    card.addEventListener('mousemove',e=>{
-      const r=card.getBoundingClientRect();
-      card.style.setProperty('--x',(e.clientX-r.left)+'px');
-      card.style.setProperty('--y',(e.clientY-r.top)+'px');
-    });
-  });
-})();
-</script>
 </body>
 </html>
