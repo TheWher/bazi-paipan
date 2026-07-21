@@ -437,6 +437,7 @@
 const $ = id => document.getElementById(id);
 const sid = window.location.pathname.split('/').pop();
 let plateData = null;
+let reportPw = '';  // 缓存密码，后续 API 调用复用
 
 // ── 加载数据 ──
 async function load(){
@@ -1056,7 +1057,7 @@ async function analyzeScope(){
     const msgs = s.messages || [];
     const res = await fetch('/api/ziwei/analyze/continue', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages: msgs, reply: prompt})
+      body:JSON.stringify({messages: msgs, reply: prompt, password: reportPw})
     });
     const d = await res.json();
     if(d.success && d.analysis){
@@ -1115,6 +1116,7 @@ async function startAnalysis(plate, password){
           inp.onkeydown = e => { if(e.key==='Enter') overlay.querySelector('#ziwei-pw-ok').click(); };
         });
         if(!pw){ area.innerHTML = '<span style="color:var(--vermillion)">已取消</span>'; return; }
+        reportPw = pw;
         continue;
       }
       area.innerHTML = '<span style="color:var(--vermillion)">分析失败: '+(d.error||'未知错误')+'</span>';
