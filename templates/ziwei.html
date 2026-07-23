@@ -396,6 +396,23 @@ let plateData=null;
 
 function toggleTheme(){const n=document.documentElement.getAttribute('data-theme')==='dark'?'':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('bazi_theme',n);$('btn-theme').textContent=n==='dark'?'☀️':'🌙'}
 
+// ── 加载历史会话 ──
+(async function loadHistorySessions(){
+  try{
+    const r=await fetch('/api/ziwei/sessions');
+    const list=await r.json();
+    $('session-count').textContent=list.length;
+    const sl=$('session-list');
+    if(!list.length){ sl.innerHTML='<span style="color:var(--ink-soft)">暂无历史会话</span>'; return; }
+    sl.innerHTML=list.slice(0,20).map(s=>{
+      const date=(s.created_at||'').slice(0,10);
+      const summary=s.plate_summary||'';
+      const mc=s.message_count||0;
+      return '<div style="padding:3px 0;border-bottom:1px solid var(--line-faint);cursor:pointer;display:flex;justify-content:space-between" onclick="window.location.href=\'/ziwei/report/'+s.id+'\'"><span>'+(date?date+' ':'')+summary.slice(0,20)+'</span><span style="color:var(--ink-faint);font-size:.85em">'+(mc?'💬'+mc:'新')+'</span></div>';
+    }).join('');
+  }catch(e){}
+})();
+
 
 
 $('quick').addEventListener('input',function(){const v=this.value.replace(/\D/g,'');if(v.length<8)return;$('y').value=v.slice(0,4);$('m').value=parseInt(v.slice(4,6));$('d').value=parseInt(v.slice(6,8));if(v.length>=10)$('h').value=parseInt(v.slice(8,10));if(v.length>=12)$('min').value=parseInt(v.slice(10,12))});
