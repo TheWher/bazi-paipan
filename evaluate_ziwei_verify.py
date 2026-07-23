@@ -250,14 +250,83 @@ def analyze(records: list, verbose: bool = False):
         print("⚠ 样本量<50，方向性结论可用，细则需谨慎")
     print("=" * 60)
 
+    # ── 构建聚合报告 dict ──
+    report = {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "total_samples": total_predictions,
+        "total_sessions": len(records),
+        "overall_accuracy": round(h_all, 3),
+        "by_signal": {},
+        "by_domain": {},
+        "common_errors": [],
+        "false_positive_rate": round(fp_rate, 3),
+        "false_negative_rate": round(fn_rate, 3),
+        "sample_sources": {
+            "verification_triggered": len(triggered_records),
+            "random_sample": len(random_records),
+        },
+    }
+
+    for lv, preds in signals.items():
+        if not preds:
+            continue
+        t, c, w, pa, h = calc_hit_rate(preds)
+        report["by_signal"][lv] = {
+            "count": len(preds),
+            "hit_rate": round(h, 3),
+            "ratio": round(len(preds) / total_predictions, 3) if total_predictions else 0,
+        }
+
+    for dm, preds in domains.items():
+        if not preds:
+            continue
+        t, c, w, pa, h = calc_hit_rate(preds)
+        report["by_domain"][dm] = {
+            "count": len(preds),
+            "hit_rate": round(h, 3),
+        }
+
+    for reason, count in error_reasons.most_common(10):
+        report["common_errors"].append({
+            "pattern": error_labels.get(reason, reason),
+            "count": count,
+        })
+
+    # 读取上次报告用于对比
+    cache_path = os.path.join(FEEDBACK_DIR, "report_cache.json")
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                prev = json.load(f)
+            report["previous_report"] = {
+                "generated_at": prev.get("generated_at", ""),
+                "overall_accuracy": prev.get("overall_accuracy", 0),
+                "total_samples": prev.get("total_samples", 0),
+            }
+        except:
+            pass
+
+    return report
+
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='紫微验盘反馈聚合分析')
     parser.add_argument('--verbose', action='store_true', help='显示逐条详情')
     parser.add_argument('--limit', type=int, default=None, help='只分析最近N条')
-    parser.add_argument('--output', type=str, default=None, help='输出到文件')
+    parser.add_argument('--output', type=str, default=None, help='输出报告 JSON 到指定路径')
+    parser.add_argument('--compare', type=str, default=None, help='与指定的历史报告文件对比')
     args = parser.parse_args()
 
     records = load_feedbacks(limit=args.limit)
-    analyze(records, verbose=args.verbose)
+    report = analyze(records, verbose=args.verbose)
+
+    if args.output:
+        output_path = args.output
+        if not os.path.isabs(output_path):
+            output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), output_path)
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(report, f, ensure_ascii=False, indent=2)
+        print(f"报告已保存: {output_path}")
+        print(f"  → 在线查看: /api/ziwei/feedback/report?format=html")

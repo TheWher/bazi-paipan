@@ -22,6 +22,7 @@ from ziwei_calculator import ziwei_paipan, plate_to_dict as ziwei_plate_to_dict,
 
 # 加载密码保护配置
 WEB_PASSWORD = ""
+ADMIN_TOKEN = ""
 CONFIG_LOCAL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.local.py")
 if os.path.exists(CONFIG_LOCAL):
     try:
@@ -30,6 +31,7 @@ if os.path.exists(CONFIG_LOCAL):
         cfg = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cfg)
         WEB_PASSWORD = getattr(cfg, "WEB_PASSWORD", "")
+        ADMIN_TOKEN = getattr(cfg, "ADMIN_TOKEN", "")
     except Exception:
         pass
 
@@ -1122,6 +1124,115 @@ def api_ziwei_verify():
         return jsonify({"ok": True, "file": fn, "summary": record["summary"]})
     except Exception as e:
         return jsonify({"error": "保存失败: " + str(e)}), 500
+
+
+@app.route("/api/ziwei/feedback/report")
+def api_ziwei_feedback_report():
+    """验盘反馈聚合报告（仅 ADMIN_TOKEN 可访问）"""
+    if not check_admin(request):
+        return "Not Found", 404
+    cache_path = _os.path.join(_FEEDBACK_DIR, "report_cache.json")
+    if not _os.path.exists(cache_path):
+        return jsonify({"error": "报告尚未生成，请先运行 evaluate_ziwei_verify.py --output"}), 404
+    try:
+        with open(cache_path, "r", encoding="utf-8") as f:
+            report = json.load(f)
+    except Exception as e:
+        return jsonify({"error": "读取报告失败: " + str(e)}), 500
+
+    # 可选 HTML 渲染（?format=html）
+    fmt = request.args.get("format", "json")
+    if fmt == "html":
+        return _render_feedback_html(report)
+    return jsonify(report)
+
+
+def _render_feedback_html(report: dict) -> str:
+    """将聚合报告渲染为简单 HTML"""
+    ts = report.get("generated_at", "")
+    total = report.get("total_samples", 0)
+    overall = report.get("overall_accuracy", 0)
+    by_signal = report.get("by_signal", {})
+    by_domain = report.get("by_domain", {})
+    common_errors = report.get("common_errors", [])
+    fp_rate = report.get("false_positive_rate", 0)
+    fn_rate = report.get("false_negative_rate", 0)
+    prev = report.get("previous_report", {})
+
+    def color_rate(r):
+        if r >= 0.8: return "#4caf50"
+        if r >= 0.5: return "#ff9800"
+        return "#ef5350"
+
+    html = """<html><head><meta charset="utf-8"><title>验盘反馈报告</title>
+<style>body{font-family:system-ui,sans-serif;max-width:860px;margin:40px auto;padding:0 20px;background:#fafaf5;color:#222}
+h1{font-size:20px;border-bottom:2px solid #222;padding-bottom:8px}
+h2{font-size:15px;margin:24px 0 8px}
+table{border-collapse:collapse;width:100%%}
+td,th{border:1px solid #ddd;padding:6px 10px;text-align:center;font-size:13px}
+th{background:#f0f0ec}
+.bar{display:inline-block;height:14px;border-radius:2px;min-width:2px}
+.good{color:#4caf50}.warn{color:#ff9800}.bad{color:#ef5350}
+.tag{display:inline-block;padding:2px 8px;border-radius:3px;font-size:12px;margin:2px}
+.tag-e{background:#ef5350;color:#fff}.tag-d{background:#ff9800;color:#fff}
+.tag-c{background:#fdd835}.tag-b{background:#81c784}.tag-a{background:#4caf50;color:#fff}
+.tag-s{background:#2e7d32;color:#fff}
+.meta{color:#888;font-size:12px}
+.warn-box{background:#fff3e0;border-left:4px solid #ff9800;padding:10px 14px;margin:12px 0;font-size:13px}
+</style></head><body>
+<h1>验盘反馈聚合报告</h1>
+<p class="meta">生成时间: %s | 反馈样本: %d 条 | 整体命中率: <b style="color:%s">%.0f%%</b></p>
+""" % (ts, total, color_rate(overall), overall * 100)
+
+    if total < 20:
+        html += '<div class="warn-box">样本量 &lt; 20，以下数据仅供参考，不建议用于修改 Agent prompt。</div>'
+    if total >= 20 and total < 50:
+        html += '<div class="warn-box">样本量 20-50，方向性结论可用，细则需谨慎。</div>'
+
+    # 与上次对比
+    if prev and prev.get("overall_accuracy"):
+        delta = overall - prev["overall_accuracy"]
+        arrow = "↑" if delta > 0 else "↓" if delta < 0 else "→"
+        c = "good" if delta >= 0 else "bad"
+        html += '<p class="meta">与上次对比: %.0f%% → %.0f%% <span class="%s">%s %.1f%%</span></p>' % (
+            prev["overall_accuracy"] * 100, overall * 100, c, arrow, abs(delta) * 100)
+
+    html += '<h2>信号等级命中率</h2><table><tr><th>等级</th><th>条数</th><th>占比</th><th>命中率</th></tr>'
+    for lv in ['S', 'A', 'B', 'C', 'D', 'E']:
+        d = by_signal.get(lv, {})
+        cnt = d.get('count', 0)
+        hit = d.get('hit_rate', 0)
+        ratio = d.get('ratio', 0)
+        if cnt == 0: continue
+        html += '<tr><td><span class="tag tag-%s">%s</span></td><td>%d</td><td>%.0f%%</td><td style="color:%s">%.0f%%</td></tr>' % (
+            lv.lower(), lv, cnt, ratio * 100, color_rate(hit), hit * 100)
+    html += '</table>'
+
+    html += '<h2>领域命中率</h2><table><tr><th>领域</th><th>条数</th><th>命中率</th><th>可视化</th></tr>'
+    for dm, d in sorted(by_domain.items(), key=lambda x: -x[1].get('count', 0)):
+        cnt = d.get('count', 0)
+        hit = d.get('hit_rate', 0)
+        if cnt == 0: continue
+        w = int(hit * 200)
+        html += '<tr><td>%s</td><td>%d</td><td style="color:%s">%.0f%%</td><td><span class="bar" style="width:%dpx;background:%s"></span></td></tr>' % (
+            dm, cnt, color_rate(hit), hit * 100, w, color_rate(hit))
+    html += '</table>'
+
+    html += '<h2>假阳性 / 假阴性</h2><table><tr><th></th><th>定义</th><th>比率</th></tr>'
+    html += '<tr><td>假阳性</td><td>Agent判S/A/B但用户否定</td><td style="color:%s">%.0f%%</td></tr>' % (
+        color_rate(1 - fp_rate) if fp_rate else color_rate(0.9), fp_rate * 100)
+    html += '<tr><td>假阴性</td><td>Agent判D/E但实际发生</td><td style="color:%s">%.0f%%</td></tr>' % (
+        color_rate(1 - fn_rate) if fn_rate else color_rate(0.9), fn_rate * 100)
+    html += '</table>'
+
+    if common_errors:
+        html += '<h2>常见错误模式</h2><ul>'
+        for err in common_errors[:10]:
+            html += '<li>%s <span class="meta">(%d 次)</span></li>' % (err.get('pattern', ''), err.get('count', 0))
+        html += '</ul>'
+
+    html += '</body></html>'
+    return html
 
 
 @app.route("/api/pdf", methods=["POST"])
