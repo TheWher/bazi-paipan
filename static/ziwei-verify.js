@@ -54,9 +54,34 @@ function verifyMark(index, label) {
   var el = document.getElementById('vi-' + index);
   if (!el || !verificationData) return;
   verificationData.predictions[index].label = label;
-  if (label === 'correct') el.querySelector('strong').style.color = 'var(--jade)';
-  else if (label === 'wrong') el.querySelector('strong').style.color = 'var(--vermillion)';
-  else el.querySelector('strong').style.color = 'var(--ink-soft)';
+  if (label === 'correct') {
+    el.querySelector('strong').style.color = 'var(--jade)';
+    // 移除错误原因选择器
+    var er = el.querySelector('.error-reason-row');
+    if (er) er.style.display = 'none';
+  } else {
+    if (label === 'wrong') el.querySelector('strong').style.color = 'var(--vermillion)';
+    else el.querySelector('strong').style.color = 'var(--ink-soft)';
+    // 显示错误原因下拉
+    var er = el.querySelector('.error-reason-row');
+    if (!er) {
+      er = document.createElement('div');
+      er.className = 'error-reason-row';
+      er.style.cssText = 'margin-top:6px;font-size:12px';
+      er.innerHTML = '<span style="color:var(--ink-soft)">错误原因：</span>' +
+        '<select class="err-reason-sel" style="font-size:11px;padding:2px 4px;border:1px solid var(--line-soft);border-radius:2px;background:var(--paper);color:var(--ink);font-family:inherit;margin-left:4px">' +
+        '<option value="">选择原因</option>' +
+        '<option value="time_shift">时间偏移(&gt;3年)</option>' +
+        '<option value="type_confusion">事件类型混淆</option>' +
+        '<option value="intensity_wrong">强度过高/过低</option>' +
+        '<option value="signal_invalid">信号不存在/错读</option>' +
+        '<option value="user_memory">用户记忆偏差</option>' +
+        '<option value="other">其他</option>' +
+        '</select>';
+      el.appendChild(er);
+    }
+    er.style.display = 'block';
+  }
 }
 
 function verifySkip() {
@@ -70,13 +95,35 @@ async function verifyConfirm() {
   var btn = document.getElementById('btn-verify-confirm');
   if (btn) { btn.disabled = true; btn.textContent = '提交中...'; }
   verifiedEvents = [];
+  var feedbackPredictions = [];
   verificationData.predictions.forEach(function(p) {
-    verifiedEvents.push({
-      year: p.year,
-      desc: p.desc,
-      label: p.label === 'correct' ? 'correct' : p.label === 'wrong' ? 'wrong' : (p.label || 'pending')
-    });
+    var label = p.label === 'correct' ? 'correct' : p.label === 'wrong' ? 'wrong' : (p.label || 'pending');
+    verifiedEvents.push({ year: p.year, desc: p.desc, label: label });
+    // 构建反馈数据（含错误原因）
+    var fb = { year: p.year, desc: p.desc, user_label: label };
+    if (p.label !== 'correct') {
+      // 从 DOM 中读取错误原因
+      var el = document.getElementById('vi-' + verificationData.predictions.indexOf(p));
+      if (el) {
+        var sel = el.querySelector('.err-reason-sel');
+        fb.error_reason = sel ? sel.value : '';
+      }
+    }
+    feedbackPredictions.push(fb);
   });
+
+  // 异步保存反馈（不阻塞流程）
+  var source = 'verification_triggered';
+  fetch('/api/ziwei/verify', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: (typeof sid !== 'undefined' ? sid : ''),
+      plate: plateData,
+      predictions: feedbackPredictions,
+      source: source
+    })
+  }).catch(function(){});
+
   startAnalysisFull();
 }
 

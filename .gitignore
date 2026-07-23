@@ -13,6 +13,7 @@ AGENTS.md
 config.local.py
 feedback_logs/
 feedback/
+feedback/ziwei/
 sessions/
 fonts/
 evaluate_agent.py

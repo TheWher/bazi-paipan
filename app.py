@@ -1058,6 +1058,72 @@ def api_ziwei_session(sid):
         return jsonify({"ok": True})
 
 
+# ═══ 验盘反馈保存 ═══
+_FEEDBACK_DIR = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'feedback', 'ziwei')
+
+@app.route("/api/ziwei/verify", methods=["POST"])
+def api_ziwei_verify():
+    """保存验盘反馈"""
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return jsonify({"error": "请求数据格式错误"}), 400
+
+    sid = data.get("session_id", "unknown")
+    plate = data.get("plate", {})
+    predictions = data.get("predictions", [])
+    source = data.get("source", "verification_triggered")
+
+    if not predictions:
+        return jsonify({"error": "缺少 predictions"}), 400
+
+    # 盘指纹
+    fp = {"sihua": [], "ming_stars": [], "laiyin": "", "nian_gan": ""}
+    if plate:
+        palaces = plate.get("palaces", [])
+        info = plate.get("input", {})
+        bs = info.get("birth_datetime", "")
+        fp["nian_gan"] = bs[:4] if bs and bs[0].isdigit() else ""
+        for pal in palaces:
+            tags = pal.get("tags", [])
+            if "命宫" in tags:
+                fp["ming_stars"] = [s.get("name", "") if isinstance(s, dict) else s for s in pal.get("major_stars", [])]
+            if "来因宫" in tags:
+                fp["laiyin"] = pal.get("name", "")
+        for m in plate.get("year_mutagens", []):
+            fp["sihua"].append(m["star"] + "/" + m["mutagen"] + "/" + m["palace"])
+
+    total = len(predictions)
+    correct = sum(1 for p in predictions if p.get("user_label") == "correct")
+    wrong = sum(1 for p in predictions if p.get("user_label") == "wrong")
+    partial = sum(1 for p in predictions if p.get("user_label") == "partially_correct")
+
+    record = {
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "session_id": sid,
+        "source": source,
+        "fingerprint": fp,
+        "predictions": predictions,
+        "summary": {
+            "total": total, "correct": correct, "wrong": wrong,
+            "partially_correct": partial,
+            "hit_rate": round((correct + partial * 0.5) / total, 3) if total > 0 else 0,
+        },
+    }
+
+    try:
+        if not _os.path.exists(_FEEDBACK_DIR):
+            _os.makedirs(_FEEDBACK_DIR)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        fn = ts + "_" + sid[:6] + ".json"
+        fp_path = _os.path.join(_FEEDBACK_DIR, fn)
+        with open(fp_path, "w", encoding="utf-8") as f:
+            json.dump(record, f, ensure_ascii=False, indent=2)
+        return jsonify({"ok": True, "file": fn, "summary": record["summary"]})
+    except Exception as e:
+        return jsonify({"error": "保存失败: " + str(e)}), 500
+
+
 @app.route("/api/pdf", methods=["POST"])
 def api_pdf():
     """生成 PDF 报告"""
