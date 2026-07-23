@@ -633,102 +633,20 @@ function renderConfirm(plate){
 
 // ── 命盘解读触发 → 创建 session + SSE → 跳转报告页 ──
 
-async function startAnalysis(){
+async function confirmAnalyze(){
 
     if(!plateData)return;
 
     const btn=$('btn-confirm-analyze');
 
     btn.disabled=true;btn.textContent='分析中...';
-
     try{
-
-        const title=$('y').value+'-'+$('m').value+'-'+$('d').value+' '+$('h').value+':00';
-
+        const title=document.getElementById('y').value+'-'+document.getElementById('m').value+'-'+document.getElementById('d').value+' '+document.getElementById('h').value+':00';
         const sr=await fetch('/api/ziwei/sessions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,messages:[],plate_data:plateData,plate_summary:title})});
+        const sd=await sr.json();
+        window.location.href='/ziwei/report/'+sd.id;
+    }catch(e){btn.disabled=false;btn.textContent='重试';alert('创建会话失败: '+e.message);}
+  };
+  $('btn-confirm-analyze').addEventListener('click',confirmAnalyze);
 
-        const sd=await sr.json();const sid=sd.id;
-
-        btn.textContent='即将跳转报告页...';
-
-        let pw='';
-
-        let r=await fetch('/api/ziwei/analyze/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData,password:''})});
-
-        if(r.status===403){
-
-            pw=await new Promise(resolve=>{
-              const ov=document.createElement('div');
-              ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center;font-family:Noto Serif SC,serif';
-              ov.innerHTML='<div style="background:var(--paper-card);border:1px solid var(--line-soft);padding:24px;width:320px;max-width:90vw;text-align:center;border-radius:4px"><h3 style="font-size:14px;margin-bottom:8px;color:var(--ink)">🔐 需要密码</h3><input type="password" id="ziwei-pw-input" placeholder="请输入密码" style="width:90%;padding:8px;font-size:.9em;border:1px solid var(--line-soft);border-radius:2px;margin-bottom:10px;background:var(--paper);color:var(--ink);font-family:inherit"><div style="display:flex;gap:8px"><button id="ziwei-pw-cancel" style="flex:1;padding:6px;border:1px solid var(--line-soft);background:var(--paper);color:var(--ink);cursor:pointer;border-radius:2px;font-family:inherit">取消</button><button id="ziwei-pw-ok" style="flex:1;padding:6px;background:var(--ink);color:var(--paper);border:none;cursor:pointer;border-radius:2px;font-family:inherit">确认</button></div></div>';
-              document.body.appendChild(ov);
-              const inp=ov.querySelector('#ziwei-pw-input');
-              inp.focus();
-              ov.querySelector('#ziwei-pw-ok').onclick=()=>{const v=inp.value;ov.remove();resolve(v);};
-              ov.querySelector('#ziwei-pw-cancel').onclick=()=>{ov.remove();resolve(null);};
-              inp.onkeydown=e=>{if(e.key==='Enter')ov.querySelector('#ziwei-pw-ok').click();};
-            });
-
-            if(!pw){btn.disabled=false;btn.textContent='命盘解读';$('result-section').classList.remove('hidden');return;}
-
-            r=await fetch('/api/ziwei/analyze/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:plateData,password:pw})});
-
-        }
-
-        const reader=r.body.getReader();const decoder=new TextDecoder();let fullText='',buf='';
-
-        while(true){
-
-            const{value,done}=await reader.read();
-
-            if(done){
-
-                await fetch('/api/ziwei/sessions/'+sid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'assistant',content:fullText}]})});
-
-                window.location.href='/ziwei/report/'+sid;return;
-
-            }
-
-            buf+=decoder.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop()||'';
-
-            for(const line of lines){if(line.startsWith('data: '))try{const d=JSON.parse(line.slice(6));if(d.type==='content_block_delta'&&d.delta?.text)fullText+=d.delta.text}catch(e){}}
-
-        }
-
-    }catch(e){btn.disabled=false;btn.textContent='重试';alert('分析失败，请重试'+e.message);}
-
-}
-
-
-
-function reRender(){
-
-    $('result-section').classList.add('hidden');$('welcome-section').classList.remove('hidden');plateData=null;
-
-}
-
-
-
-// ── 历史会话 ──
-
-async function loadSessions(){
-
-    try{const r=await fetch('/api/ziwei/sessions');const sessions=await r.json();$('session-count').textContent=sessions.length;
-
-        if(sessions.length>0)$('session-details').open=true;
-
-        $('session-list').innerHTML=sessions.map(s=>'<div style="padding:5px 8px;margin:2px 0;border-radius:2px;cursor:pointer;border-bottom:1px solid var(--line-faint)" onclick="window.location.href=&#39;/ziwei/report/&#39;+s.id+&#39;&#39;"><span style="color:var(--ink);font-weight:700;font-size:.9em">📝 '+s.title+'</span><span style="color:var(--ink-faint);float:right;font-size:.8em">'+(s.message_count||0)+'条</span></div>').join('')||'<div style="color:var(--ink-faint);padding:6px;text-align:center;font-size:.85em">暂无历史会话</div>'}
-
-    catch(e){}
-
-}
-
-loadSessions();
-
-</script>
-
-<div id="city-suggestions" style="display:none;position:fixed;z-index:99999;background:var(--paper-card);border:1px solid var(--line-soft);border-radius:4px;max-height:280px;overflow-y:auto;font-size:.82em;line-height:1.8;box-shadow:0 4px 24px rgba(0,0,0,.35)"></div>
-
-</body>
-
-</html>
+>
