@@ -450,6 +450,7 @@
   </div>
 </div>
 
+<script src="/static/ziwei-verify.js"></script>
 <script>
 // 暗色主题
 (function(){ var t=localStorage.getItem('ziwei_theme'); if(t){ document.documentElement.setAttribute('data-theme',t); } })();
@@ -458,7 +459,7 @@ document.addEventListener('DOMContentLoaded',function(){ document.getElementById
 const $ = id => document.getElementById(id);
 const sid = window.location.pathname.split('/').pop();
 let plateData = null;
-let reportPw = sessionStorage.getItem('ziwei_pw') || '';
+// reportPw declared in ziwei-verify.js
 
 // ── 加载数据 ──
 async function load(){
@@ -1125,7 +1126,7 @@ async function startAnalysis(plate, password){
     for(let attempt=0; attempt<2; attempt++){
       const r = await fetch('/api/ziwei/analyze/stream', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({plate, password: pw})
+        body:JSON.stringify({plate, password: pw, verification_mode: true})
       });
       if(r.status === 403){
         const err = await r.json().catch(()=>({}));
@@ -1175,6 +1176,11 @@ async function startAnalysis(plate, password){
       reader.cancel();
       if(rawText){
         sessionStorage.setItem('ziwei_pw', pw || '');
+        // 验盘响应：显示确认面板
+        if(rawText.includes('验盘完毕') || rawText.includes('命盘验证')){
+          renderVerification(rawText);
+          return;
+        }
         area.innerHTML = formatText(rawText);
         area.scrollIntoView({behavior:'smooth',block:'start'});
         await fetch('/api/ziwei/sessions/'+sid, {

@@ -869,6 +869,19 @@ def api_ziwei_analyze():
     plate_dict = data["plate"]
     bazi_ref = _compute_bazi_ref(plate_dict)
 
+    # 验盘模式
+    import datetime as _dt
+    known_events = data.get("known_events", None)
+    verified_events = data.get("verified_events", None)
+    if known_events or data.get("verification_mode"):
+        plate_dict["_verification_mode"] = True
+        plate_dict["_current_year"] = _dt.date.today().year
+        plate_dict["_current_age"] = plate_dict["_current_year"] - int(plate_dict.get("birth_year", 0))
+        if known_events:
+            plate_dict["_known_events"] = known_events
+        if verified_events:
+            plate_dict["_verified_events"] = verified_events
+
     # 缓存检查
     cache_key = _make_ziwei_cache_key(plate_dict)
     cached = _cache_get(cache_key)

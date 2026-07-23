@@ -1507,6 +1507,64 @@ def _build_ziwei_user_message(plate_dict: dict, bazi_ref: dict = None) -> str:
         parts.append("3. **时间叠合**：当前大限与八字大运的时间段做对齐，大限与流年叠盘时参考八字的流年干支")
         parts.append("4. **综合结论**：八字定基调（贫富寿夭层次），紫微定场景（职业类型、人际关系具体形态），在分析每个章节时，如八字与紫微信号一致则强化结论，若冲突则指出矛盾并给出辩证解读")
         parts.append("")
+    # ═══ 验盘阶段 ═══
+    verification = plate_dict.get('_verification_mode', False)
+    if verification:
+        known_events = plate_dict.get('_known_events', None)
+        verified_events = plate_dict.get('_verified_events', None)
+        parts.append("## 📍 验盘环节")
+        parts.append("")
+        if known_events and len(known_events) > 0:
+            parts.append("以下为用户提供的已知人生事件，请在正式分析前逐一核验每个事件是否能从命盘中找到对应信号，标注对应信号等级（S/A/B/C/D/E），然后直接进入完整分析。")
+            parts.append("")
+            for i, evt in enumerate(known_events):
+                parts.append(f"{i+1}. **{evt.get('year','')}年**：{evt.get('desc','')}")
+            parts.append("")
+        elif verified_events:
+            parts.append("以下为已验证的人生事件，已确认为正确的锚点。在后续分析中以这些事件为参照。")
+            parts.append("")
+            for i, evt in enumerate(verified_events):
+                parts.append(f"{i+1}. **{evt.get('year','')}年确认事件**：{evt.get('desc','')}")
+            parts.append("")
+        else:
+            ca = plate_dict.get('_current_age', 0)
+            parts.append("要求：先不着急输出完整命盘分析。请先做验盘——基于命盘信号，倒退命主可能经历过的3~4件人生大事。")
+            parts.append("")
+            parts.append("### 验盘信号优先级")
+            parts.append("")
+            parts.append("| 等级 | 信号 | 精度 | 触发条件 |")
+            parts.append("|------|------|------|----------|")
+            parts.append("| **S** | 流年命宫=大限命宫=生年忌/禄所在宫（三层叠并） | ±1年 | 三盘重合于关键宫位，人生转折点 |")
+            parts.append("| **A** | 生年忌+大限忌同宫+流年引动（双忌叠冲） | ±1年 | 两个以上四化忌同宫汇聚 |")
+            parts.append("| **B** | 大限交接年 ±2年 | ±2年 | 每十年一次，必有结构性变化 |")
+            parts.append("| **C** | 流年化忌飞入大限命宫 / 流年命宫=关键宫 | ±2年 | 单层触发但方向明确 |")
+            parts.append("| **D** | 四化飞入+三方四正承接 | ±2年 | 需对宫+三合同步配合 |")
+            parts.append("| **E** | 大限主星类型变化 | ±3年 | 趋势级，不适合精确验盘 |")
+            parts.append("")
+            parts.append("### 常见验盘锚点（按可验证性排序）")
+            parts.append("")
+            parts.append("1. 学业/升学 → 父母宫/官禄宫四化触发")
+            parts.append("2. 事业转折 → 官禄宫/大限交接四化触发")
+            parts.append("3. 感情/婚姻 → 夫妻宫/福德宫四化触发")
+            parts.append("4. 搬家/迁居 → 田宅宫/迁移宫大限变化")
+            parts.append("5. 家庭变迁 → 父母宫/田宅宫煞忌触发")
+            parts.append(f"6. 健康事件 → 疾厄宫化忌+煞星触发（仅限{ca}岁前）")
+            parts.append("")
+            parts.append("### 验盘输出格式")
+            parts.append("")
+            parts.append("每条必须：年份±2年 + 事件类型 + 宫位依据 + 信号等级。以【验盘完毕】结束。")
+            parts.append("")
+            parts.append("### 验盘铁律")
+            parts.append("")
+            parts.append("1. 必须具体：写明年份+岁数+事件类型+宫位依据")
+            parts.append("2. 必须有依据：每条写明宫位+四化+信号等级")
+            parts.append("3. 诚实跳过：某个领域无信号则说信号不足")
+            parts.append("4. 只猜过去，不预测未来")
+            parts.append("5. 禁止名人污染，禁止叙事膨化（每条<80字）")
+            parts.append("6. 以【验盘完毕】结束，之后立即停止")
+            parts.append("")
+    # ═══ 验盘阶段结束 ═══
+
     # 分析要求
     parts.append("## 分析要求")
     parts.append("")
@@ -1533,9 +1591,10 @@ def _build_ziwei_user_message(plate_dict: dict, bazi_ref: dict = None) -> str:
 
 
 def analyze_ziwei(plate_dict: dict, timeout: int = 120, bazi_ref: dict = None) -> dict:
-    """紫微斗数命盘解读（单 Agent 模式）
+    """紫微斗数命盘解读（单 Agent 模式），支持验盘截停
 
     使用完整的 ziwei-master.md prompt，注入知识库和八字参考
+    如果 plate_dict['_verification_mode']=True 且未提供已知事件，则使用 stop_sequences=['【验盘完毕】'] 截停
     """
     if not API_CONFIG.get("api_key"):
         return {"success": False, "error": "未配置 API Key"}
@@ -1543,6 +1602,18 @@ def analyze_ziwei(plate_dict: dict, timeout: int = 120, bazi_ref: dict = None) -
     system_prompt = _load_ziwei_system_prompt()
     user_message = _build_ziwei_user_message(plate_dict, bazi_ref=bazi_ref)
     user_messages = [{"role": "user", "content": user_message}]
+
+    # 验盘模式且无已知事件 → 截停在【验盘完毕】
+    verification = plate_dict.get('_verification_mode', False)
+    has_known = plate_dict.get('_known_events') or plate_dict.get('_verified_events')
+    if verification and not has_known:
+        result = _call_api(system_prompt, user_messages,
+                           max_tokens=16384, temperature=0.3, timeout=timeout,
+                           stop_sequences=['【验盘完毕】'])
+        if result.get("success") and result.get("analysis"):
+            # 附上验证分析
+            result["verification"] = _verify_ziwei_predictions(result["analysis"], plate_dict)
+        return result
 
     result = _call_api(system_prompt, user_messages,
                        max_tokens=32768, temperature=0.7, timeout=timeout)
@@ -1559,6 +1630,53 @@ def analyze_ziwei(plate_dict: dict, timeout: int = 120, bazi_ref: dict = None) -
             {"role": "user", "content": user_message},
             {"role": "assistant", "content": result["text"]},
         ],
+    }
+
+
+def _verify_ziwei_predictions(analysis_text: str, plate_dict: dict) -> dict:
+    """后处理硬校验：检查 Agent 验盘预测的合规性
+    
+    不做正确性判断，只检查格式和信号引用的合理性。
+    """
+    import re
+    issues = []
+    predictions = []
+    
+    # 提取年份
+    year_pattern = re.findall(r'(\d{4})\s*年', analysis_text)
+    # 提取信号等级
+    signal_pattern = re.findall(r'[信号等级|信号].*?([SABCDE])', analysis_text)
+    
+    current_year = plate_dict.get('_current_year', 2026)
+    birth_year = plate_dict.get('birth_year', 0)
+    
+    # 检查1：至少2条预测
+    if len(year_pattern) < 2:
+        issues.append("预测条数不足（<2条），无法进行有效验盘")
+    
+    # 检查2：年份不应超过当前年份
+    for y_str in year_pattern:
+        y = int(y_str)
+        if y > current_year:
+            issues.append(f"预测年份{y}年晚于当前年份{current_year}年，违反'只猜过去'规则")
+    
+    # 检查3：不应包含未来预测
+    future_markers = ['未来', '将来', '将会', '有望', '预计', '前程']
+    for marker in future_markers:
+        if marker in analysis_text:
+            issues.append(f"验盘中出现未来预测关键词'{marker}'，验盘应只回顾过去")
+            break
+    
+    # 检查4：不应有名人引用
+    if '多尔衮' in analysis_text or '豪格' in analysis_text or '李世民' in analysis_text:
+        issues.append("验盘中出现名人引用，违反'禁止名人污染'规则")
+    
+    return {
+        "predictions_count": len(year_pattern),
+        "years_found": list(set(year_pattern)),
+        "signal_levels_found": signal_pattern,
+        "issues": issues,
+        "passed": len(issues) == 0,
     }
 
 
