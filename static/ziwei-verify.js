@@ -132,3 +132,30 @@ async function startAnalysisFull() {
     area.innerHTML = '<span style="color:var(--vermillion)">连接中断: ' + e.message + '</span>';
   }
 }
+
+// 会话列表加载（供报告页使用）
+async function loadSessionList() {
+  try {
+    var r = await fetch('/api/ziwei/sessions');
+    var list = await r.json();
+    var sel = document.getElementById('session-switcher');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">历史会话 (' + list.length + ')</option>';
+    list.forEach(function(s) {
+      var date = (s.created_at || '').slice(0, 10);
+      var summary = s.plate_summary || '';
+      var opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = (date ? date + ' ' : '') + summary.slice(0, 16);
+      if (s.id === sid) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } catch (e) { }
+}
+
+function switchSession() {
+  var sel = document.getElementById('session-switcher');
+  if (sel.value && sel.value !== sid) {
+    window.location.href = '/ziwei/report/' + sel.value;
+  }
+}
