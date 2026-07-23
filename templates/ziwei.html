@@ -407,11 +407,36 @@ function toggleTheme(){const n=document.documentElement.getAttribute('data-theme
     sl.innerHTML=list.slice(0,20).map(s=>{
       const date=(s.created_at||'').slice(0,10);
       const summary=s.plate_summary||'';
+      const title=s.title||summary||'';
       const mc=s.message_count||0;
-      return '<div style="padding:3px 0;border-bottom:1px solid var(--line-faint);cursor:pointer;display:flex;justify-content:space-between" onclick="window.location.href=\'/ziwei/report/'+s.id+'\'"><span>'+(date?date+' ':'')+summary.slice(0,20)+'</span><span style="color:var(--ink-faint);font-size:.85em">'+(mc?'💬'+mc:'新')+'</span></div>';
+      return '<div style="padding:3px 0;border-bottom:1px solid var(--line-faint);display:flex;align-items:center;gap:4px" data-sid="'+s.id+'"><span style="flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="window.location.href=\'/ziwei/report/'+s.id+'\'">'+(date?date+' ':'')+'<span class="sess-title" data-sid="'+s.id+'">'+escapeHtml(title.slice(0,20))+'</span></span><span style="color:var(--ink-faint);font-size:.75em;flex-shrink:0">'+(mc?'💬'+mc:'新')+'</span><button onclick="event.stopPropagation();renameSession(\''+s.id+'\')" title="重命名" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px;color:var(--ink-soft)">✏</button><button onclick="event.stopPropagation();deleteSession(\''+s.id+'\')" title="删除" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px;color:var(--ink-soft)">✕</button></div>';
     }).join('');
   }catch(e){}
 })();
+
+async function renameSession(sid){
+  const span=document.querySelector('.sess-title[data-sid="'+sid+'"]');
+  if(!span) return;
+  const old=span.textContent.trim();
+  const nw=prompt('重命名会话：',old);
+  if(!nw||nw===old) return;
+  try{
+    await fetch('/api/ziwei/sessions/'+sid,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:nw})});
+    span.textContent=nw.slice(0,20);
+  }catch(e){alert('重命名失败');}
+}
+
+async function deleteSession(sid){
+  if(!confirm('确定删除此历史会话？')) return;
+  try{
+    await fetch('/api/ziwei/sessions/'+sid,{method:'DELETE'});
+    const el=document.querySelector('[data-sid="'+sid+'"]');
+    if(el) el.remove();
+    const cnt=document.querySelectorAll('#session-list [data-sid]').length;
+    $('session-count').textContent=cnt;
+    if(!cnt) $('session-list').innerHTML='<span style="color:var(--ink-soft)">暂无历史会话</span>';
+  }catch(e){alert('删除失败');}
+}
 
 
 

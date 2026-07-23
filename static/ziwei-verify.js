@@ -206,3 +206,31 @@ function switchSession() {
     window.location.href = '/ziwei/report/' + sel.value;
   }
 }
+
+async function renameCurrentSession() {
+  if (!sid) return;
+  var old = '';
+  try {
+    var r = await fetch('/api/ziwei/sessions/' + sid);
+    var s = await r.json();
+    old = s.title || s.plate_summary || '';
+  } catch (e) { }
+  var nw = prompt('重命名会话：', old);
+  if (!nw || nw === old) return;
+  try {
+    await fetch('/api/ziwei/sessions/' + sid, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: nw })
+    });
+    loadSessionList();
+  } catch (e) { alert('重命名失败'); }
+}
+
+async function deleteCurrentSession() {
+  if (!sid) return;
+  if (!confirm('确定删除当前命盘会话？')) return;
+  try {
+    await fetch('/api/ziwei/sessions/' + sid, { method: 'DELETE' });
+    window.location.href = '/ziwei';
+  } catch (e) { alert('删除失败'); }
+}
