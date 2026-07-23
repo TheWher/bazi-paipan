@@ -13,6 +13,7 @@ AGENTS.md
 config.local.py
 feedback_logs/
 feedback/
+sessions/
 fonts/
 evaluate_agent.py
 test_paipan.py

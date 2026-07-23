@@ -649,4 +649,30 @@ async function confirmAnalyze(){
   };
   $('btn-confirm-analyze').addEventListener('click',confirmAnalyze);
 
+  // ── 会话切换器 ──
+  async function loadSessionList(){
+    try{
+      const r=await fetch('/api/ziwei/sessions');
+      const list=await r.json();
+      const sel=document.getElementById('session-switcher');
+      if(!sel)return;
+      sel.innerHTML='<option value="">历史会话 ('+list.length+')</option>';
+      list.forEach(s=>{
+        const date=(s.created_at||'').slice(0,10);
+        const summary=s.plate_summary||'';
+        const opt=document.createElement('option');
+        opt.value=s.id;
+        opt.textContent=(date?date+' ':'')+summary.slice(0,16);
+        if(s.id===sid)opt.selected=true;
+        sel.appendChild(opt);
+      });
+    }catch(e){}
+  }
+  function switchSession(){
+    const sel=document.getElementById('session-switcher');
+    if(sel.value&&sel.value!==sid){
+      window.location.href='/ziwei/report/'+sel.value;
+    }
+  }
+
 >

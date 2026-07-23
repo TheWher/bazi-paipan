@@ -971,8 +971,42 @@ def api_ziwei_analyze_continue():
 # ============================================================
 # 紫微会话管理
 # ============================================================
+import os as _os
 import uuid as _uuid
 _ziwei_sessions = {}  # {session_id: {id, title, messages, plate_data, plate_summary, created_at}}
+_SESSIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sessions')
+
+def _load_sessions_from_disk():
+    """从磁盘恢复会话"""
+    try:
+        if not _os.path.exists(_SESSIONS_DIR):
+            _os.makedirs(_SESSIONS_DIR)
+            return
+        for fn in _os.listdir(_SESSIONS_DIR):
+            if fn.endswith('.json'):
+                sid = fn[:-5]
+                try:
+                    with open(_os.path.join(_SESSIONS_DIR, fn), 'r', encoding='utf-8') as f:
+                        _ziwei_sessions[sid] = json.load(f)
+                except Exception:
+                    pass
+        print(f"[启动] 已恢复 {len(_ziwei_sessions)} 个紫微会话")
+    except Exception as e:
+        print(f"[启动] 恢复会话失败: {e}")
+
+def _save_session_to_disk(sid):
+    """保存单个会话到磁盘"""
+    try:
+        if not _os.path.exists(_SESSIONS_DIR):
+            _os.makedirs(_SESSIONS_DIR)
+        fp = _os.path.join(_SESSIONS_DIR, f'{sid}.json')
+        with open(fp, 'w', encoding='utf-8') as f:
+            json.dump(_ziwei_sessions[sid], f, ensure_ascii=False)
+    except Exception as e:
+        print(f"[会话] 保存失败 {sid}: {e}")
+
+# 启动时恢复会话
+_load_sessions_from_disk()
 
 @app.route("/api/ziwei/sessions", methods=["GET", "POST"])
 def api_ziwei_sessions():
@@ -990,6 +1024,7 @@ def api_ziwei_sessions():
         "plate_summary": data.get("plate_summary", ""),
         "created_at": datetime.now().isoformat(timespec="seconds"),
     }
+    _save_session_to_disk(sid)
     return jsonify(_ziwei_sessions[sid])
 
 @app.route("/api/ziwei/sessions/<sid>", methods=["GET", "PUT", "PATCH", "DELETE"])
@@ -1003,6 +1038,7 @@ def api_ziwei_session(sid):
         if "title" in data: _ziwei_sessions[sid]["title"] = data["title"]
         if "messages" in data: _ziwei_sessions[sid]["messages"] = data["messages"]
         if "plate_data" in data: _ziwei_sessions[sid]["plate_data"] = data["plate_data"]
+        _save_session_to_disk(sid)
         return jsonify({"ok": True})
     if request.method == "PATCH":
         """追加 messages（用于流式完成后保存）"""
@@ -1010,9 +1046,15 @@ def api_ziwei_session(sid):
         data = request.get_json(force=True)
         if "messages" in data:
             _ziwei_sessions[sid]["messages"] = data["messages"]
+        _save_session_to_disk(sid)
         return jsonify({"ok": True})
     if request.method == "DELETE":
-        if sid in _ziwei_sessions: del _ziwei_sessions[sid]
+        if sid in _ziwei_sessions:
+            del _ziwei_sessions[sid]
+            # 删除磁盘文件
+            fp = _os.path.join(_SESSIONS_DIR, f'{sid}.json')
+            if _os.path.exists(fp):
+                _os.remove(fp)
         return jsonify({"ok": True})
 
 
