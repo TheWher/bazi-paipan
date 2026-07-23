@@ -222,6 +222,7 @@ async function renameCurrentSession() {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: nw })
     });
+    toast('已重命名');
     loadSessionList();
   } catch (e) { alert('重命名失败'); }
 }
@@ -231,6 +232,16 @@ async function deleteCurrentSession() {
   if (!confirm('确定删除当前命盘会话？')) return;
   try {
     await fetch('/api/ziwei/sessions/' + sid, { method: 'DELETE' });
-    window.location.href = '/ziwei';
+    toast('已删除，即将返回');
+    setTimeout(function() { window.location.href = '/ziwei'; }, 600);
   } catch (e) { alert('删除失败'); }
+}
+
+function toast(msg) {
+  var d = document.createElement('div');
+  d.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 20px;border-radius:4px;font-size:13px;z-index:999;font-family:inherit;opacity:0;transition:opacity .3s';
+  d.textContent = msg;
+  document.body.appendChild(d);
+  requestAnimationFrame(function() { d.style.opacity = '1'; });
+  setTimeout(function() { d.style.opacity = '0'; setTimeout(function() { d.remove(); }, 300); }, 1500);
 }

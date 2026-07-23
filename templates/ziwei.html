@@ -424,6 +424,7 @@ async function renameSession(sid){
   try{
     await fetch('/api/ziwei/sessions/'+sid,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:nw})});
     span.textContent=nw.slice(0,20);
+    flashMsg('已重命名');
   }catch(e){alert('重命名失败');}
 }
 
@@ -436,7 +437,17 @@ async function deleteSession(sid){
     const cnt=document.querySelectorAll('#session-list [data-sid]').length;
     $('session-count').textContent=cnt;
     if(!cnt) $('session-list').innerHTML='<span style="color:var(--ink-soft)">暂无历史会话</span>';
+    flashMsg('已删除');
   }catch(e){alert('删除失败');}
+}
+
+function flashMsg(msg){
+  const div=document.createElement('div');
+  div.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 20px;border-radius:4px;font-size:13px;z-index:999;font-family:inherit;opacity:0;transition:opacity .3s';
+  div.textContent=msg;
+  document.body.appendChild(div);
+  requestAnimationFrame(()=>{ div.style.opacity='1'; });
+  setTimeout(()=>{ div.style.opacity='0'; setTimeout(()=>div.remove(),300); },1500);
 }
 
 
