@@ -146,7 +146,7 @@ async function loadSessionList() {
       var summary = s.plate_summary || '';
       var opt = document.createElement('option');
       opt.value = s.id;
-      opt.textContent = (date ? date + ' ' : '') + summary.slice(0, 16);
+      opt.textContent = (date ? date + ' ' : '') + summary.slice(0, 24);
       if (s.id === sid) opt.selected = true;
       sel.appendChild(opt);
     });
