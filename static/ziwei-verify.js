@@ -222,8 +222,14 @@ async function renameCurrentSession() {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: nw })
     });
+    // 只更新当前选中项文字，不全量重建
+    var sel = document.getElementById('session-switcher');
+    if (sel && sel.selectedIndex >= 0) {
+      var opt = sel.options[sel.selectedIndex];
+      var date = (opt.textContent || '').split(' ')[0];
+      opt.textContent = date + ' ' + nw.slice(0, 24);
+    }
     toast('已重命名');
-    loadSessionList();
   } catch (e) { alert('重命名失败'); }
 }
 
