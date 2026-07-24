@@ -23,13 +23,9 @@ import json
 import time
 from typing import Generator, Any
 
-from analysis_service import (
-    API_CONFIG,
-    _load_system_prompt,
-    _build_user_message,
-    _call_api,
-    _verify_predictions,
-)
+from services.llm_client import API_CONFIG, _call_api
+from services.kb_loader import _load_knowledge_base
+from services.bazi_analysis import _load_system_prompt, _build_user_message, _verify_predictions
 
 
 # ============================================================

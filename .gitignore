@@ -16,6 +16,9 @@ feedback/
 feedback/ziwei/
 feedback/report_cache.json
 sessions/
+templates/landing.html.bak
+knowledge_base/error_patterns.json
+knowledge_base/geju_rules.json
 fonts/
 evaluate_agent.py
 test_paipan.py
@@ -23,3 +26,5 @@ test_pw.py
 *.docx
 *.pptx
 *.md.bak
+
+static/ziwei/ziwei-chart.js

@@ -358,8 +358,6 @@ plate_dict → compute_spread()
 | `tiaohou.json` | 120 | 穷通宝鉴调候用神表 |
 | `signal_rules.json` | 7数据块 | 冲合/三合/驿马/墓库（从 `_evaluate_liunian_signal` 提取） |
 | `shishen_domains.json` | 40 | 十神×年龄→领域映射（从 `_map_shishen_to_domain` 提取） |
-| `geju_rules.json` | ~30 | 格局判定+十神组合→职业/婚姻/财运 |
-| `error_patterns.json` | 13 | 错误模式结构化 |
 | `glossary.json` | 44 | 术语定义（前端→服务端统一管理） |
 | `classical_references.json` | 5 | 古籍引用→表单tooltip映射 |
 
