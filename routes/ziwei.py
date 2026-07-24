@@ -597,7 +597,7 @@ def api_ziwei_feedback_report():
         return "Not Found", 404
     cache_path = os.path.join(_FEEDBACK_DIR, "report_cache.json")
     if not os.path.exists(cache_path):
-        return jsonify({"error": "报告尚未生成，请先运行 evaluate_ziwei_verify.py --output"}), 404
+        return jsonify({"error": "报告尚未生成，请先运行 scripts/evaluate_ziwei_verify.py --output"}), 404
     try:
         with open(cache_path, "r", encoding="utf-8") as f:
             report = json.load(f)

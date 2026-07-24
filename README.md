@@ -109,7 +109,7 @@ WEB_PASSWORD = "your-password"  # 可选，保护深度分析
 python test_paipan.py              # 24 条全量
 python test_paipan.py --verbose    # 详细输出
 python test_paipan.py --smoke      # 5 条冒烟
-python blind_test_balanced.py      # 均衡命局专项盲测
+python scripts/blind_test_balanced.py      # 均衡命局专项盲测
 python test_ziwei.py               # 紫微 50 条全量
 ```
 
