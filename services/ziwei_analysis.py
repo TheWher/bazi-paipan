@@ -441,8 +441,8 @@ def analyze_ziwei(plate_dict: dict, timeout: int = 120, bazi_ref: dict = None) -
         result = _call_api(system_prompt, user_messages,
                            max_tokens=16384, temperature=0.3, timeout=timeout,
                            stop_sequences=['【验盘完毕】'])
-        if result.get("success") and result.get("analysis"):
-            # 附上验证分析
+        if result.get("success") and result.get("text"):
+            result["analysis"] = result.pop("text")
             result["verification"] = _verify_ziwei_predictions(result["analysis"], plate_dict)
         return result
 
