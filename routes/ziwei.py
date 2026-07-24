@@ -443,6 +443,16 @@ def api_ziwei_analyze_stream():
     from flask import Response
     from analysis_service import _load_ziwei_system_prompt, _build_ziwei_user_message, _call_api_stream
 
+    def generate():
+        sp = _load_ziwei_system_prompt()
+        um = _build_ziwei_user_message(plate_dict, bazi_ref=bazi_ref)
+        for chunk in _call_api_stream(sp, [{"role": "user", "content": um}], 32768, 0.7, 600):
+            yield chunk
+
+    return Response(generate(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 @ziwei_bp.route("/analyze/continue", methods=["POST"])
 def api_ziwei_analyze_continue():
     """紫微斗数多轮对话续接"""
