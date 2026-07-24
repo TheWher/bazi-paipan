@@ -12,7 +12,7 @@ function renderVerification(analysisText) {
   const items = [];
   let inVer = false;
   for (const line of lines) {
-    if (line.includes('命盘验证') || line.includes('验盘')) { inVer = true; continue; }
+    if (line.includes('命盘验证') || line.includes('验盘') || line.includes('验盘环节')) { inVer = true; continue; }
     if (line.includes('验盘完毕')) break;
     if (!inVer) continue;
     const m = line.match(/(\d{4})\s*年.*?[：:]\s*(.+)/);
