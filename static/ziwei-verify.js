@@ -251,3 +251,16 @@ function toast(msg) {
   requestAnimationFrame(function() { d.style.opacity = '1'; });
   setTimeout(function() { d.style.opacity = '0'; setTimeout(function() { d.remove(); }, 300); }, 1500);
 }
+
+function copyReportLink() {
+  var url = window.location.href;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(function() { toast('链接已复制'); });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    toast('链接已复制');
+  }
+}
