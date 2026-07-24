@@ -25,59 +25,33 @@
 
 ### 🔮 精准排盘
 - sxtwl C++ 库 + Meeus 天文算法双引擎
-- 真太阳时自动校正
+- 真太阳时自动校正 · 250+ 城市经纬度库
 - 四柱/大运/十神/神煞/空亡/藏干 一键计算
-- 24 条测试用例全覆盖
+- iztro-py 紫微引擎 · 14 主星亮度全量修正
 
 ### 🧠 AI 深度分析
-- 梁湘润体系 9 级递进推理链
-- 42 个核心概念 · 13 条盲测错误模式防御
-- 双模式分流验盘（极端冲合信号 / 均衡大运主题确认）
-- 🆕 紫微 Agent v5：8 步推理链 · 四层四化权重 · 8 格局核验 · 风险过滤
+- **八字**：梁湘润体系 9 级递进推理链 · 42 核心概念 · 13 条盲测错误模式
+- **紫微**：10 步强制推理链 · 四层四化权重（15 条互涉）· 24 格局三列核验 · 破格五层穿透
+- **交叉验证**：紫微分析自动排八字盘 + 调八字 Agent 独立分析，结论注入紫微 Prompt
+- 双 Agent 定义文件：八字 120KB + 紫微 48KB
 
 </td>
 <td width="50%">
 
 ### 🎯 验盘闭环
-- 盲测驱动迭代：极端 100%，均衡 71%（从 0% 突破）
-- stop_sequences 截停 + 后处理硬校验，零成本防幻觉
-- 反馈标注积累 → 持续优化
-- 7 领域结构化 JSON 知识库，LLM prompt 注入量降低 80%+
+- **八字**：双模式分流（极端冲合信号 → 100% / 均衡大运主题确认 → 71%）
+- **紫微**：6 级信号优先级表（S~E）· stop_sequences 截停 · 逐条用户确认面板
+- 反馈保存 → 聚合分析脚本 → 错误模式发现 → Prompt 注入迭代
+- 反馈带盘指纹 + 错误原因标签 + 来源标记 · 假阳性/假阴性分化统计
 
 ### 📊 可视化 & 交互
-- 五行环图 / 十二长生轮盘 / 大运环形图 / 干支生克关系图
-- **🔮 紫微十二宫 Grid**（水墨宣纸风，楷体主星+四化色块+飞星标记）
-- **三层叠盘**：大限 + 流年 + 流月可叠加，每层四化 + 流曜独立渲染
-- **三合四正连线**：4 组三合三角 + 6 条对宫线，hover 宫位高亮连线组
-- 输入页就地渲染盘面 · 确认卡片 5 锚点 · "确认并解读"一键跳转
-- 分析文本 Markdown 多级排版（h2/h3/h4/列表/引用/分隔线）
-- 浏览器打印 PDF 报告
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### 🔮 紫微斗数（2026-07 v8）
-- iztro-py 排盘引擎 · 后端 `_BRIGHTNESS_FIX` 全量修正（令东来参考表）
-- **10 步推理链**（含亮度自检）· **四层四化权重**（15 条互涉）
-- **身宫框架**（4 维+4 段权重+命身同宫）· **对宫冲照**（6 组+7 级力度）
-- **24 格局三列核验**（必要条件+条件受损+吉化加分）· **破格五层穿透**
-- **水墨宣纸风** UI 重构：格子三层分区（楷体主星+四化色块+辅星吉凶）、中心宫三锚点
-- **三层叠盘**（大限+流年+流月可叠加，状态指示条）· **三合四正连线**（hover 高亮）
-- **飞星标记**（宫干四化飞入）+ **流曜渲染**（流禄/流羊/流陀等 10 种）
-- **叠盘分析**（一键 LLM 分析当前叠盘配置）
-- **八字交叉验证**：分析时自动注入完整八字四柱+十神+五行+大运，四步交叉指令
-
-</td>
-<td width="50%">
-
-### 🗂️ 双系统架构 + 交叉验证
-- Landing 页双按钮分流（八字 `/app` · 紫微 `/ziwei`）
-- 独立页面 + 共享表单输入复用出生信息
-- **八字→紫微交叉验证**：每次紫微分析自动排八字盘 + 调八字 Agent（梁湘润9级推理链）做独立分析，结论注入紫微 Prompt 做两体系共振。同四柱缓存不重复
-- **紫微数据管道 v5**：GAN_SIHUA 对照表 · 大限四化表 · 流年流曜引擎 · 飞星字段 · 亮度修正 · 身宫标记
-- 9+5 JSON 知识库 + 24 条八字测试 + 50 条紫微测试
+- 五行环图 / 十二长生轮盘 / 大运环图
+- 紫微十二宫 Grid：楷体主星 + 四化色块 + 杂曜全量 + 长生角标
+- 三合四正连线（hover 高亮）· 飞星标记 · 流曜渲染
+- 三层叠盘（大限+流年+流月可叠加）· 叠盘 AI 分析
+- SSE 流式解读 · 水墨宣纸风 · 暗色主题
+- 会话磁盘持久化 + 历史会话管理（重命名/删除/切换器）
+- 复制链接跨设备查看
 
 </td>
 </tr>
@@ -92,175 +66,118 @@ pip install -r requirements.txt
 python app.py          # → http://localhost:5000
 ```
 
-配置 API Key（三选一）：
+配置 API Key（三选一：环境变量 / `~/.claude/settings.json` / `config.local.py`）：
 
 ```python
 # config.local.py（不提交 Git）
 API_CONFIG = {
     "base_url": "https://api.deepseek.com/anthropic",
-    "model": "deepseek-v4-pro[1m]",
+    "model": "deepseek-v4-pro",
     "api_key": "sk-...",
 }
-WEB_PASSWORD = "your-password"  # 可选，保护深度分析
+WEB_PASSWORD = "your-password"    # 可选，保护深度分析
+ADMIN_TOKEN = "your-admin-token"  # 可选，保护反馈报告端点
 ```
 
 ```bash
 # 测试
+python test_paipan.py --smoke      # 八字冒烟测试
 python test_paipan.py              # 24 条全量
-python test_paipan.py --verbose    # 详细输出
-python test_paipan.py --smoke      # 5 条冒烟
-python scripts/blind_test_balanced.py      # 均衡命局专项盲测
-python test_ziwei.py               # 紫微 50 条全量
+python test_ziwei.py               # 紫微测试
+python scripts/evaluate_ziwei_verify.py --output feedback/ziwei/report_cache.json  # 验盘反馈聚合
 ```
 
 ---
 
 ## 🏗️ 架构
 
-```mermaid
-flowchart TB
-    subgraph Input["🎯 输入"]
-        A[出生时间/地点/性别]
-    end
-
-    subgraph Symbolic["⚙️ 符号计算层"]
-        B[sxtwl C++ 引擎]
-        C[Meeus 天文算法回退]
-        D[真太阳时校正]
-        E["BaziPlate<br/>四柱/大运/十神/神煞"]
-    end
-
-    subgraph Viz["📊 可视化"]
-        F[chart_svg.py<br/>4 种 SVG 图表]
-        G[generate_bazi_pdf.py<br/>PDF 报告]
-    end
-
-    subgraph AI["🤖 AI 推理层"]
-        H[three_channel.py<br/>GPT-5.5 三通道管道]
-        I[analysis_service.py<br/>传统单次调用]
-        J["Agent 定义 133KB<br/>八字 123KB + 紫微 10KB<br/>双 Agent 体系"]
-        X["🔗 交叉验证<br/>八字→紫微自动注入<br/>四柱十神五行大运"]
-    end
-
-    subgraph Output["📤 输出"]
-        K[SSE 实时进度]
-        L[13 章命理报告]
-        M[SVG 图表]
-        N[PDF 报告]
-    end
-
-    A --> B
-    A --> C
-    B --> D
-    C --> D
-    D --> E
-    E --> F
-    E --> G
-    E --> H
-    E --> I
-    I --> J
-    H --> K
-    H --> L
-    F --> M
-    G --> N
+```
+app.py (20 行入口)
+  └── routes/          # Flask 蓝图 — 页面 + API
+  │   ├── pages.py      # 页面路由（/ /app /ziwei /report …）
+  │   ├── bazi.py       # 八字 API（/api/paipan /api/analyze …）
+  │   ├── ziwei.py      # 紫微 API（/api/ziwei/*）
+  │   └── charts.py     # 图表 API（/api/chart/*）
+  └── services/        # 业务逻辑 — LLM 分析管道
+  │   ├── llm_client.py      # API 调用 + 三层 Key 回退 + SSE 流式
+  │   ├── kb_loader.py       # 知识库加载 + 五行常量
+  │   ├── bazi_analysis.py   # 八字分析全管道
+  │   └── ziwei_analysis.py  # 紫微分析全管道（含验盘）
+  └── utils/           # 工具函数
+      ├── auth.py       # 密码保护 + 限流
+      ├── cache.py      # 分析结果缓存
+      ├── feedback.py   # 反馈日志保存
+      ├── geo.py        # 地理编码
+      └── plate.py      # 命盘序列化
 ```
 
-### 🔬 三通道管道（GPT-5.5 参考实现）
-
-> 2026 年 GPT-5.5 系统提示词泄露揭示了三层输出通道设计。本项目将其迁移到八字分析管道。
-
-```mermaid
-sequenceDiagram
-    participant U as 👤 用户
-    participant F as 🌐 Flask
-    participant A as 🔒 Analysis<br/>（隐藏推理）
-    participant C as 📡 Commentary<br/>（SSE 进度）
-    participant R as 📝 Final<br/>（可见输出）
-
-    U->>F: POST /api/analyze/stream/continue
-    F->>A: 启动隐藏推理
-
-    Note over A: DeepSeek 结构化决策<br/>格局/旺衰/用神/调候<br/>token: ~4K
-
-    A-->>F: JSON 决策
-
-    loop 14 阶段
-        F->>C: 推送进度事件
-        C-->>U: SSE: progress<br/>{"phase":"调候分析", "pct":24}
-    end
-
-    F->>R: 锚点注入 + 生成报告
-    Note over R: 不重复推理<br/>直接引用内部决策
-
-    R-->>U: SSE: result<br/>13章完整报告
-```
-
-| 通道 | 可见性 | 内容 | Token |
-|:---:|:---:|---|:---:|
-| 🔒 **analysis** | 隐藏 | 结构化决策 JSON（格局/旺衰/用神/调候/病药/流年信号） | ~4K |
-| 📡 **commentary** | SSE 流 | 14 阶段分析进度实时推送 | 极低 |
-| 📝 **final** | 可见 | 13 章完整命理报告，直接引用决策不重复推理 | ~24K |
-
-**SSE 事件流**：`stage` → `progress`(×14) → `analysis_complete` → `complete` → `result`
+| 层 | 技术 |
+|:---:|---|
+| **后端** | `Flask 3.1` · `requests` · `zhdate` · `iztro-py` |
+| **前端** | 原生 JS · 零框架 · CSS Variables 水墨设计系统 · 桌面分栏 · 移动端自适应 |
+| **AI** | `DeepSeek v4-pro` · Anthropic 兼容端点 · stop_sequences 截停 |
+| **排盘** | sxtwl C++ (八字) · Meeus 回退 · iztro-py (紫微) |
+| **流式** | SSE (Server-Sent Events) · ReadableStream |
+| **部署** | PythonAnywhere · Render 备用 |
 
 ---
 
 ## 📡 API
 
+### 八字
+
 | 路由 | 方法 | 说明 |
 |------|:---:|------|
-| `/api/paipan` | POST | 八字排盘 |
-| `/api/geocode?q=` | GET | 地名 → 经纬度 |
-| `/api/cities?q=` | GET | 城市模糊搜索 |
+| `/api/paipan` | POST | 排盘 |
 | `/api/analyze` | POST | AI 深度分析（验盘阶段） |
-| `/api/analyze/stream` | POST | 🔥 三通道 SSE 流式验盘 |
-| `/api/analyze/continue` | POST | 多轮对话续接（正式批断） |
-| `/api/analyze/stream/continue` | POST | 🔥 三通道 SSE 流式续接 |
+| `/api/analyze/stream` | POST | 三通道 SSE 流式验盘 |
+| `/api/analyze/continue` | POST | 多轮对话续接 |
+| `/api/analyze/stream/continue` | POST | 三通道 SSE 流式续接 |
 | `/api/chart/wuxing` | POST | 五行环图 SVG |
 | `/api/chart/changsheng` | POST | 十二长生轮盘 SVG |
 | `/api/chart/dayun` | POST | 大运时间轴 SVG |
 | `/api/chart/dayun-ring` | POST | 大运环图 SVG |
-| `/api/glossary/lookup?term=` | GET | 术语词典查询（44 条） |
-| `/api/glossary/references` | GET | 古籍引用（表单 tooltip） |
+| `/api/geocode?q=` | GET | 地名 → 经纬度 |
+| `/api/cities?q=` | GET | 城市模糊搜索 |
+| `/api/glossary/lookup?term=` | GET | 术语词典 |
 | `/api/verify` | POST | 验盘反馈保存 |
 | `/api/pdf` | POST | PDF 报告 |
-| `/api/feedback/list` | GET | 反馈日志列表 |
-| `/api/ziwei/paipan` | POST | 🔮 紫微斗数排盘（iztro-py 引擎） |
-| `/api/ziwei/analyze` | POST | 🔮 紫微全盘 AI 解读（数据契约含5源：十二宫+生年四化+大限四化+当前大限+流年） |
-| `/api/ziwei/analyze/yearly` | POST | 🔮 紫微流年聚焦解读（三层叠盘） |
-| `/api/ziwei/horoscope` | POST | 🔮 紫微流年盘 + 流曜计算 |
 
----
+### 紫微
 
-## 🛠️ 技术栈
-
-| 层 | 技术 |
-|:---:|---|
-| **后端** | `Flask` `fpdf2` `requests` `zhdate` `iztro-py` |
-| **前端** | 原生 JS · 零框架 · 桌面分栏 · 移动端自适应 |
-| **AI** | `DeepSeek v4-pro[1m]` · Anthropic 兼容端点 · 八字 Agent (123KB) + 紫微 Agent v5 (10KB) |
-| **排盘** | sxtwl C++ (八字) · Meeus 回退 · iztro-py (紫微) |
-| **部署** | PythonAnywhere · Render 备用 |
+| 路由 | 方法 | 说明 |
+|------|:---:|------|
+| `/api/ziwei/paipan` | POST | 紫微排盘 |
+| `/api/ziwei/analyze` | POST | 深度分析（含验盘截停） |
+| `/api/ziwei/analyze/stream` | POST | SSE 流式解读 |
+| `/api/ziwei/analyze/continue` | POST | 多轮对话续接 |
+| `/api/ziwei/analyze/yearly` | POST | 流年聚焦解读 |
+| `/api/ziwei/horoscope` | POST | 流年盘 + 流曜计算 |
+| `/api/ziwei/sessions` | GET/POST | 会话列表 / 创建 |
+| `/api/ziwei/sessions/<id>` | GET/PUT/PATCH/DELETE | 会话 CRUD |
+| `/api/ziwei/verify` | POST | 验盘反馈保存 |
+| `/api/ziwei/feedback/report` | GET | 聚合报告（ADMIN_TOKEN 保护） |
 
 ---
 
 ## 📈 验盘性能
 
+### 八字（16 人盲测）
+
 ```
-极端命局（spread ≥ 3，冲合信号法）：
-  郎朗 / 姚明 / 邓小平 / 毛泽东 / 蒋介石 / 张艺谋    100% (6/6)
-
-略偏命局（spread = 2，冲合信号法）：
-  林青霞 / 成龙 / 科比 等                              78% (7/9)
-
-均衡命局（spread ≤ 2，十神到位 → 大运降级）：
-  王菲 / 李娜 / 马云                                   71% (5/7)
-  （2026-07-13 突破：从冲合信号法的 0% 提升至大运主题确认的 71%）
-
-  时间型预测命中率: 92%    特征型预测命中率: 38%
+极端命局（spread ≥ 3）：  100% (6/6)
+略偏命局（spread = 2）：   78% (7/9)
+均衡命局（spread ≤ 2）：   71% (5/7)
+时间型预测：              92%
+特征型预测：              38%
 ```
 
-> **均衡命局结论**：十神首现全在童年（≤8 岁），流年级时间信号理论上不存在——不是方法问题，是信息论上限。降级为大运主题确认后命中率达 71%。
+### 紫微（验盘闭环已就绪，等待反馈积累）
+
+- 6 级信号优先级表（S ±1年 ~ E ±3年）
+- stop_sequences 截停 + 用户逐条确认面板
+- 反馈 JSON 含盘指纹 + 错误原因标签 + 来源标记
+- `scripts/evaluate_ziwei_verify.py` 聚合分析：命中率/信号等级/领域/错误成本矩阵
 
 ---
 
